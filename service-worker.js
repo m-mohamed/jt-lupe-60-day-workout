@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jt-lupe-workout-v1';
+const CACHE_NAME = 'jt-lupe-workout-v2';
 const CORE_ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', event => {
