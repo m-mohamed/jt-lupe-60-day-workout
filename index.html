@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A 60-day workout, nutrition, and progression app for JT and Lupe.">
+  <meta name="theme-color" content="#111412">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <title>JT + Lupe | 60-Day Workout</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem('jt-lupe-theme');
+      const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.theme = saved || preferred;
+      document.documentElement.classList.add('auth-pending');
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f1f0eb;
+      --surface: #fbfaf6;
+      --surface-2: #e8e7e0;
+      --ink: #1c201b;
+      --muted: #656b63;
+      --line: #cdd0c7;
+      --accent: #236442;
+      --accent-strong: #17472e;
+      --accent-soft: #dce9df;
+      --warm: #9d4d29;
+      --focus: #1675d1;
+      --shadow: 0 18px 60px rgba(35, 43, 36, .10);
+      --radius: 8px;
+    }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #111412;
+      --surface: #191d1a;
+      --surface-2: #222823;
+      --ink: #f1f3ed;
+      --muted: #a6ada5;
+      --line: #343c35;
+      --accent: #7fd39e;
+      --accent-strong: #9ce6b5;
+      --accent-soft: #1d3828;
+      --warm: #f09a6d;
+      --focus: #77b7ff;
+      --shadow: 0 22px 70px rgba(0, 0, 0, .32);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 85% 5%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 27rem),
+        var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    button, input, select { font: inherit; }
+
+    button, input, select, a { -webkit-tap-highlight-color: transparent; }
+
+    :focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    a { color: var(--accent); text-underline-offset: 3px; }
+
+    .auth-pending .shell { visibility: hidden; }
+
+    .auth-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background:
+        radial-gradient(circle at 75% 15%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 24rem),
+        var(--bg);
+    }
+
+    .auth-gate[hidden] { display: none; }
+
+    .auth-panel {
+      width: min(440px, 100%);
+      border: 1px solid var(--line);
+      border-top: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .auth-copy { padding: 24px; }
+    .auth-copy h1 { margin: 0 0 10px; font-size: 2.5rem; line-height: .95; }
+    .auth-copy p { margin: 0; color: var(--muted); }
+    .auth-form { display: grid; gap: 12px; padding: 0 24px 24px; }
+    .auth-form label { display: grid; gap: 6px; color: var(--muted); font-size: .84rem; font-weight: 700; }
+    .auth-form input {
+      width: 100%;
+      min-height: 46px;
+      padding: 9px 11px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 1rem;
+    }
+    .profile-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .profile-button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+    .remember-row { display: flex !important; grid-template-columns: none !important; align-items: center; gap: 8px !important; }
+    .remember-row input { width: 18px; min-height: 18px; accent-color: var(--accent); }
+    .auth-status { min-height: 20px; color: var(--warm); font-size: .84rem; }
+    .auth-boundary { padding: 13px 24px; border-top: 1px solid var(--line); background: var(--surface-2); color: var(--muted); font-size: .76rem; }
+
+    .challenge {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 22px;
+      align-items: center;
+      margin: 0 0 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .challenge-copy { display: grid; gap: 5px; }
+    .challenge-copy strong { font-size: clamp(1.5rem, 4vw, 2.5rem); letter-spacing: -.05em; }
+    .challenge-copy span { color: var(--muted); }
+    .challenge-meter { width: 100%; height: 9px; margin-top: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+    .challenge-meter span { display: block; width: 0; height: 100%; background: var(--accent); transition: width .25s ease; }
+    .challenge-days { min-width: 132px; text-align: right; }
+    .challenge-days strong { display: block; font-size: 2rem; letter-spacing: -.05em; }
+    .challenge-days span { color: var(--muted); font-size: .8rem; }
+
+    .user-chip { display: flex; align-items: center; gap: 8px; padding: 0 4px; color: var(--muted); font-size: .8rem; }
+    .user-chip strong { color: var(--ink); }
+    .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 20px 0 72px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 12px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 54px;
+      padding: 9px 10px 9px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--surface) 90%, transparent);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand strong { letter-spacing: -.02em; }
+
+    .brand span {
+      color: var(--muted);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .11em;
+      white-space: nowrap;
+    }
+
+    .actions { display: flex; gap: 8px; }
+
+    .button {
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+      transition: border-color .15s ease, transform .15s ease, background .15s ease;
+    }
+
+    .button:hover { border-color: var(--accent); transform: translateY(-1px); }
+
+    .button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #08150e;
+      font-weight: 750;
+    }
+
+    html[data-theme="light"] .button.primary { color: white; }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(290px, .65fr);
+      gap: 18px;
+      padding: 76px 0 28px;
+      align-items: end;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--accent);
+      font-weight: 800;
+      font-size: .78rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin: 0;
+      font-size: clamp(3rem, 8vw, 6.8rem);
+      line-height: .88;
+      letter-spacing: -.075em;
+      text-wrap: balance;
+    }
+
+    .lede {
+      max-width: 680px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: clamp(1rem, 2vw, 1.2rem);
+    }
+
+    .verdict {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-top: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .verdict .label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: .76rem;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .verdict strong { font-size: 1.12rem; }
+
+    .proof-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      margin: 4px 0 28px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .proof {
+      padding: 18px;
+      border-right: 1px solid var(--line);
+    }
+
+    .proof:last-child { border-right: 0; }
+
+    .proof strong {
+      display: block;
+      font-size: 1.45rem;
+      letter-spacing: -.04em;
+    }
+
+    .proof span { color: var(--muted); font-size: .82rem; }
+
+    .section {
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .section h2 {
+      margin: 0;
+      font-size: clamp(1.65rem, 4vw, 2.6rem);
+      letter-spacing: -.045em;
+    }
+
+    .section-note { max-width: 540px; margin: 0; color: var(--muted); }
+
+    .week-picker {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      white-space: nowrap;
+    }
+
+    .week-picker select,
+    .field input {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .week-picker select { padding: 7px 30px 7px 10px; }
+
+    .day-tabs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .day-tab {
+      padding: 12px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .day-tab strong { display: block; color: var(--ink); }
+
+    .day-tab[aria-selected="true"] {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+    }
+
+    .workout-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 260px;
+      gap: 12px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 58px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-head h3 { margin: 0; font-size: 1rem; }
+
+    .panel-head small { color: var(--muted); }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th, td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: 0; }
+
+    th {
+      color: var(--muted);
+      font-size: .72rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: var(--surface-2);
+    }
+
+    td:first-child { width: 41%; font-weight: 700; }
+
+    .load-input {
+      width: 84px;
+      min-height: 36px;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    .check {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .side-stack { display: grid; gap: 12px; align-content: start; }
+
+    .timer {
+      padding: 16px;
+      text-align: center;
+    }
+
+    .timer-display {
+      margin: 8px 0 14px;
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -.06em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timer-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .rule-list { margin: 0; padding: 8px 16px 14px 34px; color: var(--muted); }
+    .rule-list li + li { margin-top: 8px; }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--line);
+      overflow: hidden;
+    }
+
+    .time-block { min-height: 90px; padding: 14px; background: var(--surface); }
+    .time-block time { display: block; color: var(--accent); font-weight: 800; }
+    .time-block span { color: var(--muted); font-size: .84rem; }
+
+    .nutrition-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
+      gap: 12px;
+    }
+
+    .calculator { padding: 18px; }
+
+    .calculator-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .person { padding-left: 14px; border-left: 3px solid var(--accent); }
+    .person h3 { margin: 0 0 10px; }
+
+    .field { display: grid; grid-template-columns: 1fr 88px; gap: 8px; }
+    .field input { min-width: 0; padding: 8px 10px; }
+    .field select {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface-2);
+      color: var(--ink);
+      padding: 7px;
+    }
+
+    .protein-output {
+      min-height: 54px;
+      margin: 12px 0 0;
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      font-weight: 800;
+    }
+
+    .command-list { margin: 0; padding: 0; list-style: none; }
+    .command-list li {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .command-list li:last-child { border-bottom: 0; }
+    .command-list input { width: 19px; height: 19px; accent-color: var(--accent); }
+    .command-list strong { display: block; }
+    .command-list span { color: var(--muted); font-size: .84rem; }
+
+    .progression-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .progression-step { padding: 18px; border-right: 1px solid var(--line); }
+    .progression-step:last-child { border-right: 0; }
+    .progression-step b {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      margin-bottom: 12px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+    }
+    .progression-step h3 { margin: 0 0 6px; }
+    .progression-step p { margin: 0; color: var(--muted); }
+
+    .evidence {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .evidence .panel { padding: 16px; }
+    .evidence h3 { margin: 0 0 8px; }
+    .evidence p { margin: 0; color: var(--muted); }
+    .evidence ul { margin: 12px 0 0; padding-left: 20px; }
+
+    .notice {
+      margin-top: 16px;
+      padding: 13px 15px;
+      border: 1px solid color-mix(in srgb, var(--warm) 45%, var(--line));
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--warm) 8%, var(--surface));
+      color: var(--muted);
+      font-size: .88rem;
+    }
+
+    .saved-status {
+      min-height: 20px;
+      color: var(--muted);
+      font-size: .78rem;
+      text-align: right;
+    }
+
+    .print-plan { display: none; }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 42px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    @media (max-width: 860px) {
+      .hero, .nutrition-grid { grid-template-columns: 1fr; }
+      .hero { padding-top: 54px; }
+      .proof-row { grid-template-columns: 1fr 1fr; }
+      .proof:nth-child(2) { border-right: 0; }
+      .proof:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .workout-shell { grid-template-columns: 1fr; }
+      .day-tabs { grid-template-columns: repeat(2, 1fr); }
+      .day-tab:last-child { grid-column: 1 / -1; }
+      .timeline { grid-template-columns: 1fr 1fr; }
+      .progression-grid, .evidence { grid-template-columns: 1fr; }
+      .progression-step { border-right: 0; border-bottom: 1px solid var(--line); }
+      .progression-step:last-child { border-bottom: 0; }
+    }
+
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 20px, 1180px); padding-top: 10px; }
+      .topbar { top: 6px; }
+      .brand span, .actions .print-button, .actions .backup-button, .user-chip span { display: none; }
+      h1 { font-size: 3.4rem; }
+      .challenge { grid-template-columns: 1fr; }
+      .challenge-days { text-align: left; }
+      .proof-row, .calculator-grid, .timeline { grid-template-columns: 1fr; }
+      .proof { border-right: 0; border-bottom: 1px solid var(--line); }
+      .proof:last-child { border-bottom: 0; }
+      .section-head { align-items: flex-start; flex-direction: column; }
+      .week-picker { width: 100%; justify-content: space-between; }
+      th, td { padding: 10px 8px; }
+      .load-input { width: 68px; }
+      footer { flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+
+    @media print {
+      :root { --bg: white; --surface: white; --surface-2: #f1f1ee; --ink: #111; --muted: #555; --line: #bbb; }
+      body { background: white; font-size: 10pt; }
+      .shell { width: 100%; padding: 0; }
+      .auth-gate, .topbar, .hero, .challenge, .proof-row, .interactive-plan, .nutrition-grid, .progression-grid, .evidence, .notice, footer { display: none !important; }
+      .section { border: 0; margin: 0; padding: 0; }
+      .section-head { display: block; margin: 0 0 12px; }
+      .section-head .week-picker, .section-note { display: none; }
+      .print-plan { display: block; }
+      .print-day { break-inside: avoid; margin-bottom: 16px; }
+      .print-day h3 { margin: 0 0 6px; }
+      .print-day table { border: 1px solid var(--line); }
+      .print-day th, .print-day td { padding: 6px 8px; }
+      .print-title { display: flex; justify-content: space-between; margin-bottom: 16px; border-bottom: 2px solid #111; padding-bottom: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <section class="auth-gate" id="authGate" aria-labelledby="authTitle">
+    <div class="auth-panel">
+      <div class="auth-copy">
+        <p class="eyebrow">JT + Lupe · 60 days</p>
+        <h1 id="authTitle">Create device access</h1>
+        <p id="authIntro">Set one PIN for JT and one for Lupe. You only do this once on each device.</p>
+      </div>
+      <form class="auth-form" id="setupForm">
+        <label>JT PIN <input id="jtPinSetup" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="new-password" required></label>
+        <label>Lupe PIN <input id="lupePinSetup" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="new-password" required></label>
+        <button class="button primary" type="submit">Create access</button>
+      </form>
+      <form class="auth-form" id="loginForm" hidden>
+        <div class="profile-choice" aria-label="Choose profile">
+          <button class="button profile-button" type="button" data-profile="jt" aria-pressed="true">JT</button>
+          <button class="button profile-button" type="button" data-profile="lupe" aria-pressed="false">Lupe</button>
+        </div>
+        <label>PIN <input id="loginPin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="current-password" required></label>
+        <label class="remember-row"><input id="rememberLogin" type="checkbox" checked> Keep me signed in on this device</label>
+        <button class="button primary" type="submit">Enter workout</button>
+      </form>
+      <div class="auth-status" id="authStatus" role="status"></div>
+      <div class="auth-boundary">Device-local access only. PINs and workout data never leave this browser. This is convenient access, not server-backed security.</div>
+    </div>
+  </section>
+
+  <main class="shell">
+    <nav class="topbar" aria-label="Workout controls">
+      <div class="brand"><strong>JT + LUPE</strong><span>60-day protocol</span></div>
+      <div class="actions">
+        <div class="user-chip"><span>Signed in:</span><strong id="signedInUser">JT</strong></div>
+        <button class="button backup-button" id="backupButton" type="button">Backup</button>
+        <label class="visually-hidden" for="restoreInput">Restore backup</label><input class="visually-hidden" id="restoreInput" type="file" accept="application/json">
+        <button class="button backup-button" id="restoreButton" type="button">Restore</button>
+        <button class="button" id="installButton" type="button" hidden>Install</button>
+        <button class="button print-button" id="printButton" type="button">Print plan</button>
+        <button class="button" id="themeButton" type="button" aria-label="Toggle color theme">Theme</button>
+        <button class="button" id="logoutButton" type="button">Log out</button>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Starts Tuesday, August 11 · 9:00-10:00 p.m.</p>
+        <h1>Simple. Consistent. Ripped.</h1>
+        <p class="lede">Five familiar workouts, two people, one progression rule. Tuesday starts the challenge; Monday remains the normal Monday workout.</p>
+      </div>
+      <aside class="verdict">
+        <span class="label">The litmus test</span>
+        <strong>Waist trends down while weights or reps stay stable or rise.</strong>
+      </aside>
+    </header>
+
+    <section class="challenge" aria-label="60-day challenge progress">
+      <div class="challenge-copy">
+        <p class="eyebrow">August 11-October 9, 2026</p>
+        <strong id="challengeHeadline">Challenge starts Tuesday</strong>
+        <span id="challengeSubline">Day 1 begins with Tuesday · Legs A.</span>
+        <div class="challenge-meter" aria-hidden="true"><span id="challengeProgress"></span></div>
+      </div>
+      <div class="challenge-days"><strong id="challengeDay">0 / 60</strong><span id="challengeRemaining">Starts soon</span></div>
+    </section>
+
+    <section class="proof-row" aria-label="Program summary">
+      <div class="proof"><strong>5 days</strong><span>two exposures per muscle</span></div>
+      <div class="proof"><strong>60 min</strong><span>fixed nightly schedule</span></div>
+      <div class="proof"><strong>2 RIR</strong><span>finish with two clean reps left</span></div>
+      <div class="proof"><strong>60 days</strong><span>Tuesday start · weekends recover</span></div>
+    </section>
+
+    <section class="section interactive-plan" aria-labelledby="training-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Training desk</p>
+          <h2 id="training-title">Tonight's work</h2>
+        </div>
+        <div class="week-picker">
+          <label for="weekSelect">Training week</label>
+          <select id="weekSelect" aria-label="Training week">
+            <option value="1">Week 1</option>
+            <option value="2">Week 2</option>
+            <option value="3">Week 3</option>
+            <option value="4">Week 4</option>
+            <option value="5">Week 5</option>
+            <option value="6">Week 6</option>
+            <option value="7">Week 7 · reduce sets</option>
+            <option value="8">Week 8 · build again</option>
+            <option value="9">Week 9 · finish strong</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="day-tabs" id="dayTabs" role="tablist" aria-label="Workout days"></div>
+
+      <div class="workout-shell">
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3 id="activeWorkoutTitle">Monday · Pull</h3><small id="activeWorkoutNote">Back, biceps, grip</small></div>
+            <button class="button" id="copyWorkout" type="button">Copy workout</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Exercise</th><th>Prescription</th><th>JT load</th><th>Lupe load</th><th>Done</th></tr></thead>
+              <tbody id="workoutRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside class="side-stack">
+          <div class="panel timer">
+            <p class="eyebrow">Rest timer</p>
+            <div class="timer-display" id="timerDisplay" aria-live="polite">01:30</div>
+            <div class="timer-controls">
+              <button class="button primary" id="timerStart" type="button">Start</button>
+              <button class="button" id="timerReset" type="button">Reset</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Partner rule</h3></div>
+            <ol class="rule-list">
+              <li>JT lifts while Lupe rests and logs.</li>
+              <li>Switch immediately.</li>
+              <li>Finish the station before moving.</li>
+              <li>Same plan, individual loads.</li>
+            </ol>
+          </div>
+          <div class="saved-status" id="savedStatus" aria-live="polite">Progress saves on this device.</div>
+        </aside>
+      </div>
+
+      <div class="timeline" aria-label="One-hour session timeline">
+        <div class="time-block"><time>9:00-9:05</time><strong>Roll</strong><br><span>Target tight areas</span></div>
+        <div class="time-block"><time>9:05-9:10</time><strong>Treadmill</strong><br><span>Easy ramp-up</span></div>
+        <div class="time-block"><time>9:10-9:50</time><strong>Lift</strong><br><span>Alternate partner sets</span></div>
+        <div class="time-block"><time>9:50-10:00</time><strong>Finish</strong><br><span>Carry, row, cool down</span></div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="fuel-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Nutrition desk</p>
+          <h2 id="fuel-title">Protein and creatine</h2>
+        </div>
+        <p class="section-note">Daily totals beat perfect timing. During fat loss, use the upper half of the protein range.</p>
+      </div>
+
+      <div class="nutrition-grid">
+        <div class="panel calculator">
+          <div class="calculator-grid">
+            <div class="person">
+              <h3>JT</h3>
+              <div class="field">
+                <input id="jtWeight" type="number" min="1" step="0.1" inputmode="decimal" placeholder="Bodyweight" aria-label="JT bodyweight">
+                <select id="jtUnit" aria-label="JT weight unit"><option value="lb">lb</option><option value="kg">kg</option></select>
+              </div>
+              <p class="protein-output" id="jtProtein">Enter bodyweight</p>
+            </div>
+            <div class="person">
+              <h3>Lupe</h3>
+              <div class="field">
+                <input id="lupeWeight" type="number" min="1" step="0.1" inputmode="decimal" placeholder="Bodyweight" aria-label="Lupe bodyweight">
+                <select id="lupeUnit" aria-label="Lupe weight unit"><option value="lb">lb</option><option value="kg">kg</option></select>
+              </div>
+              <p class="protein-output" id="lupeProtein">Enter bodyweight</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Daily stack</h3><small>Check it off</small></div>
+          <ul class="command-list" id="habitList">
+            <li><input class="habit" type="checkbox" data-habit="protein"><div><strong>Protein target</strong><span>1.6-2.2 g/kg across 3-5 meals</span></div></li>
+            <li><input class="habit" type="checkbox" data-habit="creatine"><div><strong>Creatine monohydrate</strong><span>3-5 g, including weekends</span></div></li>
+            <li><input class="habit" type="checkbox" data-habit="preworkout"><div><strong>Pre-workout meal</strong><span>Protein plus easy-to-digest carbohydrates</span></div></li>
+            <li><input class="habit" type="checkbox" data-habit="sleep"><div><strong>Protect sleep</strong><span>Skip late caffeine if it delays sleep</span></div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="progression-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Progression</p>
+          <h2 id="progression-title">Earn the next weight</h2>
+        </div>
+      </div>
+      <div class="progression-grid">
+        <div class="progression-step"><b>1</b><h3>Choose</h3><p>After warm-ups, select one working weight that leaves about two clean reps available.</p></div>
+        <div class="progression-step"><b>2</b><h3>Repeat</h3><p>Keep that load across working sets. Do not turn every set into another ramp-up set.</p></div>
+        <div class="progression-step"><b>3</b><h3>Advance</h3><p>Hit the top of the rep range on every set, then add the smallest available increment next time.</p></div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="evidence-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Evidence guardrails</p>
+          <h2 id="evidence-title">Why this plan is simple</h2>
+        </div>
+      </div>
+      <div class="evidence">
+        <article class="panel">
+          <h3>Training</h3>
+          <p>The current evidence favors consistent, sufficient weekly work over a complicated split or advanced intensity tricks.</p>
+          <ul>
+            <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/">2026 ACSM resistance-training position stand</a></li>
+            <li><a href="https://pubmed.ncbi.nlm.nih.gov/41343037/">2026 volume and frequency meta-regression</a></li>
+            <li><a href="https://pubmed.ncbi.nlm.nih.gov/42410632/">Failure versus non-failure review</a></li>
+          </ul>
+        </article>
+        <article class="panel">
+          <h3>Nutrition</h3>
+          <p>A calorie deficit reveals muscle. Protein helps preserve it. Creatine supports training performance without replacing the work.</p>
+          <ul>
+            <li><a href="https://jissn.biomedcentral.com/counter/pdf/10.1186/s12970-017-0177-8.pdf">ISSN protein and exercise position stand</a></li>
+            <li><a href="https://link.springer.com/article/10.1186/s12970-021-00412-w">ISSN creatine evidence review</a></li>
+            <li><a href="https://pubmed.ncbi.nlm.nih.gov/41433021/">2025 creatine meta-analysis</a></li>
+          </ul>
+        </article>
+      </div>
+      <p class="notice">Assumes healthy adults without current injuries. Stop movements that cause sharp pain. Anyone with kidney disease, pregnancy, medication affecting kidney function, or age under 18 should review supplementation with a qualified clinician. GitHub Pages hosts only the app files; PINs, weights, check-ins, and workout history remain on this device. Use Backup before clearing browser data or changing devices.</p>
+    </section>
+
+    <section class="section print-plan" id="printPlan" aria-label="Printable workout plan"></section>
+
+    <footer>
+      <span>JT + Lupe · 60-day training protocol</span>
+      <span>Local progress remains in this browser only.</span>
+    </footer>
+  </main>
+
+  <script>
+    const workouts = [
+      {
+        day: 'Monday', focus: 'Pull', note: 'Back, biceps, grip',
+        exercises: [
+          ['Scapular pulls', '2 x 8'],
+          ['Pull-up variation', '3 x 3-6'],
+          ['Seated row', '3 x 8-12'],
+          ['Lat pulldown', '2 x 8-12'],
+          ['One-arm dumbbell row', '2 x 8-12 / side'],
+          ['Hammer curl', '2 x 10-15'],
+          ['Farmer carry', '2 x 30-45 sec']
+        ]
+      },
+      {
+        day: 'Tuesday', focus: 'Legs A', note: 'Quads, glutes, hamstrings',
+        exercises: [
+          ['Bodyweight squat', '2 x 10 warm-up'],
+          ['Leg press', '3 x 6-10'],
+          ['Split-squat variation', '3 x 8 / leg'],
+          ['Kettlebell Romanian deadlift', '3 x 8-12'],
+          ['Leg extension', '2 x 10-15'],
+          ['Suitcase carry', '2 x 30 sec / side']
+        ]
+      },
+      {
+        day: 'Wednesday', focus: 'Push', note: 'Chest, shoulders, triceps',
+        exercises: [
+          ['Machine chest press', '4 x 6-10'],
+          ['Dumbbell overhead press', '3 x 6-10'],
+          ['Dumbbell incline press', '3 x 8-12'],
+          ['Triceps pressdown', '3 x 10-15'],
+          ['Face pull', '3 x 12-20'],
+          ['Rowing machine', '5 min steady']
+        ]
+      },
+      {
+        day: 'Thursday', focus: 'Legs B', note: 'Posterior chain, calves, core',
+        exercises: [
+          ['Bodyweight squat', '2 x 10 warm-up'],
+          ['Kettlebell Romanian deadlift', '3 x 8-12'],
+          ['Leg press, high foot', '3 x 10-15'],
+          ['Split squat or reverse lunge', '2 x 10 / leg'],
+          ['Dumbbell goblet squat', '2 x 10-15'],
+          ['Calf press on leg press', '3 x 12-20'],
+          ['Suitcase carry', '2 x 30 sec / side']
+        ]
+      },
+      {
+        day: 'Friday', focus: 'Upper + Row', note: 'Full upper body, conditioning',
+        exercises: [
+          ['Pull-up variation', '2 x 3-6'],
+          ['Machine chest press', '3 x 8-12'],
+          ['Seated row', '3 x 8-12'],
+          ['Dumbbell overhead press', '2 x 8-12'],
+          ['Dumbbell lateral raise', '2 x 12-20'],
+          ['Hammer curl + pressdown', '2 x 10-15 each'],
+          ['Rowing machine', '5 x 30 sec hard / 30 sec easy']
+        ]
+      }
+    ];
+
+    const CHALLENGE_START = new Date(2026, 7, 11);
+    const CHALLENGE_LENGTH = 60;
+    const DAY_MS = 86400000;
+    const AUTH_KEY = 'jt-lupe-auth-v1';
+    const LOCAL_SESSION_KEY = 'jt-lupe-session';
+    const SESSION_KEY = 'jt-lupe-session-tab';
+    let selectedProfile = 'jt';
+
+    const localDayKey = (date = new Date()) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const normalizedToday = () => {
+      const now = new Date();
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    };
+
+    const challengeDelta = () => Math.floor((normalizedToday() - CHALLENGE_START) / DAY_MS);
+
+    function defaultWorkoutDay() {
+      const weekday = normalizedToday().getDay();
+      return weekday >= 1 && weekday <= 5 ? weekday - 1 : 0;
+    }
+
+    function defaultWeek() {
+      const delta = challengeDelta();
+      return delta < 0 ? 1 : Math.min(9, Math.floor(delta / 7) + 1);
+    }
+
+    const state = {
+      day: Number(localStorage.getItem('jt-lupe-active-day') ?? defaultWorkoutDay()),
+      week: Number(localStorage.getItem('jt-lupe-week') ?? defaultWeek()),
+      timer: 90,
+      timerId: null
+    };
+
+    async function digestPin(pin) {
+      const bytes = new TextEncoder().encode(`jt-lupe-local:${pin}`);
+      const hash = await crypto.subtle.digest('SHA-256', bytes);
+      return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
+    }
+
+    const validPin = pin => /^[0-9]{4,8}$/.test(pin);
+
+    function setAuthMode(mode) {
+      const setup = mode === 'setup';
+      document.getElementById('setupForm').hidden = !setup;
+      document.getElementById('loginForm').hidden = setup;
+      document.getElementById('authTitle').textContent = setup ? 'Create device access' : 'Welcome back';
+      document.getElementById('authIntro').textContent = setup
+        ? 'Set one PIN for JT and one for Lupe. You only do this once on each device.'
+        : 'Choose your profile and enter your device PIN.';
+      document.getElementById('authStatus').textContent = '';
+    }
+
+    function revealApp(profile) {
+      selectedProfile = profile;
+      document.getElementById('signedInUser').textContent = profile === 'jt' ? 'JT' : 'Lupe';
+      document.getElementById('authGate').hidden = true;
+      document.documentElement.classList.remove('auth-pending');
+    }
+
+    function showLogin() {
+      document.documentElement.classList.add('auth-pending');
+      document.getElementById('authGate').hidden = false;
+      setAuthMode(localStorage.getItem(AUTH_KEY) ? 'login' : 'setup');
+    }
+
+    document.querySelectorAll('.profile-button').forEach(button => button.addEventListener('click', () => {
+      selectedProfile = button.dataset.profile;
+      document.querySelectorAll('.profile-button').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+      document.getElementById('loginPin').focus();
+    }));
+
+    document.getElementById('setupForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const jtPin = document.getElementById('jtPinSetup').value;
+      const lupePin = document.getElementById('lupePinSetup').value;
+      if (!validPin(jtPin) || !validPin(lupePin)) {
+        document.getElementById('authStatus').textContent = 'Use 4-8 numbers for each PIN.';
+        return;
+      }
+      const auth = { jt: await digestPin(jtPin), lupe: await digestPin(lupePin), created: new Date().toISOString() };
+      localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
+      event.target.reset();
+      setAuthMode('login');
+      document.getElementById('authStatus').textContent = 'Access created. Sign in as JT or Lupe.';
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const auth = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
+      const pin = document.getElementById('loginPin').value;
+      if (!validPin(pin) || await digestPin(pin) !== auth[selectedProfile]) {
+        document.getElementById('authStatus').textContent = 'That PIN does not match this profile.';
+        return;
+      }
+      const storage = document.getElementById('rememberLogin').checked ? localStorage : sessionStorage;
+      storage.setItem(document.getElementById('rememberLogin').checked ? LOCAL_SESSION_KEY : SESSION_KEY, selectedProfile);
+      document.getElementById('loginPin').value = '';
+      revealApp(selectedProfile);
+    });
+
+    document.getElementById('logoutButton').addEventListener('click', () => {
+      localStorage.removeItem(LOCAL_SESSION_KEY);
+      sessionStorage.removeItem(SESSION_KEY);
+      showLogin();
+    });
+
+    function renderChallenge() {
+      const delta = challengeDelta();
+      const headline = document.getElementById('challengeHeadline');
+      const subline = document.getElementById('challengeSubline');
+      const day = document.getElementById('challengeDay');
+      const remaining = document.getElementById('challengeRemaining');
+      const progress = document.getElementById('challengeProgress');
+      if (delta < 0) {
+        const daysUntil = Math.abs(delta);
+        headline.textContent = daysUntil === 1 ? 'Challenge starts tomorrow' : `Challenge starts in ${daysUntil} days`;
+        subline.textContent = 'Day 1 begins with Tuesday · Legs A.';
+        day.textContent = '0 / 60';
+        remaining.textContent = 'August 11 start';
+        progress.style.width = '0%';
+        return;
+      }
+      if (delta >= CHALLENGE_LENGTH) {
+        headline.textContent = 'Challenge complete';
+        subline.textContent = 'Review the log, compare measurements, and choose the next cycle.';
+        day.textContent = '60 / 60';
+        remaining.textContent = 'Completed';
+        progress.style.width = '100%';
+        return;
+      }
+      const currentDay = delta + 1;
+      headline.textContent = `Day ${currentDay} of the 60-day challenge`;
+      subline.textContent = normalizedToday().getDay() === 0 || normalizedToday().getDay() === 6
+        ? 'Recovery day · protein, creatine, steps, and sleep still count.'
+        : `Tonight: ${workouts[defaultWorkoutDay()].day} · ${workouts[defaultWorkoutDay()].focus}`;
+      day.textContent = `${currentDay} / 60`;
+      remaining.textContent = `${CHALLENGE_LENGTH - currentDay} days after today`;
+      progress.style.width = `${(currentDay / CHALLENGE_LENGTH) * 100}%`;
+    }
+
+    const keyFor = (type, exerciseIndex, person = '') => `jt-lupe-${type}-w${state.week}-d${state.day}-e${exerciseIndex}-${person}`;
+    const flashSaved = () => {
+      const status = document.getElementById('savedStatus');
+      status.textContent = 'Saved locally.';
+      clearTimeout(flashSaved.timeout);
+      flashSaved.timeout = setTimeout(() => status.textContent = 'Progress saves on this device.', 1200);
+    };
+
+    function renderTabs() {
+      const tabs = document.getElementById('dayTabs');
+      tabs.innerHTML = workouts.map((workout, index) => `
+        <button class="day-tab" type="button" role="tab" aria-selected="${state.day === index}" data-day="${index}">
+          <strong>${workout.day}</strong><span>${workout.focus}</span>
+        </button>`).join('');
+      tabs.querySelectorAll('button').forEach(button => button.addEventListener('click', () => {
+        state.day = Number(button.dataset.day);
+        localStorage.setItem('jt-lupe-active-day', state.day);
+        renderTabs();
+        renderWorkout();
+      }));
+    }
+
+    function renderWorkout() {
+      const workout = workouts[state.day];
+      document.getElementById('activeWorkoutTitle').textContent = `${workout.day} · ${workout.focus}`;
+      document.getElementById('activeWorkoutNote').textContent = workout.note;
+      document.getElementById('workoutRows').innerHTML = workout.exercises.map(([name, prescription], index) => {
+        const jt = localStorage.getItem(keyFor('load', index, 'jt')) || '';
+        const lupe = localStorage.getItem(keyFor('load', index, 'lupe')) || '';
+        const done = localStorage.getItem(keyFor('done', index)) === 'true';
+        return `<tr>
+          <td>${name}</td>
+          <td>${prescription}</td>
+          <td><input class="load-input" data-index="${index}" data-person="jt" value="${jt}" inputmode="decimal" aria-label="JT load for ${name}" placeholder="load"></td>
+          <td><input class="load-input" data-index="${index}" data-person="lupe" value="${lupe}" inputmode="decimal" aria-label="Lupe load for ${name}" placeholder="load"></td>
+          <td><input class="check done-check" type="checkbox" data-index="${index}" ${done ? 'checked' : ''} aria-label="Mark ${name} complete"></td>
+        </tr>`;
+      }).join('');
+
+      document.querySelectorAll('.load-input').forEach(input => input.addEventListener('change', event => {
+        localStorage.setItem(keyFor('load', Number(event.target.dataset.index), event.target.dataset.person), event.target.value.trim());
+        flashSaved();
+      }));
+      document.querySelectorAll('.done-check').forEach(input => input.addEventListener('change', event => {
+        localStorage.setItem(keyFor('done', Number(event.target.dataset.index)), event.target.checked);
+        flashSaved();
+      }));
+    }
+
+    function workoutText() {
+      const workout = workouts[state.day];
+      const list = workout.exercises.map(([name, prescription]) => `- ${name}: ${prescription}`).join('\n');
+      return `${workout.day} · ${workout.focus}\n9:00-10:00 p.m.\n\n${list}\n\nAlternate partner sets. Keep about 2 reps in reserve.`;
+    }
+
+    document.getElementById('copyWorkout').addEventListener('click', async event => {
+      try {
+        await navigator.clipboard.writeText(workoutText());
+        const original = event.target.textContent;
+        event.target.textContent = 'Copied';
+        setTimeout(() => event.target.textContent = original, 1200);
+      } catch {
+        alert(workoutText());
+      }
+    });
+
+    function updateTimer() {
+      const minutes = String(Math.floor(state.timer / 60)).padStart(2, '0');
+      const seconds = String(state.timer % 60).padStart(2, '0');
+      document.getElementById('timerDisplay').textContent = `${minutes}:${seconds}`;
+    }
+
+    document.getElementById('timerStart').addEventListener('click', event => {
+      if (state.timerId) {
+        clearInterval(state.timerId);
+        state.timerId = null;
+        event.target.textContent = 'Start';
+        return;
+      }
+      event.target.textContent = 'Pause';
+      state.timerId = setInterval(() => {
+        state.timer -= 1;
+        updateTimer();
+        if (state.timer <= 0) {
+          clearInterval(state.timerId);
+          state.timerId = null;
+          state.timer = 0;
+          event.target.textContent = 'Start';
+          document.title = 'Rest complete | JT + Lupe';
+          setTimeout(() => document.title = 'JT + Lupe | 60-Day Workout', 2500);
+        }
+      }, 1000);
+    });
+
+    document.getElementById('timerReset').addEventListener('click', () => {
+      clearInterval(state.timerId);
+      state.timerId = null;
+      state.timer = 90;
+      document.getElementById('timerStart').textContent = 'Start';
+      updateTimer();
+    });
+
+    function calculateProtein(person) {
+      const weightInput = document.getElementById(`${person}Weight`);
+      const unit = document.getElementById(`${person}Unit`).value;
+      const output = document.getElementById(`${person}Protein`);
+      const value = Number(weightInput.value);
+      if (!value || value <= 0) {
+        output.textContent = 'Enter bodyweight';
+        return;
+      }
+      const kg = unit === 'lb' ? value / 2.20462 : value;
+      output.textContent = `${Math.round(kg * 1.6)}-${Math.round(kg * 2.2)} g protein / day`;
+      localStorage.setItem(`jt-lupe-${person}-weight`, value);
+      localStorage.setItem(`jt-lupe-${person}-unit`, unit);
+    }
+
+    ['jt', 'lupe'].forEach(person => {
+      const weight = document.getElementById(`${person}Weight`);
+      const unit = document.getElementById(`${person}Unit`);
+      weight.value = localStorage.getItem(`jt-lupe-${person}-weight`) || '';
+      unit.value = localStorage.getItem(`jt-lupe-${person}-unit`) || 'lb';
+      weight.addEventListener('input', () => calculateProtein(person));
+      unit.addEventListener('change', () => calculateProtein(person));
+      calculateProtein(person);
+    });
+
+    document.querySelectorAll('.habit').forEach(input => {
+      const storageKey = `jt-lupe-habit-${localDayKey()}-${input.dataset.habit}`;
+      input.checked = localStorage.getItem(storageKey) === 'true';
+      input.addEventListener('change', () => {
+        localStorage.setItem(`jt-lupe-habit-${localDayKey()}-${input.dataset.habit}`, input.checked);
+        flashSaved();
+      });
+    });
+
+    document.getElementById('weekSelect').value = state.week;
+    document.getElementById('weekSelect').addEventListener('change', event => {
+      state.week = Number(event.target.value);
+      localStorage.setItem('jt-lupe-week', state.week);
+      renderWorkout();
+    });
+
+    document.getElementById('themeButton').addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem('jt-lupe-theme', next);
+    });
+
+    document.getElementById('printButton').addEventListener('click', () => window.print());
+
+    document.getElementById('backupButton').addEventListener('click', () => {
+      const data = {};
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index);
+        if (key && key.startsWith('jt-lupe-') && ![AUTH_KEY, LOCAL_SESSION_KEY].includes(key)) data[key] = localStorage.getItem(key);
+      }
+      const payload = JSON.stringify({ app: 'JT + Lupe 60-Day Workout', exported: new Date().toISOString(), data }, null, 2);
+      const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `jt-lupe-workout-backup-${localDayKey()}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('restoreButton').addEventListener('click', () => document.getElementById('restoreInput').click());
+    document.getElementById('restoreInput').addEventListener('change', async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        const payload = JSON.parse(await file.text());
+        Object.entries(payload.data || {}).forEach(([key, value]) => {
+          if (key.startsWith('jt-lupe-') && ![AUTH_KEY, LOCAL_SESSION_KEY].includes(key)) localStorage.setItem(key, value);
+        });
+        alert('Workout data restored. The page will reload.');
+        location.reload();
+      } catch {
+        alert('That file is not a valid JT + Lupe workout backup.');
+      }
+    });
+
+    let installPrompt = null;
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      installPrompt = event;
+      document.getElementById('installButton').hidden = false;
+    });
+    document.getElementById('installButton').addEventListener('click', async () => {
+      if (!installPrompt) return;
+      await installPrompt.prompt();
+      installPrompt = null;
+      document.getElementById('installButton').hidden = true;
+    });
+
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(() => {}));
+    }
+
+    function renderPrintPlan() {
+      document.getElementById('printPlan').innerHTML = `
+        <div class="print-title"><strong>JT + Lupe · 60-Day Workout</strong><span>August 11-October 9 · 9:00-10:00 p.m.</span></div>
+        ${workouts.map(workout => `<section class="print-day"><h3>${workout.day} · ${workout.focus}</h3><table><thead><tr><th>Exercise</th><th>Prescription</th><th>JT</th><th>Lupe</th></tr></thead><tbody>${workout.exercises.map(([name, prescription]) => `<tr><td>${name}</td><td>${prescription}</td><td></td><td></td></tr>`).join('')}</tbody></table></section>`).join('')}`;
+    }
+
+    renderTabs();
+    renderWorkout();
+    renderPrintPlan();
+    renderChallenge();
+    updateTimer();
+
+    const existingSession = localStorage.getItem(LOCAL_SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
+    if (localStorage.getItem(AUTH_KEY) && ['jt', 'lupe'].includes(existingSession)) revealApp(existingSession);
+    else showLogin();
+  </script>
+</body>
+</html>
