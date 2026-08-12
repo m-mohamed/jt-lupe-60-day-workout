@@ -15,7 +15,6 @@
       const saved = localStorage.getItem('jt-lupe-theme');
       const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       document.documentElement.dataset.theme = saved || preferred;
-      document.documentElement.classList.add('auth-pending');
     })();
   </script>
   <style>
@@ -77,54 +76,18 @@
 
     a { color: var(--accent); text-underline-offset: 3px; }
 
-    .auth-pending .shell { visibility: hidden; }
-
-    .auth-gate {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      display: grid;
-      place-items: center;
-      padding: 20px;
-      background:
-        radial-gradient(circle at 75% 15%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 24rem),
-        var(--bg);
-    }
-
-    .auth-gate[hidden] { display: none; }
-
-    .auth-panel {
-      width: min(440px, 100%);
+    .profile-switch {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px;
       border: 1px solid var(--line);
-      border-top: 4px solid var(--accent);
-      border-radius: var(--radius);
-      background: var(--surface);
-      box-shadow: var(--shadow);
-      overflow: hidden;
+      border-radius: 7px;
+      background: var(--surface-2);
     }
-
-    .auth-copy { padding: 24px; }
-    .auth-copy h1 { margin: 0 0 10px; font-size: 2.5rem; line-height: .95; }
-    .auth-copy p { margin: 0; color: var(--muted); }
-    .auth-form { display: grid; gap: 12px; padding: 0 24px 24px; }
-    .auth-form[hidden] { display: none; }
-    .auth-form label { display: grid; gap: 6px; color: var(--muted); font-size: .84rem; font-weight: 700; }
-    .auth-form input {
-      width: 100%;
-      min-height: 46px;
-      padding: 9px 11px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      background: var(--bg);
-      color: var(--ink);
-      font-size: 1rem;
-    }
-    .profile-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .profile-button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
-    .remember-row { display: flex !important; grid-template-columns: none !important; align-items: center; gap: 8px !important; }
-    .remember-row input { width: 18px; min-height: 18px; accent-color: var(--accent); }
-    .auth-status { min-height: 20px; color: var(--warm); font-size: .84rem; }
-    .auth-boundary { padding: 13px 24px; border-top: 1px solid var(--line); background: var(--surface-2); color: var(--muted); font-size: .76rem; }
+    .profile-switch > span { padding: 0 4px 0 6px; color: var(--muted); font-size: .74rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .profile-button { min-height: 32px; padding: 4px 14px; }
+    .profile-button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); font-weight: 700; }
 
     .challenge {
       display: grid;
@@ -147,8 +110,6 @@
     .challenge-days strong { display: block; font-size: 2rem; letter-spacing: -.05em; }
     .challenge-days span { color: var(--muted); font-size: .8rem; }
 
-    .user-chip { display: flex; align-items: center; gap: 8px; padding: 0 4px; color: var(--muted); font-size: .8rem; }
-    .user-chip strong { color: var(--ink); }
     .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 
     .shell {
@@ -501,6 +462,32 @@
       font-weight: 800;
     }
 
+    .workout-shell[data-active-profile="jt"] tbody td:nth-child(3),
+    .workout-shell[data-active-profile="lupe"] tbody td:nth-child(4) { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+
+    .logbook-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .logbook-tabs { display: flex; gap: 6px; }
+    .logbook-tab[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); font-weight: 700; }
+    .logbook-panel { margin-top: 14px; }
+    .logbook-panel[hidden] { display: none; }
+    .logbook-summary { display: flex; flex-wrap: wrap; gap: 18px; margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); }
+    .logbook-summary div { display: grid; gap: 2px; }
+    .logbook-summary strong { font-size: 1.35rem; line-height: 1.1; }
+    .logbook-summary span { color: var(--muted); font-size: .78rem; }
+    .logbook-empty { margin: 0; padding: 22px 14px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); text-align: center; }
+    .logbook-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    .logbook-table th, .logbook-table td { padding: 7px 9px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+    .logbook-table thead th { position: sticky; top: 0; background: var(--surface-2); color: var(--muted); font-size: .76rem; letter-spacing: .04em; text-transform: uppercase; }
+    .logbook-table tbody tr:hover { background: var(--surface-2); }
+    /* Every column shrinks to its content and one absorbs the leftover width,
+       so a five-column table does not stretch its first column across the page. */
+    .logbook-table :is(th, td) { width: 1px; }
+    .logbook-table[data-grow="1"] :is(th, td):nth-child(1),
+    .logbook-table[data-grow="3"] :is(th, td):nth-child(3) { width: 100%; }
+    .logbook-scroll { max-height: 460px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+    .tick { color: var(--accent); font-weight: 700; }
+    .tick-off { color: var(--line); }
+
     .command-list { margin: 0; padding: 0; list-style: none; }
     .command-list li {
       display: grid;
@@ -597,7 +584,7 @@
     @media (max-width: 560px) {
       .shell { width: min(100% - 20px, 1180px); padding-top: 10px; }
       .topbar { top: 6px; }
-      .brand span, .actions .print-button, .actions .backup-button, .user-chip span { display: none; }
+      .brand span, .actions .print-button, .actions .backup-button, .profile-switch > span { display: none; }
       h1 { font-size: 3.4rem; }
       .challenge { grid-template-columns: 1fr; }
       .challenge-days { text-align: left; }
@@ -619,7 +606,7 @@
       :root { --bg: white; --surface: white; --surface-2: #f1f1ee; --ink: #111; --muted: #555; --line: #bbb; }
       body { background: white; font-size: 10pt; }
       .shell { width: 100%; padding: 0; }
-      .auth-gate, .topbar, .hero, .challenge, .proof-row, .interactive-plan, .nutrition-grid, .progression-grid, .evidence, .notice, footer { display: none !important; }
+      .topbar, .hero, .challenge, .proof-row, .interactive-plan, .nutrition-grid, .progression-grid, .evidence, .notice, .logbook, footer { display: none !important; }
       .section { border: 0; margin: 0; padding: 0; }
       .section-head { display: block; margin: 0 0 12px; }
       .section-head .week-picker, .section-note { display: none; }
@@ -633,44 +620,21 @@
   </style>
 </head>
 <body>
-  <section class="auth-gate" id="authGate" aria-labelledby="authTitle">
-    <div class="auth-panel">
-      <div class="auth-copy">
-        <p class="eyebrow">JT + Lupe · 60 days</p>
-        <h1 id="authTitle">Create device access</h1>
-        <p id="authIntro">Set one PIN for JT and one for Lupe. You only do this once on each device.</p>
-      </div>
-      <form class="auth-form" id="setupForm">
-        <label>JT PIN <input id="jtPinSetup" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="new-password" required></label>
-        <label>Lupe PIN <input id="lupePinSetup" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="new-password" required></label>
-        <button class="button primary" type="submit">Create access</button>
-      </form>
-      <form class="auth-form" id="loginForm" hidden>
-        <div class="profile-choice" aria-label="Choose profile">
-          <button class="button profile-button" type="button" data-profile="jt" aria-pressed="true">JT</button>
-          <button class="button profile-button" type="button" data-profile="lupe" aria-pressed="false">Lupe</button>
-        </div>
-        <label>PIN <input id="loginPin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="current-password" required></label>
-        <label class="remember-row"><input id="rememberLogin" type="checkbox" checked> Keep me signed in on this device</label>
-        <button class="button primary" type="submit">Enter workout</button>
-      </form>
-      <div class="auth-status" id="authStatus" role="status"></div>
-      <div class="auth-boundary">Device-local access only. PINs and workout data never leave this browser. This is convenient access, not server-backed security.</div>
-    </div>
-  </section>
-
   <main class="shell">
     <nav class="topbar" aria-label="Workout controls">
       <div class="brand"><strong>JT + LUPE</strong><span>60-day protocol</span></div>
       <div class="actions">
-        <div class="user-chip"><span>Signed in:</span><strong id="signedInUser">JT</strong></div>
+        <div class="profile-switch" role="group" aria-label="Active profile">
+          <span>Logging as</span>
+          <button class="button profile-button" type="button" data-profile="jt" aria-pressed="true">JT</button>
+          <button class="button profile-button" type="button" data-profile="lupe" aria-pressed="false">Lupe</button>
+        </div>
         <button class="button backup-button" id="backupButton" type="button">Backup</button>
         <label class="visually-hidden" for="restoreInput">Restore backup</label><input class="visually-hidden" id="restoreInput" type="file" accept="application/json">
         <button class="button backup-button" id="restoreButton" type="button">Restore</button>
         <button class="button" id="installButton" type="button" hidden>Install</button>
         <button class="button print-button" id="printButton" type="button">Print plan</button>
         <button class="button" id="themeButton" type="button" aria-label="Toggle color theme">Theme</button>
-        <button class="button" id="logoutButton" type="button">Log out</button>
       </div>
     </nav>
 
@@ -803,7 +767,7 @@
         </div>
 
         <div class="panel">
-          <div class="panel-head"><h3>Daily stack</h3><small>Check it off</small></div>
+          <div class="panel-head"><h3>Daily stack</h3><small>Today · <strong id="habitOwner">JT</strong></small></div>
           <ul class="command-list" id="habitList">
             <li><input class="habit" type="checkbox" data-habit="protein"><div><strong>Protein target</strong><span>1.6-2.2 g/kg across 3-5 meals</span></div></li>
             <li><input class="habit" type="checkbox" data-habit="creatine"><div><strong>Creatine monohydrate</strong><span>3-5 g, including weekends</span></div></li>
@@ -812,6 +776,26 @@
           </ul>
         </div>
       </div>
+    </section>
+
+    <section class="section logbook" aria-labelledby="logbook-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Log book</p>
+          <h2 id="logbook-title">Everything you have logged</h2>
+        </div>
+        <div class="logbook-controls">
+          <div class="logbook-tabs" role="tablist" aria-label="Log book views">
+            <button class="button logbook-tab" type="button" role="tab" data-log="loads" aria-selected="true">Loads</button>
+            <button class="button logbook-tab" type="button" role="tab" data-log="habits" aria-selected="false">Daily stack</button>
+            <button class="button logbook-tab" type="button" role="tab" data-log="weight" aria-selected="false">Bodyweight</button>
+          </div>
+          <button class="button" id="exportCsv" type="button">Export CSV</button>
+        </div>
+      </div>
+      <div class="logbook-summary" id="logbookSummary"></div>
+      <div class="logbook-panel" id="logbookPanel"></div>
+      <p class="section-note" id="logbookNote"></p>
     </section>
 
     <section class="section" aria-labelledby="progression-title">
@@ -855,7 +839,7 @@
           </ul>
         </article>
       </div>
-      <p class="notice">Assumes healthy adults without current injuries. Stop movements that cause sharp pain. Anyone with kidney disease, pregnancy, medication affecting kidney function, or age under 18 should review supplementation with a qualified clinician. GitHub Pages hosts only the app files; PINs, weights, check-ins, and workout history remain on this device. Use Backup before clearing browser data or changing devices.</p>
+      <p class="notice">Assumes healthy adults without current injuries. Stop movements that cause sharp pain. Anyone with kidney disease, pregnancy, medication affecting kidney function, or age under 18 should review supplementation with a qualified clinician. GitHub Pages hosts only the app files; weights, check-ins, and workout history stay in this browser's local storage on this device and are never uploaded. Use Backup before clearing browser data or changing devices.</p>
     </section>
 
     <section class="section print-plan" id="printPlan" aria-label="Printable workout plan"></section>
@@ -931,10 +915,18 @@
     const CHALLENGE_START = new Date(2026, 7, 11);
     const CHALLENGE_LENGTH = 60;
     const DAY_MS = 86400000;
-    const AUTH_KEY = 'jt-lupe-auth-v1';
-    const LOCAL_SESSION_KEY = 'jt-lupe-session';
-    const SESSION_KEY = 'jt-lupe-session-tab';
-    let selectedProfile = 'jt';
+    const SCHEMA_KEY = 'jt-lupe-schema-version';
+    const SCHEMA_VERSION = 2;
+    const PROFILE_KEY = 'jt-lupe-profile';
+    const LEGACY_KEYS = ['jt-lupe-auth-v1', 'jt-lupe-session'];
+    const PROFILES = ['jt', 'lupe'];
+    const PROFILE_LABEL = { jt: 'JT', lupe: 'Lupe' };
+    const HABITS = [
+      ['protein', 'Protein'],
+      ['creatine', 'Creatine'],
+      ['preworkout', 'Pre-workout'],
+      ['sleep', 'Sleep']
+    ];
 
     const localDayKey = (date = new Date()) => {
       const year = date.getFullYear();
@@ -960,84 +952,91 @@
       return delta < 0 ? 1 : Math.min(9, Math.floor(delta / 7) + 1);
     }
 
+    const readNumber = (key, fallback) => {
+      const raw = localStorage.getItem(key);
+      const value = Number(raw);
+      return raw === null || raw === '' || Number.isNaN(value) ? fallback : value;
+    };
+
     const state = {
-      day: Number(localStorage.getItem('jt-lupe-active-day') ?? defaultWorkoutDay()),
-      week: Number(localStorage.getItem('jt-lupe-week') ?? defaultWeek()),
+      day: readNumber('jt-lupe-active-day', defaultWorkoutDay()),
+      week: readNumber('jt-lupe-week', defaultWeek()),
+      profile: PROFILES.includes(localStorage.getItem(PROFILE_KEY)) ? localStorage.getItem(PROFILE_KEY) : 'jt',
+      logView: 'loads',
       timer: 90,
       timerId: null
     };
 
-    async function digestPin(pin) {
-      const bytes = new TextEncoder().encode(`jt-lupe-local:${pin}`);
-      const hash = await crypto.subtle.digest('SHA-256', bytes);
-      return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
-    }
+    const habitKey = (profile, date, habit) => `jt-lupe-habit-${profile}-${date}-${habit}`;
+    const weightLogKey = (profile, date) => `jt-lupe-weightlog-${profile}-${date}`;
+    const LEGACY_HABIT = /^jt-lupe-habit-(\d{4}-\d{2}-\d{2})-([a-z]+)$/;
 
-    const validPin = pin => /^[0-9]{4,8}$/.test(pin);
+    // Storage is versioned so a new deploy can reshape keys without dropping anything
+    // already written by an older build. Migrations are additive: legacy keys are read,
+    // copied forward, and only removed once the new key exists.
+    function migrateStorage() {
+      const from = readNumber(SCHEMA_KEY, 1);
+      if (from >= SCHEMA_VERSION) return;
 
-    function setAuthMode(mode) {
-      const setup = mode === 'setup';
-      document.getElementById('setupForm').hidden = !setup;
-      document.getElementById('loginForm').hidden = setup;
-      document.getElementById('authTitle').textContent = setup ? 'Create device access' : 'Welcome back';
-      document.getElementById('authIntro').textContent = setup
-        ? 'Set one PIN for JT and one for Lupe. You only do this once on each device.'
-        : 'Choose your profile and enter your device PIN.';
-      document.getElementById('authStatus').textContent = '';
-    }
+      if (from < 2) {
+        // v1 kept one shared habit row per date. Both people used it, so fan it out to
+        // both profiles rather than guessing whose check-in it was.
+        const legacy = [];
+        for (let index = 0; index < localStorage.length; index += 1) {
+          const key = localStorage.key(index);
+          const match = key && key.match(LEGACY_HABIT);
+          if (match) legacy.push({ key, date: match[1], habit: match[2], value: localStorage.getItem(key) });
+        }
+        legacy.forEach(entry => {
+          PROFILES.forEach(profile => {
+            const target = habitKey(profile, entry.date, entry.habit);
+            if (localStorage.getItem(target) === null) localStorage.setItem(target, entry.value);
+          });
+          localStorage.removeItem(entry.key);
+        });
 
-    function revealApp(profile) {
-      selectedProfile = profile;
-      document.getElementById('signedInUser').textContent = profile === 'jt' ? 'JT' : 'Lupe';
-      document.getElementById('authGate').hidden = true;
-      document.documentElement.classList.remove('auth-pending');
-    }
+        // v1 stored only a current bodyweight with no date. Seed the log with today so
+        // the value that is already on the device becomes the first history point.
+        PROFILES.forEach(profile => {
+          const current = localStorage.getItem(`jt-lupe-${profile}-weight`);
+          const hasLog = Object.keys(localStorage).some(key => key.startsWith(`jt-lupe-weightlog-${profile}-`));
+          if (current && !hasLog) {
+            localStorage.setItem(weightLogKey(profile, localDayKey()), `${current}|${localStorage.getItem(`jt-lupe-${profile}-unit`) || 'lb'}`);
+          }
+        });
 
-    function showLogin() {
-      document.documentElement.classList.add('auth-pending');
-      document.getElementById('authGate').hidden = false;
-      setAuthMode(localStorage.getItem(AUTH_KEY) ? 'login' : 'setup');
-    }
-
-    document.querySelectorAll('.profile-button').forEach(button => button.addEventListener('click', () => {
-      selectedProfile = button.dataset.profile;
-      document.querySelectorAll('.profile-button').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
-      document.getElementById('loginPin').focus();
-    }));
-
-    document.getElementById('setupForm').addEventListener('submit', async event => {
-      event.preventDefault();
-      const jtPin = document.getElementById('jtPinSetup').value;
-      const lupePin = document.getElementById('lupePinSetup').value;
-      if (!validPin(jtPin) || !validPin(lupePin)) {
-        document.getElementById('authStatus').textContent = 'Use 4-8 numbers for each PIN.';
-        return;
+        LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
+        sessionStorage.removeItem('jt-lupe-session-tab');
       }
-      const auth = { jt: await digestPin(jtPin), lupe: await digestPin(lupePin), created: new Date().toISOString() };
-      localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
-      event.target.reset();
-      setAuthMode('login');
-      document.getElementById('authStatus').textContent = 'Access created. Sign in as JT or Lupe.';
-    });
 
-    document.getElementById('loginForm').addEventListener('submit', async event => {
-      event.preventDefault();
-      const auth = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
-      const pin = document.getElementById('loginPin').value;
-      if (!validPin(pin) || await digestPin(pin) !== auth[selectedProfile]) {
-        document.getElementById('authStatus').textContent = 'That PIN does not match this profile.';
-        return;
+      localStorage.setItem(SCHEMA_KEY, SCHEMA_VERSION);
+    }
+
+    // Ask the browser to exempt this origin from routine storage eviction. Best effort:
+    // Safari and Firefox may decline, which is why Backup still matters.
+    function requestPersistence() {
+      if (!navigator.storage || !navigator.storage.persist) return;
+      navigator.storage.persisted()
+        .then(already => already || navigator.storage.persist())
+        .catch(() => {});
+    }
+
+    function setProfile(profile, { rerender = true } = {}) {
+      if (!PROFILES.includes(profile)) return;
+      state.profile = profile;
+      localStorage.setItem(PROFILE_KEY, profile);
+      document.querySelectorAll('.profile-button').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.profile === profile));
+      });
+      document.querySelector('.workout-shell').dataset.activeProfile = profile;
+      if (rerender) {
+        renderHabits();
+        renderLogbook();
       }
-      const storage = document.getElementById('rememberLogin').checked ? localStorage : sessionStorage;
-      storage.setItem(document.getElementById('rememberLogin').checked ? LOCAL_SESSION_KEY : SESSION_KEY, selectedProfile);
-      document.getElementById('loginPin').value = '';
-      revealApp(selectedProfile);
-    });
+    }
 
-    document.getElementById('logoutButton').addEventListener('click', () => {
-      localStorage.removeItem(LOCAL_SESSION_KEY);
-      sessionStorage.removeItem(SESSION_KEY);
-      showLogin();
+    document.querySelectorAll('.profile-button').forEach(button => {
+      button.addEventListener('click', () => setProfile(button.dataset.profile));
     });
 
     function renderChallenge() {
@@ -1107,8 +1106,8 @@
         return `<tr>
           <td>${name}</td>
           <td>${prescription}</td>
-          <td><input class="load-input" data-index="${index}" data-person="jt" value="${jt}" inputmode="decimal" aria-label="JT load for ${name}" placeholder="load"></td>
-          <td><input class="load-input" data-index="${index}" data-person="lupe" value="${lupe}" inputmode="decimal" aria-label="Lupe load for ${name}" placeholder="load"></td>
+          <td><input class="load-input" data-index="${index}" data-person="jt" value="${esc(jt)}" inputmode="decimal" aria-label="JT load for ${name}" placeholder="load"></td>
+          <td><input class="load-input" data-index="${index}" data-person="lupe" value="${esc(lupe)}" inputmode="decimal" aria-label="Lupe load for ${name}" placeholder="load"></td>
           <td><input class="check done-check" type="checkbox" data-index="${index}" ${done ? 'checked' : ''} aria-label="Mark ${name} complete"></td>
         </tr>`;
       }).join('');
@@ -1116,10 +1115,12 @@
       document.querySelectorAll('.load-input').forEach(input => input.addEventListener('change', event => {
         localStorage.setItem(keyFor('load', Number(event.target.dataset.index), event.target.dataset.person), event.target.value.trim());
         flashSaved();
+        renderLogbook();
       }));
       document.querySelectorAll('.done-check').forEach(input => input.addEventListener('change', event => {
         localStorage.setItem(keyFor('done', Number(event.target.dataset.index)), event.target.checked);
         flashSaved();
+        renderLogbook();
       }));
     }
 
@@ -1191,22 +1192,45 @@
       localStorage.setItem(`jt-lupe-${person}-unit`, unit);
     }
 
-    ['jt', 'lupe'].forEach(person => {
+    // Committed on blur/change rather than every keystroke, so the dated entry is the
+    // number actually settled on. One entry per person per day; re-weighing replaces it.
+    function logWeight(person) {
+      const value = Number(document.getElementById(`${person}Weight`).value);
+      if (!value || value <= 0) return;
+      const unit = document.getElementById(`${person}Unit`).value;
+      localStorage.setItem(weightLogKey(person, localDayKey()), `${value}|${unit}`);
+      flashSaved();
+      renderLogbook();
+    }
+
+    PROFILES.forEach(person => {
       const weight = document.getElementById(`${person}Weight`);
       const unit = document.getElementById(`${person}Unit`);
       weight.value = localStorage.getItem(`jt-lupe-${person}-weight`) || '';
       unit.value = localStorage.getItem(`jt-lupe-${person}-unit`) || 'lb';
       weight.addEventListener('input', () => calculateProtein(person));
-      unit.addEventListener('change', () => calculateProtein(person));
+      weight.addEventListener('change', () => logWeight(person));
+      unit.addEventListener('change', () => {
+        calculateProtein(person);
+        logWeight(person);
+      });
       calculateProtein(person);
     });
 
+    function renderHabits() {
+      const today = localDayKey();
+      document.querySelectorAll('.habit').forEach(input => {
+        input.checked = localStorage.getItem(habitKey(state.profile, today, input.dataset.habit)) === 'true';
+      });
+      document.getElementById('habitOwner').textContent = PROFILE_LABEL[state.profile];
+    }
+
     document.querySelectorAll('.habit').forEach(input => {
-      const storageKey = `jt-lupe-habit-${localDayKey()}-${input.dataset.habit}`;
-      input.checked = localStorage.getItem(storageKey) === 'true';
       input.addEventListener('change', () => {
-        localStorage.setItem(`jt-lupe-habit-${localDayKey()}-${input.dataset.habit}`, input.checked);
+        // Keyed by calendar date, so every day is kept rather than overwritten.
+        localStorage.setItem(habitKey(state.profile, localDayKey(), input.dataset.habit), input.checked);
         flashSaved();
+        renderLogbook();
       });
     });
 
@@ -1225,13 +1249,158 @@
 
     document.getElementById('printButton').addEventListener('click', () => window.print());
 
+    /* ---------- Log book: read every stored key back out ---------- */
+
+    const esc = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+    const WEEK_COUNT = 9;
+
+    function readLoadHistory() {
+      const rows = [];
+      for (let week = 1; week <= WEEK_COUNT; week += 1) {
+        workouts.forEach((workout, day) => {
+          workout.exercises.forEach(([exercise], index) => {
+            const jt = localStorage.getItem(`jt-lupe-load-w${week}-d${day}-e${index}-jt`) || '';
+            const lupe = localStorage.getItem(`jt-lupe-load-w${week}-d${day}-e${index}-lupe`) || '';
+            const done = localStorage.getItem(`jt-lupe-done-w${week}-d${day}-e${index}`) === 'true';
+            if (jt || lupe || done) rows.push({ week, day: workout.day, focus: workout.focus, exercise, jt, lupe, done });
+          });
+        });
+      }
+      return rows;
+    }
+
+    function readHabitHistory(profile) {
+      const prefix = `jt-lupe-habit-${profile}-`;
+      const byDate = new Map();
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index);
+        if (!key || !key.startsWith(prefix)) continue;
+        const match = key.slice(prefix.length).match(/^(\d{4}-\d{2}-\d{2})-([a-z]+)$/);
+        if (!match) continue;
+        if (!byDate.has(match[1])) byDate.set(match[1], {});
+        byDate.get(match[1])[match[2]] = localStorage.getItem(key) === 'true';
+      }
+      return [...byDate.entries()]
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .map(([date, marks]) => ({ date, marks }));
+    }
+
+    function readWeightHistory(profile) {
+      const prefix = `jt-lupe-weightlog-${profile}-`;
+      const rows = [];
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index);
+        if (!key || !key.startsWith(prefix)) continue;
+        const date = key.slice(prefix.length);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+        const [value, unit] = String(localStorage.getItem(key)).split('|');
+        if (!Number(value)) continue;
+        rows.push({ date, value: Number(value), unit: unit || 'lb' });
+      }
+      return rows.sort((a, b) => b.date.localeCompare(a.date));
+    }
+
+    const emptyState = message => `<p class="logbook-empty">${message}</p>`;
+    const wrapTable = (html, grow) => `<div class="logbook-scroll"><table class="logbook-table" data-grow="${grow}">${html}</table></div>`;
+
+    function renderLoadsPanel() {
+      const rows = readLoadHistory();
+      if (!rows.length) return emptyState('No loads logged yet. Type a weight into the training table and it lands here.');
+      return wrapTable(`
+        <thead><tr><th>Week</th><th>Day</th><th>Exercise</th><th>JT</th><th>Lupe</th><th>Done</th></tr></thead>
+        <tbody>${rows.map(row => `<tr>
+          <td>${row.week}</td>
+          <td>${esc(row.day)}</td>
+          <td>${esc(row.exercise)}</td>
+          <td>${esc(row.jt) || '—'}</td>
+          <td>${esc(row.lupe) || '—'}</td>
+          <td class="${row.done ? 'tick' : 'tick-off'}">${row.done ? '✓' : '·'}</td>
+        </tr>`).join('')}</tbody>`, 3);
+    }
+
+    function renderHabitsPanel() {
+      const rows = readHabitHistory(state.profile);
+      if (!rows.length) return emptyState(`No daily-stack history for ${PROFILE_LABEL[state.profile]} yet. Every day you tick boxes is kept by date.`);
+      return wrapTable(`
+        <thead><tr><th>Date</th>${HABITS.map(([, label]) => `<th>${label}</th>`).join('')}<th>Score</th></tr></thead>
+        <tbody>${rows.map(row => {
+          const hits = HABITS.filter(([id]) => row.marks[id]).length;
+          return `<tr><td>${row.date}</td>${HABITS.map(([id]) => `<td class="${row.marks[id] ? 'tick' : 'tick-off'}">${row.marks[id] ? '✓' : '·'}</td>`).join('')}<td>${hits}/${HABITS.length}</td></tr>`;
+        }).join('')}</tbody>`, 1);
+    }
+
+    function renderWeightPanel() {
+      const rows = readWeightHistory(state.profile);
+      if (!rows.length) return emptyState(`No bodyweight entries for ${PROFILE_LABEL[state.profile]} yet. Enter a bodyweight above and it is logged against today's date.`);
+      return wrapTable(`
+        <thead><tr><th>Date</th><th>Bodyweight</th><th>Change</th></tr></thead>
+        <tbody>${rows.map((row, index) => {
+          const previous = rows[index + 1];
+          const delta = previous && previous.unit === row.unit ? row.value - previous.value : null;
+          const label = delta === null ? '—' : `${delta > 0 ? '+' : ''}${delta.toFixed(1)} ${row.unit}`;
+          return `<tr><td>${row.date}</td><td>${row.value} ${esc(row.unit)}</td><td>${label}</td></tr>`;
+        }).join('')}</tbody>`, 1);
+    }
+
+    function renderLogbook() {
+      const loads = readLoadHistory();
+      const habits = readHabitHistory(state.profile);
+      const weights = readWeightHistory(state.profile);
+      const sessions = new Set(loads.map(row => `${row.week}-${row.day}`)).size;
+
+      document.getElementById('logbookSummary').innerHTML = `
+        <div><strong>${sessions}</strong><span>sessions with entries</span></div>
+        <div><strong>${loads.length}</strong><span>exercise rows logged</span></div>
+        <div><strong>${habits.length}</strong><span>days of ${PROFILE_LABEL[state.profile]}'s stack</span></div>
+        <div><strong>${weights.length}</strong><span>bodyweight entries</span></div>`;
+
+      const panels = { loads: renderLoadsPanel, habits: renderHabitsPanel, weight: renderWeightPanel };
+      document.getElementById('logbookPanel').innerHTML = panels[state.logView]();
+      document.getElementById('logbookNote').textContent = state.logView === 'loads'
+        ? 'Loads are stored per training week, per day, per exercise, for both people at once. Re-entering the same week and day overwrites that slot.'
+        : `Showing ${PROFILE_LABEL[state.profile]}. Switch profile in the top bar to see the other log. Every date is kept separately.`;
+      document.querySelectorAll('.logbook-tab').forEach(tab => {
+        tab.setAttribute('aria-selected', String(tab.dataset.log === state.logView));
+      });
+    }
+
+    document.querySelectorAll('.logbook-tab').forEach(tab => tab.addEventListener('click', () => {
+      state.logView = tab.dataset.log;
+      renderLogbook();
+    }));
+
+    const csvCell = value => `"${String(value).replace(/"/g, '""')}"`;
+
+    document.getElementById('exportCsv').addEventListener('click', () => {
+      const lines = [['dataset', 'profile', 'date', 'week', 'day', 'item', 'value'].join(',')];
+      readLoadHistory().forEach(row => {
+        if (row.jt) lines.push(['load', 'jt', '', row.week, row.day, row.exercise, row.jt].map(csvCell).join(','));
+        if (row.lupe) lines.push(['load', 'lupe', '', row.week, row.day, row.exercise, row.lupe].map(csvCell).join(','));
+        lines.push(['done', 'both', '', row.week, row.day, row.exercise, row.done].map(csvCell).join(','));
+      });
+      PROFILES.forEach(profile => {
+        readHabitHistory(profile).forEach(row => HABITS.forEach(([id]) => {
+          if (row.marks[id] !== undefined) lines.push(['habit', profile, row.date, '', '', id, row.marks[id]].map(csvCell).join(','));
+        }));
+        readWeightHistory(profile).forEach(row => {
+          lines.push(['bodyweight', profile, row.date, '', '', row.unit, row.value].map(csvCell).join(','));
+        });
+      });
+      const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `jt-lupe-workout-log-${localDayKey()}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
     document.getElementById('backupButton').addEventListener('click', () => {
       const data = {};
       for (let index = 0; index < localStorage.length; index += 1) {
         const key = localStorage.key(index);
-        if (key && key.startsWith('jt-lupe-') && ![AUTH_KEY, LOCAL_SESSION_KEY].includes(key)) data[key] = localStorage.getItem(key);
+        if (key && key.startsWith('jt-lupe-') && !LEGACY_KEYS.includes(key)) data[key] = localStorage.getItem(key);
       }
-      const payload = JSON.stringify({ app: 'JT + Lupe 60-Day Workout', exported: new Date().toISOString(), data }, null, 2);
+      const payload = JSON.stringify({ app: 'JT + Lupe 60-Day Workout', schema: SCHEMA_VERSION, exported: new Date().toISOString(), data }, null, 2);
       const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
       const link = document.createElement('a');
       link.href = url;
@@ -1246,9 +1415,13 @@
       if (!file) return;
       try {
         const payload = JSON.parse(await file.text());
-        Object.entries(payload.data || {}).forEach(([key, value]) => {
-          if (key.startsWith('jt-lupe-') && ![AUTH_KEY, LOCAL_SESSION_KEY].includes(key)) localStorage.setItem(key, value);
+        const entries = Object.entries(payload.data || {});
+        if (!entries.length) throw new Error('empty backup');
+        entries.forEach(([key, value]) => {
+          if (key.startsWith('jt-lupe-') && !LEGACY_KEYS.includes(key)) localStorage.setItem(key, value);
         });
+        // An older backup carries older key shapes; re-run migrations over what landed.
+        if (Number(payload.schema || 1) < SCHEMA_VERSION) localStorage.setItem(SCHEMA_KEY, payload.schema || 1);
         alert('Workout data restored. The page will reload.');
         location.reload();
       } catch {
@@ -1279,15 +1452,26 @@
         ${workouts.map(workout => `<section class="print-day"><h3>${workout.day} · ${workout.focus}</h3><table><thead><tr><th>Exercise</th><th>Prescription</th><th>JT</th><th>Lupe</th></tr></thead><tbody>${workout.exercises.map(([name, prescription]) => `<tr><td>${name}</td><td>${prescription}</td><td></td><td></td></tr>`).join('')}</tbody></table></section>`).join('')}`;
     }
 
+    migrateStorage();
+    requestPersistence();
+
+    setProfile(state.profile, { rerender: false });
     renderTabs();
     renderWorkout();
+    renderHabits();
     renderPrintPlan();
     renderChallenge();
+    renderLogbook();
     updateTimer();
 
-    const existingSession = localStorage.getItem(LOCAL_SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
-    if (localStorage.getItem(AUTH_KEY) && ['jt', 'lupe'].includes(existingSession)) revealApp(existingSession);
-    else showLogin();
+    // A second tab (or another window of the installed app) writing to localStorage
+    // should not leave this one showing stale numbers.
+    window.addEventListener('storage', event => {
+      if (!event.key || !event.key.startsWith('jt-lupe-')) return;
+      renderWorkout();
+      renderHabits();
+      renderLogbook();
+    });
   </script>
 </body>
 </html>
