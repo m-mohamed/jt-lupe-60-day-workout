@@ -462,8 +462,10 @@
       font-weight: 800;
     }
 
-    .workout-shell[data-active-profile="jt"] tbody td:nth-child(3),
-    .workout-shell[data-active-profile="lupe"] tbody td:nth-child(4) { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+    /* Only the signed-in person's calculator is shown; the other stays in the DOM so
+       its stored weight is still read and written by the shared handlers. */
+    .nutrition-grid[data-active-profile="jt"] .person[data-person="lupe"],
+    .nutrition-grid[data-active-profile="lupe"] .person[data-person="jt"] { display: none; }
 
     .logbook-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .logbook-tabs { display: flex; gap: 6px; }
@@ -699,7 +701,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Exercise</th><th>Prescription</th><th>JT load</th><th>Lupe load</th><th>Done</th></tr></thead>
+              <thead><tr><th>Exercise</th><th>Prescription</th><th><span id="loadHeading">Your load</span></th><th>Done</th></tr></thead>
               <tbody id="workoutRows"></tbody>
             </table>
           </div>
@@ -717,7 +719,7 @@
           <div class="panel">
             <div class="panel-head"><h3>Partner rule</h3></div>
             <ol class="rule-list">
-              <li>JT lifts while Lupe rests and logs.</li>
+              <li>One lifts while the other rests and logs.</li>
               <li>Switch immediately.</li>
               <li>Finish the station before moving.</li>
               <li>Same plan, individual loads.</li>
@@ -747,7 +749,7 @@
       <div class="nutrition-grid">
         <div class="panel calculator">
           <div class="calculator-grid">
-            <div class="person">
+            <div class="person" data-person="jt">
               <h3>JT</h3>
               <div class="field">
                 <input id="jtWeight" type="number" min="1" step="0.1" inputmode="decimal" placeholder="Bodyweight" aria-label="JT bodyweight">
@@ -755,7 +757,7 @@
               </div>
               <p class="protein-output" id="jtProtein">Enter bodyweight</p>
             </div>
-            <div class="person">
+            <div class="person" data-person="lupe">
               <h3>Lupe</h3>
               <div class="field">
                 <input id="lupeWeight" type="number" min="1" step="0.1" inputmode="decimal" placeholder="Bodyweight" aria-label="Lupe bodyweight">
@@ -916,7 +918,7 @@
     const CHALLENGE_LENGTH = 60;
     const DAY_MS = 86400000;
     const SCHEMA_KEY = 'jt-lupe-schema-version';
-    const SCHEMA_VERSION = 2;
+    const SCHEMA_VERSION = 3;
     const PROFILE_KEY = 'jt-lupe-profile';
     const LEGACY_KEYS = ['jt-lupe-auth-v1', 'jt-lupe-session'];
     const PROFILES = ['jt', 'lupe'];
@@ -970,6 +972,7 @@
     const habitKey = (profile, date, habit) => `jt-lupe-habit-${profile}-${date}-${habit}`;
     const weightLogKey = (profile, date) => `jt-lupe-weightlog-${profile}-${date}`;
     const LEGACY_HABIT = /^jt-lupe-habit-(\d{4}-\d{2}-\d{2})-([a-z]+)$/;
+    const LEGACY_DONE = /^jt-lupe-done-w\d+-d\d+-e\d+$/;
 
     // Storage is versioned so a new deploy can reshape keys without dropping anything
     // already written by an older build. Migrations are additive: legacy keys are read,
@@ -1009,6 +1012,23 @@
         sessionStorage.removeItem('jt-lupe-session-tab');
       }
 
+      if (from < 3) {
+        // v2 shared one "done" tick per exercise between both people. Each person now
+        // logs their own session, so fan the old tick out to both and drop the shared key.
+        const shared = [];
+        for (let index = 0; index < localStorage.length; index += 1) {
+          const key = localStorage.key(index);
+          if (key && LEGACY_DONE.test(key)) shared.push({ key, value: localStorage.getItem(key) });
+        }
+        shared.forEach(entry => {
+          PROFILES.forEach(profile => {
+            const target = `${entry.key}-${profile}`;
+            if (localStorage.getItem(target) === null) localStorage.setItem(target, entry.value);
+          });
+          localStorage.removeItem(entry.key);
+        });
+      }
+
       localStorage.setItem(SCHEMA_KEY, SCHEMA_VERSION);
     }
 
@@ -1028,8 +1048,9 @@
       document.querySelectorAll('.profile-button').forEach(button => {
         button.setAttribute('aria-pressed', String(button.dataset.profile === profile));
       });
-      document.querySelector('.workout-shell').dataset.activeProfile = profile;
+      document.querySelector('.nutrition-grid').dataset.activeProfile = profile;
       if (rerender) {
+        renderWorkout();
         renderHabits();
         renderLogbook();
       }
@@ -1073,7 +1094,8 @@
       progress.style.width = `${(currentDay / CHALLENGE_LENGTH) * 100}%`;
     }
 
-    const keyFor = (type, exerciseIndex, person = '') => `jt-lupe-${type}-w${state.week}-d${state.day}-e${exerciseIndex}-${person}`;
+    // Every logged value is scoped to one person. Nothing is shared between profiles.
+    const keyFor = (type, exerciseIndex, person = state.profile) => `jt-lupe-${type}-w${state.week}-d${state.day}-e${exerciseIndex}-${person}`;
     const flashSaved = () => {
       const status = document.getElementById('savedStatus');
       status.textContent = 'Saved locally.';
@@ -1099,21 +1121,21 @@
       const workout = workouts[state.day];
       document.getElementById('activeWorkoutTitle').textContent = `${workout.day} · ${workout.focus}`;
       document.getElementById('activeWorkoutNote').textContent = workout.note;
+      const who = PROFILE_LABEL[state.profile];
+      document.getElementById('loadHeading').textContent = `${who}'s load`;
       document.getElementById('workoutRows').innerHTML = workout.exercises.map(([name, prescription], index) => {
-        const jt = localStorage.getItem(keyFor('load', index, 'jt')) || '';
-        const lupe = localStorage.getItem(keyFor('load', index, 'lupe')) || '';
+        const load = localStorage.getItem(keyFor('load', index)) || '';
         const done = localStorage.getItem(keyFor('done', index)) === 'true';
         return `<tr>
           <td>${name}</td>
           <td>${prescription}</td>
-          <td><input class="load-input" data-index="${index}" data-person="jt" value="${esc(jt)}" inputmode="decimal" aria-label="JT load for ${name}" placeholder="load"></td>
-          <td><input class="load-input" data-index="${index}" data-person="lupe" value="${esc(lupe)}" inputmode="decimal" aria-label="Lupe load for ${name}" placeholder="load"></td>
+          <td><input class="load-input" data-index="${index}" value="${esc(load)}" inputmode="decimal" aria-label="${who} load for ${name}" placeholder="load"></td>
           <td><input class="check done-check" type="checkbox" data-index="${index}" ${done ? 'checked' : ''} aria-label="Mark ${name} complete"></td>
         </tr>`;
       }).join('');
 
       document.querySelectorAll('.load-input').forEach(input => input.addEventListener('change', event => {
-        localStorage.setItem(keyFor('load', Number(event.target.dataset.index), event.target.dataset.person), event.target.value.trim());
+        localStorage.setItem(keyFor('load', Number(event.target.dataset.index)), event.target.value.trim());
         flashSaved();
         renderLogbook();
       }));
@@ -1254,15 +1276,14 @@
     const esc = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
     const WEEK_COUNT = 9;
 
-    function readLoadHistory() {
+    function readLoadHistory(profile) {
       const rows = [];
       for (let week = 1; week <= WEEK_COUNT; week += 1) {
         workouts.forEach((workout, day) => {
           workout.exercises.forEach(([exercise], index) => {
-            const jt = localStorage.getItem(`jt-lupe-load-w${week}-d${day}-e${index}-jt`) || '';
-            const lupe = localStorage.getItem(`jt-lupe-load-w${week}-d${day}-e${index}-lupe`) || '';
-            const done = localStorage.getItem(`jt-lupe-done-w${week}-d${day}-e${index}`) === 'true';
-            if (jt || lupe || done) rows.push({ week, day: workout.day, focus: workout.focus, exercise, jt, lupe, done });
+            const load = localStorage.getItem(`jt-lupe-load-w${week}-d${day}-e${index}-${profile}`) || '';
+            const done = localStorage.getItem(`jt-lupe-done-w${week}-d${day}-e${index}-${profile}`) === 'true';
+            if (load || done) rows.push({ week, day: workout.day, focus: workout.focus, exercise, load, done });
           });
         });
       }
@@ -1304,16 +1325,15 @@
     const wrapTable = (html, grow) => `<div class="logbook-scroll"><table class="logbook-table" data-grow="${grow}">${html}</table></div>`;
 
     function renderLoadsPanel() {
-      const rows = readLoadHistory();
-      if (!rows.length) return emptyState('No loads logged yet. Type a weight into the training table and it lands here.');
+      const rows = readLoadHistory(state.profile);
+      if (!rows.length) return emptyState(`No loads logged for ${PROFILE_LABEL[state.profile]} yet. Type a weight into the training table and it lands here.`);
       return wrapTable(`
-        <thead><tr><th>Week</th><th>Day</th><th>Exercise</th><th>JT</th><th>Lupe</th><th>Done</th></tr></thead>
+        <thead><tr><th>Week</th><th>Day</th><th>Exercise</th><th>Load</th><th>Done</th></tr></thead>
         <tbody>${rows.map(row => `<tr>
           <td>${row.week}</td>
           <td>${esc(row.day)}</td>
           <td>${esc(row.exercise)}</td>
-          <td>${esc(row.jt) || '—'}</td>
-          <td>${esc(row.lupe) || '—'}</td>
+          <td>${esc(row.load) || '—'}</td>
           <td class="${row.done ? 'tick' : 'tick-off'}">${row.done ? '✓' : '·'}</td>
         </tr>`).join('')}</tbody>`, 3);
     }
@@ -1343,7 +1363,7 @@
     }
 
     function renderLogbook() {
-      const loads = readLoadHistory();
+      const loads = readLoadHistory(state.profile);
       const habits = readHabitHistory(state.profile);
       const weights = readWeightHistory(state.profile);
       const sessions = new Set(loads.map(row => `${row.week}-${row.day}`)).size;
@@ -1351,14 +1371,14 @@
       document.getElementById('logbookSummary').innerHTML = `
         <div><strong>${sessions}</strong><span>sessions with entries</span></div>
         <div><strong>${loads.length}</strong><span>exercise rows logged</span></div>
-        <div><strong>${habits.length}</strong><span>days of ${PROFILE_LABEL[state.profile]}'s stack</span></div>
+        <div><strong>${habits.length}</strong><span>days of the daily stack</span></div>
         <div><strong>${weights.length}</strong><span>bodyweight entries</span></div>`;
 
       const panels = { loads: renderLoadsPanel, habits: renderHabitsPanel, weight: renderWeightPanel };
       document.getElementById('logbookPanel').innerHTML = panels[state.logView]();
       document.getElementById('logbookNote').textContent = state.logView === 'loads'
-        ? 'Loads are stored per training week, per day, per exercise, for both people at once. Re-entering the same week and day overwrites that slot.'
-        : `Showing ${PROFILE_LABEL[state.profile]}. Switch profile in the top bar to see the other log. Every date is kept separately.`;
+        ? `Showing ${PROFILE_LABEL[state.profile]} only. Loads are stored per training week, per day, per exercise. Re-entering the same week and day overwrites that slot.`
+        : `Showing ${PROFILE_LABEL[state.profile]} only. Every date is kept separately.`;
       document.querySelectorAll('.logbook-tab').forEach(tab => {
         tab.setAttribute('aria-selected', String(tab.dataset.log === state.logView));
       });
@@ -1373,12 +1393,11 @@
 
     document.getElementById('exportCsv').addEventListener('click', () => {
       const lines = [['dataset', 'profile', 'date', 'week', 'day', 'item', 'value'].join(',')];
-      readLoadHistory().forEach(row => {
-        if (row.jt) lines.push(['load', 'jt', '', row.week, row.day, row.exercise, row.jt].map(csvCell).join(','));
-        if (row.lupe) lines.push(['load', 'lupe', '', row.week, row.day, row.exercise, row.lupe].map(csvCell).join(','));
-        lines.push(['done', 'both', '', row.week, row.day, row.exercise, row.done].map(csvCell).join(','));
-      });
       PROFILES.forEach(profile => {
+        readLoadHistory(profile).forEach(row => {
+          if (row.load) lines.push(['load', profile, '', row.week, row.day, row.exercise, row.load].map(csvCell).join(','));
+          lines.push(['done', profile, '', row.week, row.day, row.exercise, row.done].map(csvCell).join(','));
+        });
         readHabitHistory(profile).forEach(row => HABITS.forEach(([id]) => {
           if (row.marks[id] !== undefined) lines.push(['habit', profile, row.date, '', '', id, row.marks[id]].map(csvCell).join(','));
         }));
@@ -1449,7 +1468,7 @@
     function renderPrintPlan() {
       document.getElementById('printPlan').innerHTML = `
         <div class="print-title"><strong>JT + Lupe · 60-Day Workout</strong><span>August 11-October 9 · 9:00-10:00 p.m.</span></div>
-        ${workouts.map(workout => `<section class="print-day"><h3>${workout.day} · ${workout.focus}</h3><table><thead><tr><th>Exercise</th><th>Prescription</th><th>JT</th><th>Lupe</th></tr></thead><tbody>${workout.exercises.map(([name, prescription]) => `<tr><td>${name}</td><td>${prescription}</td><td></td><td></td></tr>`).join('')}</tbody></table></section>`).join('')}`;
+        ${workouts.map(workout => `<section class="print-day"><h3>${workout.day} · ${workout.focus}</h3><table><thead><tr><th>Exercise</th><th>Prescription</th><th>Load</th><th>Done</th></tr></thead><tbody>${workout.exercises.map(([name, prescription]) => `<tr><td>${name}</td><td>${prescription}</td><td></td><td></td></tr>`).join('')}</tbody></table></section>`).join('')}`;
     }
 
     migrateStorage();

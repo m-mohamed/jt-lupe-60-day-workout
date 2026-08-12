@@ -9,7 +9,7 @@ Live app: <https://m-mohamed.github.io/jt-lupe-60-day-workout/>
 - Provides the Monday-Friday workout plan and automatic weekday selection.
 - Tracks separate JT and Lupe loads, exercise completion, protein targets, and daily habits.
 - Shows a live 60-day challenge counter and a 90-second rest timer.
-- Switches between the JT and Lupe profiles from the top bar. There is no login.
+- Each person logs only their own numbers. Switch profile from the top bar; there is no login.
 - Keeps a browsable log book of every load, daily-stack check-in, and bodyweight entry.
 - Supports JSON backup/restore and CSV export.
 - Installs as a progressive web app and caches the core application for offline use.
@@ -22,8 +22,8 @@ Everything is written to `localStorage` on the device, under the origin
 
 | Key shape | Holds | History |
 | --- | --- | --- |
-| `jt-lupe-load-w{week}-d{day}-e{index}-{jt\|lupe}` | one working load | one slot per week + weekday + exercise |
-| `jt-lupe-done-w{week}-d{day}-e{index}` | exercise ticked off | one slot per week + weekday + exercise, shared by both |
+| `jt-lupe-load-w{week}-d{day}-e{index}-{profile}` | one working load | one slot per week + weekday + exercise |
+| `jt-lupe-done-w{week}-d{day}-e{index}-{profile}` | exercise ticked off | one slot per week + weekday + exercise |
 | `jt-lupe-habit-{profile}-{YYYY-MM-DD}-{habit}` | daily-stack check-in | every calendar day kept |
 | `jt-lupe-weightlog-{profile}-{YYYY-MM-DD}` | bodyweight as `value\|unit` | every calendar day kept |
 | `jt-lupe-{profile}-weight`, `-unit` | current bodyweight for the protein calculator | latest only |
