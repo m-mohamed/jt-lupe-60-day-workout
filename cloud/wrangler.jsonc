@@ -27,7 +27,7 @@
   "vars": {
     // Filled in after Access is enabled — see cloud/README.md.
     // ACCESS_TEAM_DOMAIN example: "mnfstlabs.cloudflareaccess.com"
-    "ACCESS_TEAM_DOMAIN": "",
-    "ACCESS_AUD": ""
+    "ACCESS_TEAM_DOMAIN": "jt-lupe-workout-cloud.cloudflareaccess.com",
+    "ACCESS_AUD": "42312f685967edcc867d173097d806bbb876d2e8df99fc85d9b282c6866588c1"
   }
 }

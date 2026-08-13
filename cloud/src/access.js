@@ -77,14 +77,23 @@ export async function identify(request, env) {
     const now = Math.floor(Date.now() / 1000);
     const audience = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
 
-    if (!audience.includes(env.ACCESS_AUD)) return null;
-    if (payload.iss !== `https://${env.ACCESS_TEAM_DOMAIN}`) return null;
-    if (typeof payload.exp === 'number' && payload.exp < now) return null;
-    if (typeof payload.nbf === 'number' && payload.nbf > now + 60) return null;
-    if (!payload.email) return null;
+    // Log which check failed. Access already gates this origin, so anything that
+    // reaches the Worker has authenticated once — the value here is turning a silent
+    // "No account" into something diagnosable from `wrangler tail`.
+    const reject = reason => {
+      console.warn('access rejected:', reason, '| iss:', payload.iss, '| aud count:', audience.length);
+      return null;
+    };
+
+    if (!audience.includes(env.ACCESS_AUD)) return reject('aud mismatch');
+    if (payload.iss !== `https://${env.ACCESS_TEAM_DOMAIN}`) return reject('iss mismatch');
+    if (typeof payload.exp === 'number' && payload.exp < now) return reject('expired');
+    if (typeof payload.nbf === 'number' && payload.nbf > now + 60) return reject('not yet valid');
+    if (!payload.email) return reject('no email claim');
 
     return { email: String(payload.email).toLowerCase() };
-  } catch {
+  } catch (error) {
+    console.warn('access verification threw:', String(error));
     return null;
   }
 }
