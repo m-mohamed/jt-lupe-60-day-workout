@@ -24,8 +24,11 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
   }
 });
 
-/** Per-user object id derived from the verified email, so identity picks the database. */
-const storeFor = (env, email) => env.USER_STORE.get(env.USER_STORE.idFromName(`user:${email}`));
+/**
+ * Per-user object derived from the verified email, so identity picks the database.
+ * getByName is the documented deterministic-routing helper: same email, same object.
+ */
+const storeFor = (env, email) => env.USER_STORE.getByName(`user:${email}`);
 
 function validateChanges(changes) {
   if (!Array.isArray(changes)) return 'changes must be an array';

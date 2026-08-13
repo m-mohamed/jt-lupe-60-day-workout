@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "jt-lupe-workout",
   "main": "src/index.js",
-  "compatibility_date": "2026-08-01",
+  "compatibility_date": "2026-08-12",
 
   // The static app lives at the repository root so GitHub Pages keeps serving it
   // as a local-only fallback. `.assetsignore` there keeps this folder out of the

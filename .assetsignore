@@ -2,5 +2,8 @@ cloud
 node_modules
 .git
 .github
-README.md
+.gitignore
 .assetsignore
+.wrangler
+.wrangler-state
+README.md

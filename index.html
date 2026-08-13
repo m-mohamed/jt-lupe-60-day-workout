@@ -514,6 +514,22 @@
     .tick { color: var(--accent); font-weight: 700; }
     .tick-off { color: var(--line); }
 
+    .stack-date { display: flex; align-items: center; gap: 7px; }
+    .stack-date label { color: var(--muted); font-size: .76rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .stack-date input {
+      min-height: 34px;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: .84rem;
+    }
+    .stack-context { margin: 0 0 4px; color: var(--muted); font-size: .82rem; }
+    .stack-context[data-backfill="true"] { color: var(--warm); font-weight: 700; }
+    .slot-caption { margin: 8px 0 0; color: var(--muted); font-size: .8rem; }
+    .slot-caption[data-backfill="true"] { color: var(--warm); font-weight: 700; }
+
     .command-list { margin: 0; padding: 0; list-style: none; }
     .command-list li {
       display: grid;
@@ -732,6 +748,7 @@
               <tbody id="workoutRows"></tbody>
             </table>
           </div>
+          <p class="slot-caption" id="slotCaption"></p>
         </div>
 
         <aside class="side-stack">
@@ -796,7 +813,14 @@
         </div>
 
         <div class="panel">
-          <div class="panel-head"><h3>Daily stack</h3><small>Today · <strong id="habitOwner">JT</strong></small></div>
+          <div class="panel-head">
+            <h3>Daily stack</h3>
+            <div class="stack-date">
+              <label for="habitDate">Logging</label>
+              <input id="habitDate" type="date">
+            </div>
+          </div>
+          <p class="stack-context" id="habitContext">Today · <strong id="habitOwner">JT</strong></p>
           <ul class="command-list" id="habitList">
             <li><input class="habit" type="checkbox" data-habit="protein"><div><strong>Protein target</strong><span>1.6-2.2 g/kg across 3-5 meals</span></div></li>
             <li><input class="habit" type="checkbox" data-habit="creatine"><div><strong>Creatine monohydrate</strong><span>3-5 g, including weekends</span></div></li>
@@ -991,6 +1015,7 @@
       day: readNumber('jt-lupe-active-day', defaultWorkoutDay()),
       week: readNumber('jt-lupe-week', defaultWeek()),
       profile: PROFILES.includes(localStorage.getItem(PROFILE_KEY)) ? localStorage.getItem(PROFILE_KEY) : 'jt',
+      habitDate: localDayKey(),
       logView: 'loads',
       timer: 90,
       timerId: null
@@ -1150,6 +1175,15 @@
       document.getElementById('activeWorkoutNote').textContent = workout.note;
       const who = PROFILE_LABEL[state.profile];
       document.getElementById('loadHeading').textContent = `${who}'s load`;
+
+      // Loads are filed by training week and weekday, so say plainly which slot is
+      // open. Catching up on a past session should never feel like a guess.
+      const caption = document.getElementById('slotCaption');
+      const isCurrentSlot = state.week === defaultWeek() && state.day === defaultWorkoutDay();
+      caption.dataset.backfill = String(!isCurrentSlot);
+      caption.textContent = isCurrentSlot
+        ? `Saving to Week ${state.week} · ${workout.day} — tonight's slot.`
+        : `Catching up: saving to Week ${state.week} · ${workout.day}, not today.`;
       document.getElementById('workoutRows').innerHTML = workout.exercises.map(([name, prescription], index) => {
         const load = localStorage.getItem(keyFor('load', index)) || '';
         const done = localStorage.getItem(keyFor('done', index)) === 'true';
@@ -1268,16 +1302,46 @@
 
     function renderHabits() {
       const today = localDayKey();
+      const date = state.habitDate;
       document.querySelectorAll('.habit').forEach(input => {
-        input.checked = localStorage.getItem(habitKey(state.profile, today, input.dataset.habit)) === 'true';
+        input.checked = localStorage.getItem(habitKey(state.profile, date, input.dataset.habit)) === 'true';
       });
-      document.getElementById('habitOwner').textContent = PROFILE_LABEL[state.profile];
+
+      const picker = document.getElementById('habitDate');
+      picker.value = date;
+      picker.max = today;
+
+      const context = document.getElementById('habitContext');
+      const backfilling = date !== today;
+      context.dataset.backfill = String(backfilling);
+      context.textContent = backfilling
+        ? `Backfilling ${dayLabelFor(date)} · ${PROFILE_LABEL[state.profile]}`
+        : `Today · ${PROFILE_LABEL[state.profile]}`;
     }
+
+    // "Yesterday" is friendlier than a bare date when you are catching up a day late.
+    function dayLabelFor(dateKey) {
+      const today = localDayKey();
+      if (dateKey === today) return 'today';
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      if (dateKey === localDayKey(yesterday)) return 'yesterday';
+      const [year, month, day] = dateKey.split('-').map(Number);
+      return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    }
+
+    document.getElementById('habitDate').addEventListener('change', event => {
+      const chosen = event.target.value;
+      // An empty or future date would write a row you can never reach again.
+      state.habitDate = /^\d{4}-\d{2}-\d{2}$/.test(chosen) && chosen <= localDayKey() ? chosen : localDayKey();
+      renderHabits();
+    });
 
     document.querySelectorAll('.habit').forEach(input => {
       input.addEventListener('change', () => {
-        // Keyed by calendar date, so every day is kept rather than overwritten.
-        saveData(habitKey(state.profile, localDayKey(), input.dataset.habit), input.checked);
+        // Keyed by calendar date, so every day is kept rather than overwritten,
+        // and a missed day can be filled in afterwards.
+        saveData(habitKey(state.profile, state.habitDate, input.dataset.habit), input.checked);
         flashSaved();
         renderLogbook();
       });
