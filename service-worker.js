@@ -1,6 +1,6 @@
 // This worker caches app *files* only. All workout data lives in localStorage, which
 // the Cache API never touches — clearing or renaming a cache cannot delete a log entry.
-const CACHE_NAME = 'jt-lupe-workout-v3';
+const CACHE_NAME = 'jt-lupe-workout-v4';
 const CORE_ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', event => {
@@ -20,7 +20,11 @@ self.addEventListener('activate', event => {
 // cache is only a fallback for offline gym wifi.
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
-  if (new URL(event.request.url).origin !== self.location.origin) return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+  // Sync and identity must always hit the network. A cached /api/me would strand the
+  // app in a stale signed-in state, and a cached sync reply would replay old data.
+  if (url.pathname.startsWith('/api/')) return;
   event.respondWith(
     fetch(event.request)
       .then(response => {

@@ -1,0 +1,18 @@
+{
+  "name": "jt-lupe-workout-cloud",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --persist-to ../../.wrangler-state",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "stats": "wrangler d1 --help"
+  },
+  "//": [
+    "Deliberately no dependencies. Run these through npx (`npx wrangler@4 deploy`)",
+    "or a global install. An in-tree node_modules sits inside the static-assets",
+    "directory, which makes `wrangler dev` watch its own install and reload forever.",
+    "The same reason the dev script parks local state outside the repository."
+  ]
+}

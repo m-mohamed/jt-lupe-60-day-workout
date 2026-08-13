@@ -86,6 +86,30 @@
       background: var(--surface-2);
     }
     .profile-switch > span { padding: 0 4px 0 6px; color: var(--muted); font-size: .74rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .sync-chip {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 11px;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .sync-chip[data-state="synced"] { border-color: var(--accent); color: var(--accent-strong); }
+    .sync-chip[data-state="synced"] .sync-dot { background: var(--accent); }
+    .sync-chip[data-state="syncing"] .sync-dot { background: var(--focus); animation: sync-pulse 1s ease-in-out infinite; }
+    .sync-chip[data-state="offline"], .sync-chip[data-state="error"] { border-color: var(--warm); color: var(--warm); }
+    .sync-chip[data-state="offline"] .sync-dot, .sync-chip[data-state="error"] .sync-dot { background: var(--warm); }
+    @keyframes sync-pulse { 50% { opacity: .3; } }
+
+    .profile-switch[data-locked="true"] .profile-button[aria-pressed="false"] { display: none; }
+    .profile-switch[data-locked="true"] .profile-button { cursor: default; }
+
     .profile-button { min-height: 32px; padding: 4px 14px; }
     .profile-button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); font-weight: 700; }
 
@@ -631,6 +655,9 @@
           <button class="button profile-button" type="button" data-profile="jt" aria-pressed="true">JT</button>
           <button class="button profile-button" type="button" data-profile="lupe" aria-pressed="false">Lupe</button>
         </div>
+        <div class="sync-chip" id="syncChip" data-state="local" title="Local only">
+          <span class="sync-dot" aria-hidden="true"></span><span id="syncText">Local</span>
+        </div>
         <button class="button backup-button" id="backupButton" type="button">Backup</button>
         <label class="visually-hidden" for="restoreInput">Restore backup</label><input class="visually-hidden" id="restoreInput" type="file" accept="application/json">
         <button class="button backup-button" id="restoreButton" type="button">Restore</button>
@@ -1135,12 +1162,12 @@
       }).join('');
 
       document.querySelectorAll('.load-input').forEach(input => input.addEventListener('change', event => {
-        localStorage.setItem(keyFor('load', Number(event.target.dataset.index)), event.target.value.trim());
+        saveData(keyFor('load', Number(event.target.dataset.index)), event.target.value.trim());
         flashSaved();
         renderLogbook();
       }));
       document.querySelectorAll('.done-check').forEach(input => input.addEventListener('change', event => {
-        localStorage.setItem(keyFor('done', Number(event.target.dataset.index)), event.target.checked);
+        saveData(keyFor('done', Number(event.target.dataset.index)), event.target.checked);
         flashSaved();
         renderLogbook();
       }));
@@ -1210,8 +1237,8 @@
       }
       const kg = unit === 'lb' ? value / 2.20462 : value;
       output.textContent = `${Math.round(kg * 1.6)}-${Math.round(kg * 2.2)} g protein / day`;
-      localStorage.setItem(`jt-lupe-${person}-weight`, value);
-      localStorage.setItem(`jt-lupe-${person}-unit`, unit);
+      saveData(`jt-lupe-${person}-weight`, value);
+      saveData(`jt-lupe-${person}-unit`, unit);
     }
 
     // Committed on blur/change rather than every keystroke, so the dated entry is the
@@ -1220,7 +1247,7 @@
       const value = Number(document.getElementById(`${person}Weight`).value);
       if (!value || value <= 0) return;
       const unit = document.getElementById(`${person}Unit`).value;
-      localStorage.setItem(weightLogKey(person, localDayKey()), `${value}|${unit}`);
+      saveData(weightLogKey(person, localDayKey()), `${value}|${unit}`);
       flashSaved();
       renderLogbook();
     }
@@ -1250,7 +1277,7 @@
     document.querySelectorAll('.habit').forEach(input => {
       input.addEventListener('change', () => {
         // Keyed by calendar date, so every day is kept rather than overwritten.
-        localStorage.setItem(habitKey(state.profile, localDayKey(), input.dataset.habit), input.checked);
+        saveData(habitKey(state.profile, localDayKey(), input.dataset.habit), input.checked);
         flashSaved();
         renderLogbook();
       });
@@ -1438,9 +1465,12 @@
         if (!entries.length) throw new Error('empty backup');
         entries.forEach(([key, value]) => {
           if (key.startsWith('jt-lupe-') && !LEGACY_KEYS.includes(key)) localStorage.setItem(key, value);
+          // Cursor reset below forces a full re-upload of the restored data.
         });
         // An older backup carries older key shapes; re-run migrations over what landed.
         if (Number(payload.schema || 1) < SCHEMA_VERSION) localStorage.setItem(SCHEMA_KEY, payload.schema || 1);
+        // Force a full re-upload so the restored data reaches the account too.
+        localStorage.removeItem(CURSOR_KEY);
         alert('Workout data restored. The page will reload.');
         location.reload();
       } catch {
@@ -1471,6 +1501,179 @@
         ${workouts.map(workout => `<section class="print-day"><h3>${workout.day} · ${workout.focus}</h3><table><thead><tr><th>Exercise</th><th>Prescription</th><th>Load</th><th>Done</th></tr></thead><tbody>${workout.exercises.map(([name, prescription]) => `<tr><td>${name}</td><td>${prescription}</td><td></td><td></td></tr>`).join('')}</tbody></table></section>`).join('')}`;
     }
 
+    /* ---------- Sync ----------
+       The app stays a local-first PWA: every read and write hits localStorage, so it
+       works with no network at all. When it is served by the Worker (rather than
+       GitHub Pages), an identity is available and the same data also round-trips to
+       this person's own SQLite database in a Durable Object.
+
+       Fill in PROFILE_BY_EMAIL once Access is configured and the profile stops being
+       a free toggle and becomes whoever signed in. */
+    const SYNC_NS = 'gym';
+    const CURSOR_KEY = 'jt-lupe-sync-cursor';
+    const DEVICE_KEY = 'jt-lupe-sync-device';
+    const DIRTY_KEY = 'jt-lupe-sync-dirty';
+    const PROFILE_BY_EMAIL = {
+      // 'mohamed@mnfstlabs.com': 'jt',
+      // 'cofounder@example.com': 'lupe',
+    };
+    // Device-local preferences. Theme and which day you are looking at belong to the
+    // phone in your hand, not to the account.
+    const LOCAL_ONLY_KEYS = new Set([
+      SCHEMA_KEY, PROFILE_KEY, CURSOR_KEY, DEVICE_KEY, DIRTY_KEY,
+      'jt-lupe-active-day', 'jt-lupe-week', 'jt-lupe-theme'
+    ]);
+    const isSyncable = key => key.startsWith('jt-lupe-') && !LOCAL_ONLY_KEYS.has(key);
+
+    const syncState = { enabled: false, email: null, busy: false, timer: null };
+
+    function deviceId() {
+      let id = localStorage.getItem(DEVICE_KEY);
+      if (!id) {
+        id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)).slice(0, 36);
+        localStorage.setItem(DEVICE_KEY, id);
+      }
+      return id;
+    }
+
+    const readDirty = () => {
+      try { return JSON.parse(localStorage.getItem(DIRTY_KEY) || '[]'); } catch { return []; }
+    };
+    const writeDirty = keys => localStorage.setItem(DIRTY_KEY, JSON.stringify([...new Set(keys)]));
+
+    function markDirty(key) {
+      if (!isSyncable(key)) return;
+      const dirty = readDirty();
+      if (!dirty.includes(key)) writeDirty([...dirty, key]);
+    }
+
+    /** The single write path for anything that belongs to the person, not the device. */
+    function saveData(key, value) {
+      localStorage.setItem(key, value);
+      markDirty(key);
+      scheduleSync();
+    }
+
+    function setSyncChip(stateName, label, title) {
+      const chip = document.getElementById('syncChip');
+      chip.dataset.state = stateName;
+      chip.title = title || label;
+      document.getElementById('syncText').textContent = label;
+    }
+
+    function scheduleSync(delay = 1200) {
+      if (!syncState.enabled) return;
+      clearTimeout(syncState.timer);
+      syncState.timer = setTimeout(runSync, delay);
+    }
+
+    function refreshFromStorage() {
+      renderWorkout();
+      renderHabits();
+      renderLogbook();
+      PROFILES.forEach(person => {
+        document.getElementById(`${person}Weight`).value = localStorage.getItem(`jt-lupe-${person}-weight`) || '';
+        document.getElementById(`${person}Unit`).value = localStorage.getItem(`jt-lupe-${person}-unit`) || 'lb';
+        calculateProtein(person);
+      });
+    }
+
+    async function runSync() {
+      if (!syncState.enabled || syncState.busy) return;
+      if (!navigator.onLine) { setSyncChip('offline', 'Offline', 'Changes are saved here and will upload when you reconnect.'); return; }
+
+      syncState.busy = true;
+      setSyncChip('syncing', 'Syncing…');
+      try {
+        const cursor = Number(localStorage.getItem(CURSOR_KEY) || 0);
+        // A cursor of 0 means this device has never synced, or was restored from a
+        // backup. Push everything rather than trusting the dirty list.
+        const keys = cursor === 0
+          ? Object.keys(localStorage).filter(isSyncable)
+          : readDirty().filter(isSyncable);
+        const pushed = keys.map(key => {
+          const value = localStorage.getItem(key);
+          return value === null ? { key, deleted: true } : { key, value };
+        });
+
+        const response = await fetch(`./api/sync?ns=${SYNC_NS}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ since: cursor, device: deviceId(), changes: pushed })
+        });
+
+        if (response.status === 401) {
+          syncState.enabled = false;
+          setSyncChip('error', 'Signed out', 'Reload the page to sign in again.');
+          return;
+        }
+        if (!response.ok) throw new Error(`sync failed: ${response.status}`);
+        const result = await response.json();
+
+        result.changes.forEach(change => {
+          if (change.deleted) localStorage.removeItem(change.key);
+          else localStorage.setItem(change.key, change.value);
+        });
+        localStorage.setItem(CURSOR_KEY, result.version);
+
+        // Only clear entries that have not been edited again mid-flight.
+        const stillDirty = readDirty().filter(key => {
+          const sent = pushed.find(change => change.key === key);
+          if (!sent) return true;
+          const current = localStorage.getItem(key);
+          return sent.deleted ? current !== null : current !== sent.value;
+        });
+        writeDirty(stillDirty);
+
+        if (result.changes.length) refreshFromStorage();
+        setSyncChip('synced', syncState.email ? syncState.email.split('@')[0] : 'Synced',
+          `Synced as ${syncState.email}. ${result.changes.length} change(s) pulled.`);
+      } catch (error) {
+        console.warn('sync', error);
+        setSyncChip('offline', 'Retrying', 'Saved on this device. Will retry shortly.');
+      } finally {
+        syncState.busy = false;
+      }
+    }
+
+    async function initSync() {
+      let me;
+      try {
+        const response = await fetch(`./api/me?ns=${SYNC_NS}`, { headers: { Accept: 'application/json' } });
+        if (response.status === 401) {
+          // A backend exists but will not vouch for us — Access is not configured yet,
+          // or the session expired. Worth distinguishing from "there is no backend".
+          setSyncChip('error', 'No account', 'The backend is reachable but rejected this session. Reload, or finish the Cloudflare Access setup.');
+          return;
+        }
+        if (!response.ok) throw new Error(String(response.status));
+        me = await response.json();
+      } catch {
+        // No backend here (the GitHub Pages copy) — stay a purely local app.
+        setSyncChip('local', 'Local', 'This copy stores everything on this device only.');
+        return;
+      }
+
+      syncState.enabled = true;
+      syncState.email = me.email;
+
+      const mapped = PROFILE_BY_EMAIL[me.email];
+      if (mapped && PROFILES.includes(mapped)) {
+        // Identity decides who you are; the toggle stops being a free choice.
+        setProfile(mapped);
+        document.querySelector('.profile-switch').dataset.locked = 'true';
+        document.querySelector('.profile-switch > span').textContent = 'Signed in';
+      }
+
+      setSyncChip('syncing', 'Syncing…');
+      runSync();
+
+      window.addEventListener('online', () => scheduleSync(200));
+      window.addEventListener('offline', () => setSyncChip('offline', 'Offline', 'Changes are saved here and will upload when you reconnect.'));
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleSync(200); });
+      setInterval(() => scheduleSync(0), 120000);
+    }
+
     migrateStorage();
     requestPersistence();
 
@@ -1491,6 +1694,8 @@
       renderHabits();
       renderLogbook();
     });
+
+    initSync();
   </script>
 </body>
 </html>

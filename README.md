@@ -16,9 +16,17 @@ Live app: <https://m-mohamed.github.io/jt-lupe-60-day-workout/>
 
 ## Where the data lives
 
-There is no backend. GitHub Pages serves static files only, and nothing is ever uploaded.
-Everything is written to `localStorage` on the device, under the origin
-`m-mohamed.github.io`, with keys prefixed `jt-lupe-`:
+The app is local-first in both places it runs. Every read and write hits
+`localStorage`, so it works with no network at all.
+
+- **On GitHub Pages** there is no backend. Data stays on that one device, and the
+  header chip reads *Local*.
+- **On the Cloudflare Worker** (see [cloud/README.md](cloud/README.md)) the same data
+  also round-trips to a per-person SQLite database, so it survives a lost phone and
+  follows you between devices. The chip shows who is signed in.
+
+The client detects which one it is by calling `./api/me` at startup; a 404 simply
+means local-only. Keys are prefixed `jt-lupe-`:
 
 | Key shape | Holds | History |
 | --- | --- | --- |
@@ -29,6 +37,10 @@ Everything is written to `localStorage` on the device, under the origin
 | `jt-lupe-{profile}-weight`, `-unit` | current bodyweight for the protein calculator | latest only |
 | `jt-lupe-profile`, `-active-day`, `-week`, `-theme` | UI preferences | latest only |
 | `jt-lupe-schema-version` | storage schema number, used to run migrations | — |
+| `jt-lupe-sync-cursor`, `-device`, `-dirty` | sync bookkeeping | — |
+
+The last two groups are device-local and never leave the phone: which day you are
+looking at and your theme belong to the device, not the account.
 
 Loads are keyed by *training week*, not by date, so re-entering week 3 / Tuesday
 overwrites that slot rather than appending. Habits and bodyweight are keyed by
@@ -39,12 +51,22 @@ only, and the Cache API cannot reach `localStorage`. Key-shape changes go throug
 versioned migration in `migrateStorage()`, which copies old keys forward before
 removing them.
 
-The data is still device-local, so it is lost if the browser's site data is cleared, if
+On the GitHub Pages copy the data is device-local, so it is lost if the browser's site data is cleared, if
 the browser evicts storage under pressure (iOS Safari does this for sites that have not
 been visited in about a week unless the app is added to the home screen), or if a
 private window is used. The app calls `navigator.storage.persist()` to opt out of
 routine eviction where the browser honours it. Use **Backup** before clearing browser
 data or changing devices, and **Export CSV** to pull the log into a spreadsheet.
+Signing in to the Worker copy removes most of this risk, because the device stops
+being the only copy.
+
+## Deployment
+
+- **GitHub Pages** publishes from the root of `main`; `.nojekyll` disables Jekyll.
+  This is the local-only copy.
+- **Cloudflare Worker** serves the same files plus the sync API. See
+  [cloud/README.md](cloud/README.md). `.assetsignore` keeps `cloud/` and the docs out
+  of the uploaded asset bundle.
 
 ## Development
 
@@ -54,8 +76,6 @@ Serve the repository over HTTP so the service worker can register:
 python3 -m http.server 8765 --bind 127.0.0.1
 ```
 
-Then open <http://127.0.0.1:8765>.
-
-## Deployment
-
-GitHub Pages publishes directly from the root of `main`. `.nojekyll` disables unnecessary Jekyll processing.
+Then open <http://127.0.0.1:8765>. That runs the local-only copy. To develop against
+the sync backend instead, use `wrangler dev` as described in
+[cloud/README.md](cloud/README.md).

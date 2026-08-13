@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jt-lupe-workout",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+
+  // The static app lives at the repository root so GitHub Pages keeps serving it
+  // as a local-only fallback. `.assetsignore` there keeps this folder out of the
+  // upload.
+  "assets": {
+    "directory": "../",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+
+  // One SQLite-backed Durable Object per person. `new_sqlite_classes` is what
+  // selects the SQLite storage backend rather than the older key/value one.
+  "durable_objects": {
+    "bindings": [{ "name": "USER_STORE", "class_name": "UserStore" }]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["UserStore"] }
+  ],
+
+  "observability": { "enabled": true },
+
+  "vars": {
+    // Filled in after Access is enabled — see cloud/README.md.
+    // ACCESS_TEAM_DOMAIN example: "mnfstlabs.cloudflareaccess.com"
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": ""
+  }
+}
