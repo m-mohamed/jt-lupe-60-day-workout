@@ -1,7 +1,7 @@
 {
-  "name": "JT + Lupe 60-Day Workout",
+  "name": "JT + Lupe Training Log",
   "short_name": "JT + Lupe",
-  "description": "A device-local workout, nutrition, and progression tracker for JT and Lupe.",
+  "description": "Private training, nutrition, and progression log for JT and Lupe.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

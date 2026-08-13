@@ -107,6 +107,7 @@
       white-space: nowrap;
     }
     .who { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+    .who[data-locked="true"] { cursor: default; }
     .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
     .sync-chip[data-state="synced"] { border-color: var(--accent); color: var(--accent-strong); }
     .sync-chip[data-state="synced"] .sync-dot { background: var(--accent); }
@@ -588,9 +589,25 @@
       return Number.isFinite(value) && value > 0 ? value : null;
     };
 
+    // Smallest sensible jump: 5 on the big loads, 2.5 on the light ones.
+    const suggestNext = load => {
+      const value = numericLoad(load);
+      return value ? String(+(value + (value >= 100 ? 5 : 2.5)).toFixed(1)) : 'the next notch up';
+    };
+
     function coachFor(dayIndex, exerciseIndex, prescription) {
       if (prescription.warmup) return { kind: 'hold', text: 'Warm-up. Stay light and easy — this is not a working set.' };
       if (prescription.timed) return { kind: 'hold', text: 'Timed effort. Progress by holding the time with a heavier load or better pace.' };
+
+      // Once this session is logged, the useful advice is about next time — not a
+      // stale "first time" prompt sitting above the numbers you just entered.
+      const doneLoad = localStorage.getItem(loadKey(state.week, dayIndex, exerciseIndex, state.profile));
+      const doneReps = Number(localStorage.getItem(repsKey(state.week, dayIndex, exerciseIndex, state.profile))) || null;
+      if (doneLoad && doneReps) {
+        return doneReps >= prescription.high
+          ? { kind: 'up', text: `Logged ${doneLoad} × ${doneReps} — that is the top of the range. Next session start at ${suggestNext(doneLoad)}.` }
+          : { kind: 'hold', text: `Logged ${doneLoad} × ${doneReps}. Next session: same weight, chase ${doneReps + 1}.` };
+      }
 
       const previous = lastPerformance(dayIndex, exerciseIndex, state.week);
       if (!previous) {
@@ -601,9 +618,7 @@
       }
       const hitTop = previous.reps !== null && previous.reps >= prescription.high;
       if (hitTop) {
-        const value = numericLoad(previous.load);
-        const suggestion = value ? `${+(value + (value >= 100 ? 5 : 2.5)).toFixed(1)}` : 'the next notch up';
-        return { kind: 'up', text: `You hit ${previous.reps} at ${previous.load} in week ${previous.week}. Go up to ${suggestion} and expect reps to drop back to ${prescription.low}.` };
+        return { kind: 'up', text: `You hit ${previous.reps} at ${previous.load} in week ${previous.week}. Go up to ${suggestNext(previous.load)} and expect reps to drop back to ${prescription.low}.` };
       }
       if (previous.reps !== null) {
         return { kind: 'hold', text: `Week ${previous.week}: ${previous.load} × ${previous.reps}. Stay at ${previous.load} and chase ${previous.reps + 1} reps.` };
@@ -741,10 +756,10 @@
       state.tab = name;
       document.querySelectorAll('.tab').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.tab === name)));
       ['train', 'fuel', 'progress'].forEach(id => { el(`panel-${id}`).hidden = id !== name; });
-      el('timerFab').hidden = name !== 'train';
+      paintTimerVisibility();
       if (name === 'fuel') renderFuel();
       if (name === 'progress') renderProgress();
-      window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+      window.scrollTo(0, 0);
     }
     document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => setTab(tab.dataset.tab)));
 
@@ -856,6 +871,11 @@
     el('nextDay').addEventListener('click', () => stepSession(1));
 
     /* ================= rest timer ================= */
+    // A running clock stays on screen wherever you are; a stopped one belongs to Train.
+    function paintTimerVisibility() {
+      el('timerFab').hidden = state.tab !== 'train' && !state.timerId;
+    }
+
     function paintTimer() {
       const minutes = Math.floor(state.timer / 60);
       const seconds = String(state.timer % 60).padStart(2, '0');
@@ -867,10 +887,12 @@
         state.timerId = null;
         el('timerToggle').textContent = 'Start';
         el('timerFab').dataset.running = 'false';
+        paintTimerVisibility();
         return;
       }
       el('timerToggle').textContent = 'Pause';
       el('timerFab').dataset.running = 'true';
+      paintTimerVisibility();
       state.timerId = setInterval(() => {
         state.timer = Math.max(0, state.timer - 1);
         paintTimer();
@@ -879,6 +901,7 @@
           state.timerId = null;
           el('timerToggle').textContent = 'Start';
           el('timerFab').dataset.running = 'false';
+          paintTimerVisibility();
           if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
         }
       }, 1000);
@@ -889,6 +912,7 @@
       state.timer = 90;
       el('timerToggle').textContent = 'Start';
       el('timerFab').dataset.running = 'false';
+      paintTimerVisibility();
       paintTimer();
     });
 
@@ -949,10 +973,11 @@
         : '<li><span class="muted">Nothing logged yet.</span></li>';
 
       document.querySelectorAll('[data-meal]').forEach(button => button.addEventListener('click', () => {
-        // Tombstone rather than a silent delete, so the removal syncs to other devices.
-        saveData(button.dataset.meal, '');
+        // Removed locally, then flagged dirty so the deletion propagates as a
+        // tombstone on the next sync rather than reappearing from another device.
         localStorage.removeItem(button.dataset.meal);
         markDirty(button.dataset.meal);
+        scheduleSync();
         renderFuel();
       }));
 
@@ -1040,12 +1065,18 @@
             const load = localStorage.getItem(loadKey(week, day, index, profile));
             if (!load) continue;
             const reps = localStorage.getItem(repsKey(week, day, index, profile)) || '';
-            if (!byExercise.has(name)) byExercise.set(name, { name, day: workout.day, entries: [] });
-            byExercise.get(name).entries.push({ week, load, reps });
+            if (!byExercise.has(name)) byExercise.set(name, { name, days: new Set(), entries: [] });
+            const row = byExercise.get(name);
+            row.days.add(workout.day);
+            row.entries.push({ week, dayIndex: day, load, reps });
           }
         });
       });
       return [...byExercise.values()].map(row => {
+        // Eight lifts appear on two different days. Entries are gathered day-major,
+        // so they must be put back in real order before "first" and "latest" mean
+        // anything.
+        row.entries.sort((a, b) => a.week - b.week || a.dayIndex - b.dayIndex);
         const first = row.entries[0];
         const latest = row.entries[row.entries.length - 1];
         const from = numericLoad(first.load);
@@ -1082,7 +1113,7 @@
         <div class="scroller"><table class="data">
           <thead><tr><th class="grow">Exercise</th><th>First → latest</th><th>Change</th></tr></thead>
           <tbody>${strength.map(row => `<tr>
-            <td class="grow">${esc(row.name)}<br><span class="muted" style="font-size:.78rem">${esc(row.day)} · ${row.sessions} session${row.sessions === 1 ? '' : 's'}</span></td>
+            <td class="grow">${esc(row.name)}<br><span class="muted" style="font-size:.78rem">${esc([...row.days].join(' + '))} · ${row.sessions} session${row.sessions === 1 ? '' : 's'}</span></td>
             <td>${esc(row.first.load)}${row.first.reps ? `×${esc(row.first.reps)}` : ''} <span class="muted">→</span> ${esc(row.latest.load)}${row.latest.reps ? `×${esc(row.latest.reps)}` : ''}</td>
             <td class="${row.delta > 0 ? 'up' : 'flat'}">${row.delta === null ? '—' : row.delta > 0 ? `+${row.delta}` : row.delta}</td>
           </tr>`).join('')}</tbody>
@@ -1135,10 +1166,11 @@
         }));
         readWeightHistory(profile).forEach(row =>
           lines.push(['bodyweight', profile, row.date, '', '', row.unit, row.value, ''].map(csvCell).join(',')));
+        const mealPattern = new RegExp(`^jt-lupe-meal-${profile}-(\\d{4}-\\d{2}-\\d{2})-`);
         const seen = new Set();
         for (let index = 0; index < localStorage.length; index += 1) {
           const key = localStorage.key(index);
-          const match = key && key.match(new RegExp(`^jt-lupe-meal-${profile}-(\\d{4}-\\d{2}-\\d{2})-`));
+          const match = key && key.match(mealPattern);
           if (!match || seen.has(key)) continue;
           seen.add(key);
           try {
@@ -1401,6 +1433,7 @@
         // Identity decides who you are; the chip stops being a toggle.
         setProfile(mapped, { rerender: false });
         el('whoChip').dataset.locked = 'true';
+        el('whoChip').setAttribute('aria-disabled', 'true');
         el('whoChip').title = `Signed in as ${me.email}`;
       }
 
