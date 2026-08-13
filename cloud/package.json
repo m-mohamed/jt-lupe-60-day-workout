@@ -7,6 +7,7 @@
     "dev": "wrangler dev --persist-to ../../.wrangler-state",
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
+    "test": "node access.test.mjs",
     "stats": "wrangler d1 --help"
   },
   "//": [
