@@ -6,13 +6,19 @@ Live app: <https://m-mohamed.github.io/jt-lupe-60-day-workout/>
 
 ## What it does
 
-- Provides the Monday-Friday workout plan and automatic weekday selection.
-- Tracks separate JT and Lupe loads, exercise completion, protein targets, and daily habits.
-- Shows a live 60-day challenge counter and a 90-second rest timer.
-- Each person logs only their own numbers. Switch profile from the top bar; there is no login.
-- Keeps a browsable log book of every load, daily-stack check-in, and bodyweight entry.
-- Supports JSON backup/restore and CSV export.
-- Installs as a progressive web app and caches the core application for offline use.
+Three tabs, one job each — see [design.md](design.md) for the standard it is built to.
+
+- **Train** — tonight's session, with a per-exercise coach line that reads your last
+  performance and tells you to add weight, hold, or how to start. Double progression:
+  own the top of the rep range, then add the smallest jump. Working sets at 1–3 RIR.
+  Warm-ups and timed efforts are never told to add weight.
+- **Fuel** — protein target derived from bodyweight, a running total, a meal log, and
+  the daily stack (protein, creatine, pre-workout, sleep).
+- **Progress** — strength per exercise (first → latest), bodyweight trend, stack
+  consistency, and CSV / JSON export.
+
+Each person only ever sees their own numbers. Any past day can be backfilled without
+pretending it happened today. Installs as a PWA and works fully offline.
 
 ## Where the data lives
 
@@ -30,8 +36,10 @@ means local-only. Keys are prefixed `jt-lupe-`:
 
 | Key shape | Holds | History |
 | --- | --- | --- |
-| `jt-lupe-load-w{week}-d{day}-e{index}-{profile}` | one working load | one slot per week + weekday + exercise |
+| `jt-lupe-load-w{week}-d{day}-e{index}-{profile}` | working load | one slot per week + weekday + exercise |
+| `jt-lupe-reps-w{week}-d{day}-e{index}-{profile}` | reps on the last set — what the coach reads | one slot per week + weekday + exercise |
 | `jt-lupe-done-w{week}-d{day}-e{index}-{profile}` | exercise ticked off | one slot per week + weekday + exercise |
+| `jt-lupe-meal-{profile}-{YYYY-MM-DD}-{id}` | `{"name","protein"}` for one meal | every meal kept |
 | `jt-lupe-habit-{profile}-{YYYY-MM-DD}-{habit}` | daily-stack check-in | every calendar day kept |
 | `jt-lupe-weightlog-{profile}-{YYYY-MM-DD}` | bodyweight as `value\|unit` | every calendar day kept |
 | `jt-lupe-{profile}-weight`, `-unit` | current bodyweight for the protein calculator | latest only |
