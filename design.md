@@ -52,18 +52,35 @@ segmented control at ≥721px. One markup, two placements.
 
 ### Palette
 
-Inherited and unchanged — it already works and is not the problem. Sage green
-accent on warm neutral, full light/dark parity via `data-theme`. Every colour is a
-token on `:root`; dark redefines only the tokens.
+Rebuilt 2026-08-18. The previous sage-on-warm-cream read as wellness-spa, and the
+warm off-whites gave the whole thing a dingy cast - the specific complaint was that it
+looked sloppy. The replacement follows what the athletic apps that do this well have in
+common: a near-black base rather than pure black or a warm tint, genuinely neutral
+greys, and **one** high-energy accent held back for meaning.
 
-Semantic use is fixed:
+- Base is near-black `#0B0C0F`, not `#000`. Pure black flattens depth; a warm off-white
+  is what made the old palette look yellowed.
+- Greys are neutral. All the colour in the interface comes from the accent, so nothing
+  competes with it.
+- The accent is a volt lime - `#A8E04A` on dark, deepened to `#6B9A1C` on light so it
+  still passes as a border on white. It is slightly off full saturation; neon reads cheap.
 
-- `--accent` — done, on track, "go up in weight"
-- `--warm` — backfilling a past day, offline, destructive
-- `--focus` — first attempt at an exercise, keyboard focus
-- `--muted` — hold steady, secondary text
+Three colours carry all meaning, and the vocabulary never varies:
 
-Colour never carries meaning alone: every state also has a word.
+| Token | Means | Never used for |
+| --- | --- | --- |
+| `--accent` | done, on track, go up in weight | decoration |
+| `--warm` | backfilling a past day, offline, destructive | anything positive |
+| `--focus` | first attempt at a lift, keyboard focus | emphasis |
+
+Every foreground/background pair is checked against WCAG AA - 4.5:1 for text, 3:1 for
+borders and UI - in both themes. The light accent is `#6B9A1C` specifically because the
+brighter lime measured 2.46:1 as a border on white and failed. Re-run the audit after
+any palette change; do not eyeball it.
+
+A finished exercise is marked by its border plus a 7% tint, while the coach line keeps
+the solid `--accent-soft` band. Tinting both the same made the card one green block and
+buried the one sentence that matters.
 
 ### Typography
 
@@ -92,8 +109,9 @@ The load-bearing component. Top to bottom, always in this order:
    first attempt (focus). Never more than one sentence.
 3. Weight, reps, done — in that order, left to right, thumb-sized.
 
-A completed card tints its whole surface. Progress must be visible while scrolling
-past at arm's length.
+A completed card is marked by its accent border and a 7% tint - enough to read while
+scrolling past at arm's length, light enough that the coach line stays the loudest
+thing on the card.
 
 ### Coach line
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="A private training, nutrition, and progression log for JT and Lupe.">
-  <meta name="theme-color" content="#111412">
+  <meta name="theme-color" content="#0B0C0F">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -20,38 +20,42 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f1f0eb;
-      --surface: #fbfaf6;
-      --surface-2: #e8e7e0;
-      --ink: #1c201b;
-      --muted: #656b63;
-      --line: #cdd0c7;
-      --accent: #236442;
-      --accent-strong: #17472e;
-      --accent-soft: #dce9df;
-      --warm: #9d4d29;
-      --warm-soft: #f6e3d8;
-      --focus: #1675d1;
-      --shadow: 0 10px 34px rgba(35, 43, 36, .09);
+      /* One disciplined accent, neutral greys, near-black rather than warm off-white.
+         Every pair below is checked against WCAG AA; see design.md. */
+      --bg: #F5F6F8;
+      --surface: #FFFFFF;
+      --surface-2: #EBEDF1;
+      --ink: #0F1115;
+      --muted: #58606C;
+      --line: #DCE0E6;
+      --accent: #6B9A1C;
+      --accent-strong: #4C6B08;
+      --accent-soft: #EDF6D5;
+      --on-accent: #0F1115;
+      --warm: #A8480F;
+      --warm-soft: #FBEADE;
+      --focus: #1F5FD0;
+      --shadow: 0 10px 30px rgba(15, 17, 21, .08);
       --radius: 12px;
       --tabbar: 62px;
     }
 
     html[data-theme="dark"] {
       color-scheme: dark;
-      --bg: #111412;
-      --surface: #191d1a;
-      --surface-2: #222823;
-      --ink: #f1f3ed;
-      --muted: #a6ada5;
-      --line: #343c35;
-      --accent: #7fd39e;
-      --accent-strong: #9ce6b5;
-      --accent-soft: #1d3828;
-      --warm: #f09a6d;
-      --warm-soft: #3a2418;
-      --focus: #77b7ff;
-      --shadow: 0 12px 40px rgba(0, 0, 0, .34);
+      --bg: #0B0C0F;
+      --surface: #14161A;
+      --surface-2: #1C1F25;
+      --ink: #ECEFF3;
+      --muted: #98A1AE;
+      --line: #2A2E36;
+      --accent: #A8E04A;
+      --accent-strong: #C4EE80;
+      --accent-soft: #1E2A12;
+      --on-accent: #0B0C0F;
+      --warm: #F0A45C;
+      --warm-soft: #2A1D10;
+      --focus: #74A9FF;
+      --shadow: 0 14px 40px rgba(0, 0, 0, .5);
     }
 
     * { box-sizing: border-box; }
@@ -168,8 +172,7 @@
       transition: border-color .12s ease, background .12s ease;
     }
     .btn:hover { border-color: var(--accent); }
-    .btn.primary { border-color: var(--accent); background: var(--accent); color: #08150e; font-weight: 750; }
-    html[data-theme="light"] .btn.primary { color: #fff; }
+    .btn.primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 750; }
     .btn.small { min-height: 34px; padding: 5px 10px; font-size: .84rem; }
     .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
     input[type="text"], input[type="number"], input[type="date"], select {
@@ -213,6 +216,8 @@
       border-radius: var(--radius);
       background: var(--surface);
     }
+    /* A finished card is marked by its border and a whisper of tint - the coach line
+       keeps the solid accent-soft band so it still reads as the loudest thing. */
     .exercise[data-done="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
     .exercise-top { display: flex; align-items: flex-start; gap: 10px; }
     .exercise-name { flex: 1; font-weight: 700; font-size: 1.02rem; }
@@ -228,7 +233,7 @@
       font-weight: 600;
     }
     .coach[data-kind="hold"] { border-left-color: var(--muted); background: var(--surface-2); color: var(--muted); }
-    .coach[data-kind="first"] { border-left-color: var(--focus); background: color-mix(in srgb, var(--focus) 11%, var(--surface)); color: var(--ink); }
+    .coach[data-kind="first"] { border-left-color: var(--focus); background: var(--surface-2); color: var(--ink); }
     .entry { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; margin-top: 10px; }
     .entry label { display: grid; gap: 4px; color: var(--muted); font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
     .tick {
