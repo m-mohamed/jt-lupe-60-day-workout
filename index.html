@@ -556,22 +556,8 @@
     ];
     const CHALLENGE_START = new Date(2026, 7, 17);
     const CHALLENGE_LENGTH = 60;
-    const WEEK_COUNT = 9;
 
     /* ================= small helpers ================= */
-    const normalizedToday = () => {
-      const now = new Date();
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    };
-    const challengeDelta = () => Math.floor((normalizedToday() - CHALLENGE_START) / 86400000);
-    function defaultWorkoutDay() {
-      const weekday = normalizedToday().getDay();
-      return weekday >= 1 && weekday <= 5 ? weekday - 1 : 0;
-    }
-    function defaultWeek() {
-      const delta = challengeDelta();
-      return delta < 0 ? 1 : Math.min(WEEK_COUNT, Math.floor(delta / 7) + 1);
-    }
     const readNumber = (key, fallback) => {
       const raw = localStorage.getItem(key);
       const value = Number(raw);
@@ -580,13 +566,14 @@
     const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
     const el = id => document.getElementById(id);
 
-    function dayLabelFor(dateKey) {
+    // The parameter is `key`, not `dateKey`: naming it after the helper it calls
+    // shadowed that helper with a string and threw on the first line, so every
+    // backfilled Fuel day rendered the previous day's meals.
+    function dayLabelFor(key) {
       const today = dateKey();
-      if (dateKey === today) return 'today';
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      if (dateKey === dateKey(yesterday)) return 'yesterday';
-      const [y, m, d] = dateKey.split('-').map(Number);
+      if (key === today) return 'today';
+      if (key === shiftDate(today, -1)) return 'yesterday';
+      const [y, m, d] = key.split('-').map(Number);
       return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     }
 
@@ -1219,9 +1206,6 @@
     };
 
     const DAYS = PROGRAMME.days;
-    const EXERCISE_LABEL = Object.fromEntries(
-      DAYS.flatMap(day => day.exercises.map(ex => [ex.id, ex.label])));
-
 
     /* ================= tabs ================= */
     function setTab(name) {
@@ -1270,9 +1254,9 @@
       el('sessionTitle').textContent = `${day.label} · ${day.focus}`;
       el('sessionSub').textContent = day.note;
 
-      const n = challengeDay(state.date);
-      el('challengeLine').textContent = n < 1 ? `Starts in ${1 - n} day${1 - n === 1 ? '' : 's'}`
-        : n > CHALLENGE_LENGTH ? 'Challenge complete' : `Day ${n} of ${CHALLENGE_LENGTH}`;
+      const dayNumber = challengeDay(state.date);
+      el('challengeLine').textContent = dayNumber < 1 ? `Starts in ${1 - dayNumber} day${1 - dayNumber === 1 ? '' : 's'}`
+        : dayNumber > CHALLENGE_LENGTH ? 'Challenge complete' : `Day ${dayNumber} of ${CHALLENGE_LENGTH}`;
 
       const isToday = state.date === dateKey();
       const flag = el('backfillFlag');
@@ -1596,8 +1580,11 @@
       });
 
       el('bwWho').textContent = PROFILE_LABEL[state.profile];
-      el('bwValue').value = localStorage.getItem(`jt-lupe-${state.profile}-weight`) || '';
-      el('bwUnit').value = localStorage.getItem(`jt-lupe-${state.profile}-unit`) || 'lb';
+      // Show the weigh-in for the day on screen. Falling back to the current weight
+      // on a past day made it look like that day had already been recorded.
+      const logged = readJSON(K.bodyweight(state.profile, date));
+      el('bwValue').value = logged ? logged.value : (date === today ? localStorage.getItem(`jt-lupe-${state.profile}-weight`) || '' : '');
+      el('bwUnit').value = (logged && logged.unit) || localStorage.getItem(`jt-lupe-${state.profile}-unit`) || 'lb';
     }
 
     /* ---------- food lookup (USDA FoodData Central, via the Worker) ----------
@@ -1658,7 +1645,9 @@
       const name = el('mealName').value.trim();
       if (!name) { el('mealName').focus(); return; }
       const protein = Math.max(0, Number(el('mealProtein').value) || 0);
-      const id = `${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
+      // Sortable prefix so meals stay in the order they were added, with a unique
+      // suffix rather than three random digits that can collide inside one millisecond.
+      const id = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
       writeJSON(K.meal(state.profile, state.fuelDate, id), { name, protein });
       el('mealName').value = '';
       el('mealProtein').value = '';
@@ -1681,9 +1670,17 @@
       const value = Number(el('bwValue').value);
       if (!value || value <= 0) return;
       const unit = el('bwUnit').value;
-      saveData(`jt-lupe-${state.profile}-weight`, value);
-      saveData(`jt-lupe-${state.profile}-unit`, unit);
-      writeJSON(K.bodyweight(state.profile, dateKey()), { value, unit });
+      // The dated record belongs to the day on screen. Stamping it with today
+      // instead put every backfilled weigh-in on the wrong day of the trend.
+      writeJSON(K.bodyweight(state.profile, state.fuelDate), { value, unit });
+      // The protein calculator reads one "current" weight. A backfilled day must
+      // not overwrite it with an older number - only today's entry, or the first
+      // entry ever, may move it.
+      const isCurrent = state.fuelDate === dateKey() || !localStorage.getItem(`jt-lupe-${state.profile}-weight`);
+      if (isCurrent) {
+        saveData(`jt-lupe-${state.profile}-weight`, value);
+        saveData(`jt-lupe-${state.profile}-unit`, unit);
+      }
       renderFuel();
     }
     el('bwValue').addEventListener('change', commitBodyweight);

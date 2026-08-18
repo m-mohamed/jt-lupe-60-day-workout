@@ -118,3 +118,16 @@ python3 -m http.server 8765 --bind 127.0.0.1
 Then open <http://127.0.0.1:8765>. That runs the local-only copy. To develop against
 the sync backend instead, use `wrangler dev` as described in
 [cloud/README.md](cloud/README.md).
+
+## Checks
+
+```sh
+cd tools && npm install && npm run lint
+```
+
+oxlint over the Worker, the tests and the inline script in `index.html`, with
+[anti-slop](https://github.com/dmmulroy/anti-slop) registered — see
+[tools/README.md](tools/README.md) for what it is and what it caught. Must exit 0.
+
+The browser suites live in [test/](test/README.md); that file also carries the two
+rules they exist to enforce, both of them written after a bug shipped past a green run.

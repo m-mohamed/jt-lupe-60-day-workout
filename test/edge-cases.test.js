@@ -8,6 +8,17 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   const errors=[]; p.on('pageerror', e=>errors.push(String(e)));
   await p.goto('http://127.0.0.1:8777/'); await settle(p);
 
+  // Fail loudly rather than silently testing the local-only path. `wrangler dev`
+  // picks up the production Access vars from wrangler.jsonc, which makes every
+  // request 401 and quietly drops this suite into offline mode - where two thirds
+  // of what it checks does not exist. See README.md for the flags that turn it off.
+  const me = await p.evaluate(() => fetch('./api/me?ns=gym').then(r => r.json()).catch(() => null));
+  if (!me || !me.email) {
+    console.error('Not signed in to the dev worker - this suite would test nothing. Got:', JSON.stringify(me));
+    console.error('Start it with: npx wrangler@4 dev --port 8777 --var ACCESS_TEAM_DOMAIN: --var ACCESS_AUD: --var DEV_EMAIL:dev@local');
+    await b.close(); process.exit(2);
+  }
+
   // XSS via meal name
   let r = await p.evaluate(async () => {
     setTab('fuel'); state.fuelDate = dateKey(); renderFuel();

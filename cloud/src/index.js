@@ -30,17 +30,29 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
  */
 const storeFor = (env, email) => env.USER_STORE.getByName(`user:${email}`);
 
-function validateChanges(changes) {
-  if (!Array.isArray(changes)) return 'changes must be an array';
-  if (changes.length > MAX_CHANGES) return `too many changes (max ${MAX_CHANGES})`;
-  for (const change of changes) {
-    if (!change || typeof change.key !== 'string' || !change.key) return 'each change needs a key';
-    if (change.key.length > MAX_KEY) return `key too long (max ${MAX_KEY})`;
-    if (!change.deleted && String(change.value ?? '').length > MAX_VALUE) {
-      return `value too large for "${change.key}" (max ${MAX_VALUE} bytes)`;
+/**
+ * Parse an untrusted sync batch into records the store can hold, or say why it
+ * cannot. Everything past this point works on the parsed shape - the raw body is
+ * never read again - so there is one place to look for what the API accepts.
+ */
+function parseChanges(raw) {
+  if (!Array.isArray(raw)) return { error: 'changes must be an array' };
+  if (raw.length > MAX_CHANGES) return { error: `too many changes (max ${MAX_CHANGES})` };
+
+  const changes = [];
+  for (const entry of raw) {
+    const key = entry && entry.key ? String(entry.key) : '';
+    if (!key) return { error: 'each change needs a key' };
+    if (key.length > MAX_KEY) return { error: `key too long (max ${MAX_KEY})` };
+
+    const deleted = Boolean(entry.deleted);
+    const value = deleted ? null : String(entry.value ?? '');
+    if (value !== null && value.length > MAX_VALUE) {
+      return { error: `value too large for "${key}" (max ${MAX_VALUE} bytes)` };
     }
+    changes.push({ key, value, deleted });
   }
-  return null;
+  return { changes };
 }
 
 export default {
@@ -69,14 +81,14 @@ export default {
         const body = await request.json().catch(() => null);
         if (!body) return json({ error: 'bad_json' }, 400);
 
-        const problem = validateChanges(body.changes || []);
-        if (problem) return json({ error: 'bad_changes', detail: problem }, 400);
+        const parsed = parseChanges(body.changes || []);
+        if (parsed.error) return json({ error: 'bad_changes', detail: parsed.error }, 400);
 
         const result = await store.sync({
           ns,
           since: Number(body.since) || 0,
           device: String(body.device || '').slice(0, 64),
-          changes: body.changes || []
+          changes: parsed.changes
         });
         return json(result);
       }
@@ -122,9 +134,12 @@ export default {
               : 'Hourly lookup limit reached. It resets within the hour.' }, 200);
         }
         if (!response.ok || !payload) return json({ foods: [], error: `usda_${response.status}` }, 200);
+        // FDC has shipped nutrient amounts as both numbers and numeric strings.
+        // Coerce once here and hand the rest of the function a number or nothing.
         const nutrient = (food, name) => {
           const found = (food.foodNutrients || []).find(n => n.nutrientName === name && n.unitName !== 'kJ');
-          return found && typeof found.value === 'number' ? found.value : null;
+          const amount = Number(found?.value);
+          return Number.isFinite(amount) ? amount : null;
         };
         const foods = (payload.foods || []).map(food => ({
           id: food.fdcId,

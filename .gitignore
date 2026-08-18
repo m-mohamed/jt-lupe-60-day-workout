@@ -2,3 +2,4 @@ node_modules/
 .wrangler/
 .wrangler-state/
 .dev.vars
+tools/node_modules/

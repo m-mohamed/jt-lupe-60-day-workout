@@ -8,3 +8,4 @@ node_modules
 .wrangler-state
 README.md
 design.md
+tools

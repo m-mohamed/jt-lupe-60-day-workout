@@ -73,25 +73,41 @@ export async function identify(request, env) {
     );
     if (!verified) return null;
 
+    // Parse the claims into domain values once, here at the boundary, rather than
+    // re-inspecting the raw payload at each check. The old form read
+    // `typeof payload.exp === 'number' && payload.exp < now`, which silently skipped
+    // the expiry check whenever `exp` was not a number - a token carrying a string
+    // expiry would have been accepted forever. An expiry is now required.
     const payload = decodeJson(payloadSegment);
     const now = Math.floor(Date.now() / 1000);
-    const audience = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+    const seconds = value => (Number.isFinite(value) ? value : null);
+    const claims = {
+      audience: Array.isArray(payload.aud) ? payload.aud : [payload.aud],
+      issuer: payload.iss,
+      expiresAt: seconds(payload.exp),
+      // undefined means absent, which is allowed; null means present but not a
+      // number, which is rejected rather than quietly skipped.
+      notBefore: payload.nbf === undefined ? undefined : seconds(payload.nbf),
+      email: payload.email ? String(payload.email).toLowerCase() : null
+    };
 
     // Log which check failed. Access already gates this origin, so anything that
     // reaches the Worker has authenticated once — the value here is turning a silent
     // "No account" into something diagnosable from `wrangler tail`.
     const reject = reason => {
-      console.warn('access rejected:', reason, '| iss:', payload.iss, '| aud count:', audience.length);
+      console.warn('access rejected:', reason, '| iss:', claims.issuer, '| aud count:', claims.audience.length);
       return null;
     };
 
-    if (!audience.includes(env.ACCESS_AUD)) return reject('aud mismatch');
-    if (payload.iss !== `https://${env.ACCESS_TEAM_DOMAIN}`) return reject('iss mismatch');
-    if (typeof payload.exp === 'number' && payload.exp < now) return reject('expired');
-    if (typeof payload.nbf === 'number' && payload.nbf > now + 60) return reject('not yet valid');
-    if (!payload.email) return reject('no email claim');
+    if (!claims.audience.includes(env.ACCESS_AUD)) return reject('aud mismatch');
+    if (claims.issuer !== `https://${env.ACCESS_TEAM_DOMAIN}`) return reject('iss mismatch');
+    if (claims.expiresAt === null) return reject('no usable expiry');
+    if (claims.expiresAt < now) return reject('expired');
+    if (claims.notBefore === null) return reject('unusable not-before');
+    if (claims.notBefore !== undefined && claims.notBefore > now + 60) return reject('not yet valid');
+    if (!claims.email) return reject('no email claim');
 
-    return { email: String(payload.email).toLowerCase() };
+    return { email: claims.email };
   } catch (error) {
     console.warn('access verification threw:', String(error));
     return null;

@@ -1,0 +1,18 @@
+{
+  "name": "jt-lupe-workout-tools",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "lint": "node lint.mjs"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "1.78.0",
+    "oxlint": "1.78.0"
+  },
+  "//": [
+    "Lives in its own folder so its node_modules never lands in the static-asset",
+    "directory, the same reason cloud/ has its own manifest. `tools` is listed in",
+    "../.assetsignore."
+  ]
+}

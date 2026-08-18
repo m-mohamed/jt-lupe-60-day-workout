@@ -46,6 +46,12 @@ const cases = [
   ['wrong audience → rejected',          await makeToken({ ...base, aud: ['someone-elses-app'] }),       r => r === null],
   ['wrong issuer → rejected',            await makeToken({ ...base, iss: 'https://evil.cloudflareaccess.com' }), r => r === null],
   ['expired → rejected',                 await makeToken({ ...base, exp: now - 60 }),                    r => r === null],
+  // An expiry that is not a number used to skip the expiry check entirely, so a
+  // long-dead token with a string `exp` would have been honoured indefinitely.
+  ['expired with a string exp → rejected', await makeToken({ ...base, exp: String(now - 60) }),        r => r === null],
+  ['no exp claim → rejected',            await makeToken({ ...base, exp: undefined }),                 r => r === null],
+  ['nbf present but not a number → rejected', await makeToken({ ...base, nbf: String(now + 600) }), r => r === null],
+  ['nbf absent → still valid',           await makeToken({ ...base, nbf: undefined }),                 r => r && r.email === 'mohamed@mnfstlabs.com'],
   ['not-yet-valid → rejected',           await makeToken({ ...base, nbf: now + 600 }),                   r => r === null],
   ['no email claim → rejected',          await makeToken({ ...base, email: undefined }),                 r => r === null],
   ['tampered signature → rejected',      await makeToken(base, { tamper: true }),                        r => r === null],
