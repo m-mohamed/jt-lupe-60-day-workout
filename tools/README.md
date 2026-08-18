@@ -38,3 +38,15 @@ rebuild and a variable shadowing that hid a live crash.
 The severity of a finding is a starting point, not a verdict. Rules are not weakened
 to make the run green, and findings are not suppressed — they are fixed or the
 reasoning for keeping the code is written down.
+
+## The one suppression
+
+`no-await-in-loop` on the sync push loop in `index.html`. The batches are sequential
+on purpose: each request carries the cursor returned by the previous one, and the
+store hands out versions in arrival order, so running them together would push stale
+cursors and lose the changes in between. The reason is in a comment above the line.
+
+Everything else the linter raised was changed rather than silenced. The array warnings
+were all freshly built local arrays, where mutating was harmless — but `toSorted` and
+`toReversed` say "this returns a new array" at the call site, so they went in. That
+puts an ES2023 floor on the app; see [design.md](../design.md).

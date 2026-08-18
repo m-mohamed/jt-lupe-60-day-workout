@@ -22,19 +22,19 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   // XSS via meal name
   let r = await p.evaluate(async () => {
     setTab('fuel'); state.fuelDate = dateKey(); renderFuel();
-    document.getElementById('mealName').value = '<img src=x onerror="window.__p=1">';
+    document.getElementById('mealName').value = '<img src=x onerror="window.pwnedByMealName=1">';
     document.getElementById('mealProtein').value = '10';
     document.getElementById('addMeal').click();
     await new Promise(s=>setTimeout(s,400));
-    return { pwned: !!window.__p, imgs: document.querySelectorAll('#mealList img').length };
+    return { pwned: !!window.pwnedByMealName, imgs: document.querySelectorAll('#mealList img').length };
   });
   t('XSS in meal name escaped', !r.pwned && r.imgs===0, JSON.stringify(r));
 
   // XSS via load value rendered into an input
   r = await p.evaluate(() => {
-    writeSet(state.profile, state.date, dayForDate(state.date).exercises[1].id, 1, { load:'" onfocus="window.__p2=1', unit:'lb', reps:5, seconds:null, rir:null });
+    writeSet(state.profile, state.date, dayForDate(state.date).exercises[1].id, 1, { load:'" onfocus="window.pwnedByLoad=1', unit:'lb', reps:5, seconds:null, rir:null });
     setTab('train'); renderSession();
-    return { pwned: !!window.__p2, v: document.querySelectorAll('.in-load')[1].value };
+    return { pwned: !!window.pwnedByLoad, v: document.querySelectorAll('.in-load')[1].value };
   });
   t('quote injection in load escaped', !r.pwned, JSON.stringify(r));
 

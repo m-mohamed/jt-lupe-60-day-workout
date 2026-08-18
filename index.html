@@ -613,7 +613,7 @@
         const value = readJSON(key);
         if (Number.isInteger(n) && value) out.push({ n, ...value });
       }
-      return out.sort((a, b) => a.n - b.n);
+      return out.toSorted((a, b) => a.n - b.n);
     }
 
     /** Dates on which anything was logged for an exercise, newest first. */
@@ -626,7 +626,7 @@
         const rest = key.slice(head.length).split(':');
         if (rest.length === 3 && (!exerciseId || rest[1] === exerciseId)) dates.add(rest[0]);
       }
-      return [...dates].sort().reverse();
+      return [...dates].toSorted((a, b) => b.localeCompare(a));
     }
 
     function writeSet(profile, date, exerciseId, n, entry) {
@@ -1529,7 +1529,7 @@
           if (meal && meal.name) meals.push({ id: key.slice(prefix.length), key, name: meal.name, protein: Number(meal.protein) || 0 });
         } catch { /* ignore a corrupt row rather than lose the rest */ }
       }
-      return meals.sort((a, b) => a.id.localeCompare(b.id));
+      return meals.toSorted((a, b) => a.id.localeCompare(b.id));
     }
 
     function renderFuel() {
@@ -1698,7 +1698,7 @@
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !rec || !Number(rec.value)) continue;
         rows.push({ date, value: Number(rec.value), unit: rec.unit || 'lb' });
       }
-      return rows.sort((a, b) => b.date.localeCompare(a.date));
+      return rows.toSorted((a, b) => b.date.localeCompare(a.date));
     }
 
     function readHabitHistory(profile) {
@@ -1712,12 +1712,12 @@
         if (!byDate.has(date)) byDate.set(date, {});
         byDate.get(date)[habit] = (readJSON(key) || {}).done === true;
       }
-      return [...byDate.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([date, marks]) => ({ date, marks }));
+      return [...byDate.entries()].toSorted((a, b) => b[0].localeCompare(a[0])).map(([date, marks]) => ({ date, marks }));
     }
 
     function readStrength(profile) {
       const byExercise = new Map();
-      datesLogged(profile, null).slice().reverse().forEach(date => {
+      datesLogged(profile, null).toReversed().forEach(date => {
         DAYS.forEach(day => day.exercises.forEach(ex => {
           if (ex.kind === 'warmup') return;
           const sets = setsFor(profile, date, ex.id).filter(x => x.load != null);
@@ -1730,11 +1730,16 @@
         }));
       });
       return [...byExercise.values()].map(row => {
-        row.entries.sort((a, b) => a.date.localeCompare(b.date));
-        const first = row.entries[0], latest = row.entries[row.entries.length - 1];
+        const entries = row.entries.toSorted((a, b) => a.date.localeCompare(b.date));
+        const first = entries[0], latest = entries[entries.length - 1];
         const from = numericLoad(first.load), to = numericLoad(latest.load);
-        return { ...row, first, latest, delta: from && to ? +(to - from).toFixed(1) : null, sessions: row.entries.length };
-      }).sort((a, b) => a.name.localeCompare(b.name));
+        return {
+          name: row.name, days: row.days, entries,
+          first, latest,
+          delta: from && to ? +(to - from).toFixed(1) : null,
+          sessions: entries.length
+        };
+      }).toSorted((a, b) => a.name.localeCompare(b.name));
     }
 
     function renderProgress() {
@@ -2047,6 +2052,10 @@
         for (let index = 0; index < batches; index += 1) {
           const batch = pushed.slice(index * SYNC_BATCH, (index + 1) * SYNC_BATCH);
           if (batches > 1) setSyncChip('syncing', `Syncing ${index + 1}/${batches}…`);
+          // Sequential on purpose: each request carries the cursor returned by the
+          // previous one, and the store hands out versions in arrival order. Running
+          // these together would push stale cursors and lose the changes in between.
+          // eslint-disable-next-line no-await-in-loop
           const { signedOut, result } = await pushBatch(batch, cursor);
           if (signedOut) {
             syncState.enabled = false;

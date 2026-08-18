@@ -158,6 +158,8 @@ Shows time, one toggle, one reset. It is the only floating element in the app.
 - Checkboxes are wrapped in labels so the whole row is tappable.
 - `prefers-reduced-motion` disables all transition and animation.
 - No framework, no fonts, no external requests. One HTML file, inline CSS and JS.
+- Baseline is ES2023 (`toSorted`, `toReversed`) and `crypto.randomUUID`: Safari 16.4
+  and Chrome 110, both from early 2023. Anything older does not run this app.
 - The app must render and be fully usable with the network off.
 
 ## 8. Definition of polished

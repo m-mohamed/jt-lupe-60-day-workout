@@ -16,6 +16,14 @@ const MAX_KEY = 256;
 const MAX_VALUE = 64 * 1024;
 const NS_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 
+// FDC has shipped nutrient amounts as both numbers and numeric strings. Coerce once
+// here so everything downstream gets a number or nothing.
+const nutrient = (food, name) => {
+  const found = (food.foodNutrients || []).find(n => n.nutrientName === name && n.unitName !== 'kJ');
+  const amount = Number(found?.value);
+  return Number.isFinite(amount) ? amount : null;
+};
+
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: {
@@ -134,13 +142,6 @@ export default {
               : 'Hourly lookup limit reached. It resets within the hour.' }, 200);
         }
         if (!response.ok || !payload) return json({ foods: [], error: `usda_${response.status}` }, 200);
-        // FDC has shipped nutrient amounts as both numbers and numeric strings.
-        // Coerce once here and hand the rest of the function a number or nothing.
-        const nutrient = (food, name) => {
-          const found = (food.foodNutrients || []).find(n => n.nutrientName === name && n.unitName !== 'kJ');
-          const amount = Number(found?.value);
-          return Number.isFinite(amount) ? amount : null;
-        };
         const foods = (payload.foods || []).map(food => ({
           id: food.fdcId,
           name: String(food.description || '').replace(/\s+/g, ' ').trim(),
@@ -156,7 +157,8 @@ export default {
               .filter(m => m.gramWeight > 0 && m.disseminationText)
               .map(m => ({ label: String(m.disseminationText).slice(0, 40), grams: Math.round(m.gramWeight) }));
             const named = all.filter(m => !/^quantity not specified$/i.test(m.label));
-            return (named.length ? named : all.map(m => ({ ...m, label: `${m.grams} g` }))).slice(0, 6);
+            const unnamed = all.map(m => ({ grams: m.grams, label: `${m.grams} g` }));
+            return (named.length ? named : unnamed).slice(0, 6);
           })(),
           servingGrams: food.servingSizeUnit === 'g' && food.servingSize > 0 ? Math.round(food.servingSize) : null
         })).filter(food => food.protein100 !== null);

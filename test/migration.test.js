@@ -52,7 +52,7 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
     card.querySelector('.in-reps').value = '10';
     card.querySelector('.in-sets').value = '3';
     card.querySelector('.in-sets').dispatchEvent(new Event('change'));
-    return Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-18:')).sort();
+    return Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-18:')).toSorted();
   });
   t('THREE sets stored for "3 sets of 10"', fresh.length === 3, JSON.stringify(fresh));
 

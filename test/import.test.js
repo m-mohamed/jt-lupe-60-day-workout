@@ -22,7 +22,7 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
 
   const stored = await p.evaluate(()=>{
     document.getElementById('importApply').click();
-    const keys = Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-17:')).sort();
+    const keys = Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-17:')).toSorted();
     return { keys, seated: keys.filter(k=>k.includes('seated-row')).length,
              pulldown: keys.filter(k=>k.includes('lat-pulldown')).length,
              carry: localStorage.getItem('jt-lupe:jt:set:2026-08-17:farmer-carry:1'),

@@ -18,6 +18,9 @@ const decodeSegment = segment => {
 
 const decodeJson = segment => JSON.parse(new TextDecoder().decode(decodeSegment(segment)));
 
+/** A JWT time claim in seconds, or null when it is present but unusable. */
+const seconds = value => (Number.isFinite(value) ? value : null);
+
 async function loadKeys(teamDomain) {
   const url = `https://${teamDomain}/cdn-cgi/access/certs`;
   const fresh = jwksCache.url === url && jwksCache.keys && Date.now() - jwksCache.fetchedAt < JWKS_TTL_MS;
@@ -27,12 +30,13 @@ async function loadKeys(teamDomain) {
   if (!response.ok) throw new Error(`JWKS fetch failed: ${response.status}`);
   const body = await response.json();
 
-  const keys = new Map();
-  for (const jwk of body.keys || []) {
-    keys.set(jwk.kid, await crypto.subtle.importKey(
-      'jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']
-    ));
-  }
+  // Imported together rather than one at a time: the keys are independent, and this
+  // runs on the first request after every cache expiry.
+  const imported = await Promise.all((body.keys || []).map(async jwk => [
+    jwk.kid,
+    await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify'])
+  ]));
+  const keys = new Map(imported);
   jwksCache = { url, keys, fetchedAt: Date.now() };
   return keys;
 }
@@ -80,7 +84,6 @@ export async function identify(request, env) {
     // expiry would have been accepted forever. An expiry is now required.
     const payload = decodeJson(payloadSegment);
     const now = Math.floor(Date.now() / 1000);
-    const seconds = value => (Number.isFinite(value) ? value : null);
     const claims = {
       audience: Array.isArray(payload.aud) ? payload.aud : [payload.aud],
       issuer: payload.iss,
