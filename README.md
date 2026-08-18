@@ -15,7 +15,10 @@ Three tabs, one job each — see [design.md](design.md) for the standard it is b
   takes a session logged anywhere else — Notes, paper, a chat thread — matches each
   line to an exercise and logs it; unmatched lines are left alone.
 - **Fuel** — protein target derived from bodyweight, a running total, a meal log, and
-  the daily stack (protein, creatine, pre-workout, sleep).
+  the daily stack (protein, creatine, pre-workout, sleep). Food lookup searches USDA
+  FoodData Central (public-domain, free) for chains and generic restaurant dishes, and
+  converts a chosen portion into grams of protein. Signed-in copy only, because the
+  request is proxied so the key never ships in the page.
 - **Progress** — strength per exercise (first → latest), bodyweight trend, stack
   consistency, and CSV / JSON export.
 
@@ -69,6 +72,25 @@ routine eviction where the browser honours it. Use **Backup** before clearing br
 data or changing devices, and **Export CSV** to pull the log into a spreadsheet.
 Signing in to the Worker copy removes most of this risk, because the device stops
 being the only copy.
+
+## Food lookup key
+
+Food search calls [USDA FoodData Central](https://fdc.nal.usda.gov/api-guide.html), which
+is public-domain US government data and free. The key exists only for rate limiting and
+is held as a Worker secret, never shipped to the browser:
+
+```sh
+cd cloud && npx wrangler secret put USDA_API_KEY
+```
+
+Without it the Worker falls back to the shared `DEMO_KEY`, which allows **10 lookups an
+hour** and is effectively unusable - the app says so plainly rather than failing quietly.
+A personal key from api.data.gov is free, instant, needs no card, and raises this to
+1,000 requests an hour. Responses are cached for 24 hours per query to conserve it.
+
+Nutrients come back **per 100 g** for every dataType requested, so the grams of the
+chosen portion are what turn a row into a meal. Survey (FNDDS) rows carry real portions
+("1 cup" = 244 g); rows without portions fall back to 100 g.
 
 ## Deployment
 

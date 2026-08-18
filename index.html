@@ -275,6 +275,16 @@
     .meal-protein { color: var(--accent-strong); font-weight: 700; font-variant-numeric: tabular-nums; }
     .icon-btn { min-height: 32px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--muted); }
     .icon-btn:hover { border-color: var(--warm); color: var(--warm); }
+    .food-search { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 10px; }
+    .food-hit { padding: 9px 0; border-bottom: 1px solid var(--line); }
+    .food-hit:last-child { border-bottom: 0; }
+    .food-hit-name { font-weight: 600; font-size: .9rem; overflow-wrap: anywhere; }
+    .food-hit-meta { color: var(--muted); font-size: .76rem; margin-top: 2px; }
+    .food-portions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+    .food-portions .btn { min-height: 30px; padding: 3px 9px; font-size: .78rem; }
+    .food-note { margin: 8px 0 0; color: var(--muted); font-size: .8rem; }
+    .food-note[data-warn="true"] { color: var(--warm); }
+
     .meal-add { display: grid; grid-template-columns: 1fr 92px auto; gap: 8px; margin-top: 10px; }
 
     /* ---------- habits ---------- */
@@ -437,6 +447,11 @@
       <div class="card">
         <div class="card-head"><h3>Meals</h3><span class="muted" style="font-size:.8rem">protein in grams</span></div>
         <ul class="meal-list" id="mealList"></ul>
+        <div class="food-search" id="foodSearch" hidden>
+          <input type="text" id="foodQuery" maxlength="80" placeholder="Search food — taco bell bean burrito" aria-label="Search food database">
+          <button class="btn" id="foodGo" type="button">Look up</button>
+        </div>
+        <div id="foodResults"></div>
         <div class="meal-add">
           <input type="text" id="mealName" maxlength="80" placeholder="Chicken and rice" aria-label="Meal">
           <input type="number" id="mealProtein" min="0" max="400" step="1" inputmode="numeric" placeholder="g" aria-label="Protein grams">
@@ -1121,6 +1136,60 @@
       el('bwUnit').value = localStorage.getItem(`jt-lupe-${state.profile}-unit`) || 'lb';
     }
 
+    /* ---------- food lookup (USDA FoodData Central, via the Worker) ----------
+       Every dataType we request reports nutrients per 100 g, so the grams chosen here
+       are what turn a database row into an actual meal. Survey foods carry real
+       portions ("1 cup" = 244 g); everything else falls back to a plain gram entry. */
+    const gramsFor = food =>
+      (food.portions && food.portions[0] && food.portions[0].grams) || food.servingGrams || 100;
+
+    function proteinFor(food, grams) { return Math.round((food.protein100 * grams) / 100); }
+
+    function renderFoodHits(foods, note) {
+      const box = el('foodResults');
+      if (note) { box.innerHTML = `<p class="food-note" data-warn="true">${esc(note)}</p>`; return; }
+      if (!foods.length) { box.innerHTML = '<p class="food-note">No match. Type the meal in below instead.</p>'; return; }
+      box.innerHTML = foods.slice(0, 6).map((food, index) => {
+        const options = (food.portions && food.portions.length ? food.portions : [{ label: `${gramsFor(food)} g`, grams: gramsFor(food) }])
+          .slice(0, 4)
+          .map(portion => `<button class="btn" type="button" data-food="${index}" data-grams="${portion.grams}">${esc(portion.label)} · ${proteinFor(food, portion.grams)} g</button>`)
+          .join('');
+        return `<div class="food-hit">
+          <div class="food-hit-name">${esc(food.name)}</div>
+          <div class="food-hit-meta">${esc(food.brand || food.kind)} · ${Math.round(food.protein100)} g protein per 100 g</div>
+          <div class="food-portions">${options}</div>
+        </div>`;
+      }).join('') + '<p class="food-note">Pick a portion and it fills the line below - adjust before adding.</p>';
+
+      box.querySelectorAll('[data-food]').forEach(button => button.addEventListener('click', () => {
+        const food = foods[Number(button.dataset.food)];
+        const grams = Number(button.dataset.grams);
+        el('mealName').value = `${food.name}`.slice(0, 80);
+        el('mealProtein').value = proteinFor(food, grams);
+        el('foodResults').innerHTML = `<p class="food-note">Filled in ${esc(food.name)} at ${grams} g. Check it, then Add.</p>`;
+        el('mealName').scrollIntoView({ block: 'nearest' });
+      }));
+    }
+
+    async function lookupFood() {
+      const query = el('foodQuery').value.trim();
+      if (!query) return;
+      el('foodResults').innerHTML = '<p class="food-note">Looking…</p>';
+      try {
+        const response = await fetch(`./api/food?q=${encodeURIComponent(query)}`);
+        if (!response.ok) throw new Error(String(response.status));
+        const payload = await response.json();
+        if (payload.error === 'rate_limited') return renderFoodHits([], payload.hint || 'Food lookup is rate-limited right now. Type it in below.');
+        if (payload.error) return renderFoodHits([], 'Food lookup is unavailable right now. Type it in below.');
+        renderFoodHits(payload.foods || []);
+      } catch {
+        renderFoodHits([], 'Could not reach the food database. Type it in below.');
+      }
+    }
+
+    el('foodGo').addEventListener('click', lookupFood);
+    el('foodQuery').addEventListener('keydown', event => { if (event.key === 'Enter') lookupFood(); });
+
     el('addMeal').addEventListener('click', () => {
       const name = el('mealName').value.trim();
       if (!name) { el('mealName').focus(); return; }
@@ -1581,6 +1650,8 @@
 
       syncState.enabled = true;
       syncState.email = me.email;
+      // Food lookup proxies through the Worker, so it only exists on the signed-in copy.
+      el('foodSearch').hidden = false;
 
       const mapped = PROFILE_BY_EMAIL[me.email];
       if (mapped && PROFILES.includes(mapped)) {
