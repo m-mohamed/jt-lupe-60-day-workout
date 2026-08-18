@@ -269,7 +269,9 @@
     .meal-list { margin: 0; padding: 0; list-style: none; }
     .meal-list li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
     .meal-list li:last-child { border-bottom: 0; }
-    .meal-name { flex: 1; }
+    /* A flex child will not shrink below its content without min-width:0, so one
+       long unbroken meal name used to widen the whole page. */
+    .meal-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
     .meal-protein { color: var(--accent-strong); font-weight: 700; font-variant-numeric: tabular-nums; }
     .icon-btn { min-height: 32px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--muted); }
     .icon-btn:hover { border-color: var(--warm); color: var(--warm); }
@@ -403,7 +405,7 @@
         <div class="card-head"><h3>Meals</h3><span class="muted" style="font-size:.8rem">protein in grams</span></div>
         <ul class="meal-list" id="mealList"></ul>
         <div class="meal-add">
-          <input type="text" id="mealName" placeholder="Chicken and rice" aria-label="Meal">
+          <input type="text" id="mealName" maxlength="80" placeholder="Chicken and rice" aria-label="Meal">
           <input type="number" id="mealProtein" min="0" max="400" step="1" inputmode="numeric" placeholder="g" aria-label="Protein grams">
           <button class="btn primary" id="addMeal" type="button">Add</button>
         </div>
@@ -592,7 +594,7 @@
     // Smallest sensible jump: 5 on the big loads, 2.5 on the light ones.
     const suggestNext = load => {
       const value = numericLoad(load);
-      return value ? String(+(value + (value >= 100 ? 5 : 2.5)).toFixed(1)) : 'the next notch up';
+      return value ? String(+(value + (value >= 100 ? 5 : 2.5)).toFixed(1)) : 'the next notch';
     };
 
     function coachFor(dayIndex, exerciseIndex, prescription) {
@@ -1351,6 +1353,27 @@
       syncState.timer = setTimeout(runSync, delay);
     }
 
+    // The Worker caps a single sync at MAX_CHANGES (2000). A device coming back from a
+    // long offline stretch, or one restored from a backup, can easily exceed that in one
+    // push - and a rejected batch never clears the dirty list, so sync would wedge
+    // permanently and silently. Upload in batches small enough to always be accepted.
+    const SYNC_BATCH = 400;
+
+    async function pushBatch(batch, cursor) {
+      const response = await fetch(`./api/sync?ns=${SYNC_NS}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ since: cursor, device: deviceId(), changes: batch })
+      });
+      if (response.status === 401) return { signedOut: true };
+      if (!response.ok) {
+        let detail = String(response.status);
+        try { detail = (await response.json()).error || detail; } catch { /* keep status */ }
+        throw new Error(`sync failed: ${detail}`);
+      }
+      return { result: await response.json() };
+    }
+
     async function runSync() {
       if (!syncState.enabled || syncState.busy) return;
       if (!navigator.onLine) { setSyncChip('offline', 'Offline', 'Changes are saved here and will upload when you reconnect.'); return; }
@@ -1358,7 +1381,7 @@
       syncState.busy = true;
       setSyncChip('syncing', 'Syncing…');
       try {
-        const cursor = Number(localStorage.getItem(CURSOR_KEY) || 0);
+        let cursor = Number(localStorage.getItem(CURSOR_KEY) || 0);
         // A cursor of 0 means this device has never synced, or was restored from a
         // backup. Push everything rather than trusting the dirty list.
         const keys = cursor === 0
@@ -1369,41 +1392,43 @@
           return value === null ? { key, deleted: true } : { key, value };
         });
 
-        const response = await fetch(`./api/sync?ns=${SYNC_NS}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ since: cursor, device: deviceId(), changes: pushed })
-        });
+        let pulled = 0;
+        // Always run at least once, so an empty push still pulls the other device's work.
+        const batches = pushed.length ? Math.ceil(pushed.length / SYNC_BATCH) : 1;
+        for (let index = 0; index < batches; index += 1) {
+          const batch = pushed.slice(index * SYNC_BATCH, (index + 1) * SYNC_BATCH);
+          if (batches > 1) setSyncChip('syncing', `Syncing ${index + 1}/${batches}…`);
+          const { signedOut, result } = await pushBatch(batch, cursor);
+          if (signedOut) {
+            syncState.enabled = false;
+            setSyncChip('error', 'Signed out', 'Reload the page to sign in again.');
+            return;
+          }
 
-        if (response.status === 401) {
-          syncState.enabled = false;
-          setSyncChip('error', 'Signed out', 'Reload the page to sign in again.');
-          return;
+          result.changes.forEach(change => {
+            if (change.deleted || change.value === '') localStorage.removeItem(change.key);
+            else localStorage.setItem(change.key, change.value);
+          });
+          cursor = result.version;
+          localStorage.setItem(CURSOR_KEY, cursor);
+          pulled += result.changes.length;
+
+          // Clear only what this batch actually delivered and has not been edited since.
+          const sentKeys = new Set(batch.map(change => change.key));
+          writeDirty(readDirty().filter(key => {
+            if (!sentKeys.has(key)) return true;
+            const sent = batch.find(change => change.key === key);
+            const current = localStorage.getItem(key);
+            return sent.deleted ? current !== null : current !== sent.value;
+          }));
         }
-        if (!response.ok) throw new Error(`sync failed: ${response.status}`);
-        const result = await response.json();
 
-        result.changes.forEach(change => {
-          if (change.deleted || change.value === '') localStorage.removeItem(change.key);
-          else localStorage.setItem(change.key, change.value);
-        });
-        localStorage.setItem(CURSOR_KEY, result.version);
-
-        // Only clear entries that have not been edited again mid-flight.
-        const stillDirty = readDirty().filter(key => {
-          const sent = pushed.find(change => change.key === key);
-          if (!sent) return true;
-          const current = localStorage.getItem(key);
-          return sent.deleted ? current !== null : current !== sent.value;
-        });
-        writeDirty(stillDirty);
-
-        if (result.changes.length) renderAll();
+        if (pulled) renderAll();
         setSyncChip('synced', syncState.email ? syncState.email.split('@')[0] : 'Synced',
-          `Synced as ${syncState.email}. ${result.changes.length} change(s) pulled.`);
+          `Synced as ${syncState.email}. ${pulled} change(s) pulled.`);
       } catch (error) {
         console.warn('sync', error);
-        setSyncChip('offline', 'Retrying', 'Saved on this device. Will retry shortly.');
+        setSyncChip('offline', 'Retrying', `Saved on this device. ${String(error.message || error)}`);
       } finally {
         syncState.busy = false;
       }
