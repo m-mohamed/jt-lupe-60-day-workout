@@ -300,6 +300,24 @@
     .flat { color: var(--muted); }
     .empty { margin: 0; padding: 20px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); text-align: center; font-size: .9rem; }
 
+    #importText {
+      width: 100%;
+      min-height: 118px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: .95rem;
+      font-family: inherit;
+      resize: vertical;
+    }
+    .import-row { display: flex; align-items: baseline; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: .88rem; }
+    .import-row:last-child { border-bottom: 0; }
+    .import-row .hit { color: var(--accent-strong); font-weight: 700; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .import-row .miss { color: var(--warm); flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .import-row .val { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
     details.explain { margin: 12px 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
     details.explain summary { padding: 13px 14px; font-weight: 700; cursor: pointer; }
     details.explain .body { padding: 0 14px 14px; color: var(--muted); font-size: .9rem; }
@@ -378,6 +396,21 @@
       </div>
 
       <div id="exerciseList"></div>
+
+      <details class="explain" id="importBlock">
+        <summary>Paste from your notes</summary>
+        <div class="body">
+          <p>Logged this session somewhere else? Paste it here - one exercise per line,
+          in whatever shape you wrote it. <code>Seated row 100 x 10</code>,
+          <code>lat pulldown 90x8</code>, <code>Pull-ups BW 6</code> all read fine.</p>
+          <textarea id="importText" rows="6" placeholder="Seated row 100 x 10&#10;Lat pulldown 90 x 8&#10;Hammer curl 30x12"></textarea>
+          <div class="btn-row" style="margin-top:10px">
+            <button class="btn" id="importPreview" type="button">Read it</button>
+            <button class="btn primary" id="importApply" type="button" hidden>Log these</button>
+          </div>
+          <div id="importResult"></div>
+        </div>
+      </details>
 
       <details class="explain">
         <summary>How to pick your weight</summary>
@@ -871,6 +904,73 @@
     }
     el('prevDay').addEventListener('click', () => stepSession(-1));
     el('nextDay').addEventListener('click', () => stepSession(1));
+
+    /* ================= import from notes =================
+       People log on paper, in Notes, in a chat thread. Rather than make them retype,
+       take a paste and do the matching here. Deliberately forgiving about shape: the
+       only things that must be recoverable are an exercise name and its numbers. */
+    const normalise = text => String(text).toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+    function matchExercise(label) {
+      const wanted = normalise(label).split(' ').filter(w => w.length > 2);
+      if (!wanted.length) return null;
+      let best = null;
+      workouts[state.day].exercises.forEach(([name], index) => {
+        const have = normalise(name).split(' ');
+        const hits = wanted.filter(w => have.some(h => h.startsWith(w) || w.startsWith(h))).length;
+        if (!hits) return;
+        const score = hits / Math.max(wanted.length, have.length);
+        if (!best || score > best.score) best = { index, name, score };
+      });
+      return best && best.score >= 0.34 ? best : null;
+    }
+
+    function parseNotes(text) {
+      return String(text).split(/[\n;]+/).map(line => line.trim()).filter(Boolean).map(raw => {
+        // Pull the numbers out first, then treat what is left as the exercise name.
+        const cleaned = raw.replace(/\b(lbs?|kgs?|reps?|rir)\b/gi, ' ');
+        const pair = cleaned.match(/(\d+(?:\.\d+)?)\s*(?:x|\u00d7|@|\/|\bfor\b)\s*(\d+)/i);
+        let load = null, reps = null;
+        if (pair) { load = pair[1]; reps = pair[2]; }
+        else {
+          const nums = cleaned.match(/\d+(?:\.\d+)?/g) || [];
+          if (nums.length >= 2) { load = nums[0]; reps = nums[1]; }
+          else if (nums.length === 1) { load = nums[0]; }
+        }
+        const bodyweight = /\b(bw|bodyweight|body weight)\b/i.test(raw);
+        if (bodyweight && !pair) { load = 'BW'; reps = (cleaned.match(/\d+/g) || [])[0] || null; }
+        const label = cleaned.replace(/[\d.]+/g, ' ').replace(/\b(x|\u00d7|@|bw|bodyweight|body weight|sets?)\b/gi, ' ');
+        return { raw, load, reps, match: matchExercise(label) };
+      });
+    }
+
+    function renderImport(rows) {
+      const box = el('importResult');
+      if (!rows.length) { box.innerHTML = '<p class="empty">Nothing to read yet.</p>'; el('importApply').hidden = true; return; }
+      const usable = rows.filter(r => r.match && r.load);
+      box.innerHTML = `<div style="margin-top:12px">${rows.map(row => row.match && row.load
+        ? `<div class="import-row"><span class="hit">${esc(row.match.name)}</span><span class="val">${esc(row.load)}${row.reps ? ` \u00d7 ${esc(row.reps)}` : ''}</span></div>`
+        : `<div class="import-row"><span class="miss">${esc(row.raw)}</span><span class="val">skipped</span></div>`
+      ).join('')}</div>
+      <p class="muted" style="margin:10px 0 0;font-size:.82rem">${usable.length} of ${rows.length} lines matched an exercise in ${esc(workouts[state.day].day)} \u00b7 ${esc(workouts[state.day].focus)}. Skipped lines are left alone.</p>`;
+      el('importApply').hidden = usable.length === 0;
+      renderImport.usable = usable;
+    }
+
+    el('importPreview').addEventListener('click', () => renderImport(parseNotes(el('importText').value)));
+
+    el('importApply').addEventListener('click', () => {
+      const rows = renderImport.usable || [];
+      rows.forEach(row => {
+        saveData(loadKey(state.week, state.day, row.match.index, state.profile), String(row.load));
+        if (row.reps) saveData(repsKey(state.week, state.day, row.match.index, state.profile), String(row.reps));
+        saveData(doneKey(state.week, state.day, row.match.index, state.profile), true);
+      });
+      el('importText').value = '';
+      el('importResult').innerHTML = `<p class="muted" style="margin:10px 0 0">Logged ${rows.length} exercise${rows.length === 1 ? '' : 's'} to ${esc(workouts[state.day].day)}, week ${state.week}.</p>`;
+      el('importApply').hidden = true;
+      renderSession();
+    });
 
     /* ================= rest timer ================= */
     // A running clock stays on screen wherever you are; a stopped one belongs to Train.

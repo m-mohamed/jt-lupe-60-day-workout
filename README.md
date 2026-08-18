@@ -11,7 +11,9 @@ Three tabs, one job each — see [design.md](design.md) for the standard it is b
 - **Train** — tonight's session, with a per-exercise coach line that reads your last
   performance and tells you to add weight, hold, or how to start. Double progression:
   own the top of the rep range, then add the smallest jump. Working sets at 1–3 RIR.
-  Warm-ups and timed efforts are never told to add weight.
+  Warm-ups and timed efforts are never told to add weight. **Paste from your notes**
+  takes a session logged anywhere else — Notes, paper, a chat thread — matches each
+  line to an exercise and logs it; unmatched lines are left alone.
 - **Fuel** — protein target derived from bodyweight, a running total, a meal log, and
   the daily stack (protein, creatine, pre-workout, sleep).
 - **Progress** — strength per exercise (first → latest), bodyweight trend, stack
