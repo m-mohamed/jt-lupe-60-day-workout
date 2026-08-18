@@ -1327,8 +1327,12 @@
         renderSessionMeta();
       };
 
-      document.querySelectorAll('.in-load, .in-reps, .in-sets').forEach(input =>
-        input.addEventListener('change', event => { commit(event.target.dataset.ex); flash('Saved.'); }));
+      document.querySelectorAll('.in-load, .in-reps, .in-sets').forEach(input => {
+        input.addEventListener('change', event => { commit(event.target.dataset.ex); flash('Saved.'); });
+        // A phone going into a pocket does not blur the field, so `change` never fires.
+        // Remember which exercise is mid-edit so it can be flushed on the way out.
+        input.addEventListener('input', event => { renderSession.pending = event.target.dataset.ex; });
+      });
       document.querySelectorAll('.in-done').forEach(input => input.addEventListener('change', event => {
         const id = event.target.dataset.ex;
         if (event.target.checked) commit(id);
@@ -1453,6 +1457,22 @@
       el('importApply').hidden = true;
       renderSession();
     });
+
+    /** Commit whatever is being typed right now. The gym case is typing the last set
+        and locking the phone: no blur, so no change event, and the number is gone. */
+    function flushPending() {
+      const id = renderSession.pending;
+      if (!id) return;
+      const input = document.querySelector(`.in-load[data-ex="${id}"]`);
+      if (input && input.closest('.exercise')) {
+        input.dispatchEvent(new Event('change'));
+      }
+      renderSession.pending = null;
+      if (document.activeElement === el('bwValue')) el('bwValue').dispatchEvent(new Event('change'));
+    }
+    document.addEventListener('visibilitychange', () => { if (document.hidden) flushPending(); });
+    window.addEventListener('pagehide', flushPending);
+    window.addEventListener('blur', flushPending);
 
     /* ================= rest timer ================= */
     // A running clock stays on screen wherever you are; a stopped one belongs to Train.
