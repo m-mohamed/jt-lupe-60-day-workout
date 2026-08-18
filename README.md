@@ -1,6 +1,6 @@
 # JT + Lupe 60-Day Workout
 
-A small, installable workout application for JT and Lupe. The challenge begins Tuesday, August 11, 2026 and runs through October 9, 2026.
+A small, installable workout application for JT and Lupe. The challenge begins Monday, August 17, 2026 and runs through Thursday, October 15, 2026.
 
 Live app: <https://m-mohamed.github.io/jt-lupe-60-day-workout/>
 
