@@ -1676,6 +1676,37 @@
       setInterval(() => scheduleSync(0), 120000);
     }
 
+    /* ---------- prefilled import link ----------
+       ?log=<text>&day=<0-4>&week=<n> opens the importer with a session already typed
+       in and previewed. It never writes on its own: the parse still has to be read and
+       confirmed, which is the same gate as a manual paste. Lets a session logged
+       elsewhere be handed to each person as a link they open in their own account. */
+    (() => {
+      const params = new URLSearchParams(location.search);
+      const text = params.get('log');
+      if (!text) return;
+
+      const day = Number(params.get('day'));
+      if (Number.isInteger(day) && day >= 0 && day < workouts.length) {
+        state.day = day;
+        localStorage.setItem('jt-lupe-active-day', day);
+      }
+      const week = Number(params.get('week'));
+      if (Number.isInteger(week) && week >= 1 && week <= WEEK_COUNT) {
+        state.week = week;
+        localStorage.setItem('jt-lupe-week', week);
+      }
+      renderSession();
+
+      setTab('train');
+      el('importBlock').open = true;
+      el('importText').value = text.slice(0, 2000);
+      renderImport(parseNotes(el('importText').value));
+      el('importBlock').scrollIntoView({ block: 'start' });
+      // Drop the query string so a refresh does not re-open a stale prefill.
+      history.replaceState(null, '', location.pathname);
+    })();
+
     /* ================= boot ================= */
     migrateStorage();
     requestPersistence();

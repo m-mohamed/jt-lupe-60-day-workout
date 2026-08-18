@@ -13,7 +13,10 @@ Three tabs, one job each — see [design.md](design.md) for the standard it is b
   own the top of the rep range, then add the smallest jump. Working sets at 1–3 RIR.
   Warm-ups and timed efforts are never told to add weight. **Paste from your notes**
   takes a session logged anywhere else — Notes, paper, a chat thread — matches each
-  line to an exercise and logs it; unmatched lines are left alone.
+  line to an exercise and logs it; unmatched lines are left alone. A session can also
+  be handed over as a link: `?log=<text>&day=<0-4>&week=<n>` opens the importer with
+  the parse already previewed, so each person applies it inside their own account. It
+  never writes on its own — the confirm step is the same as a manual paste.
 - **Fuel** — protein target derived from bodyweight, a running total, a meal log, and
   the daily stack (protein, creatine, pre-workout, sleep). Food lookup searches USDA
   FoodData Central (public-domain, free) for chains and generic restaurant dishes, and
