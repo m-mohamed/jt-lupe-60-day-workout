@@ -793,7 +793,10 @@
        Double progression is judged on every working set reaching the top of the range,
        not just the last one - which the old single-number model could not express. */
     const numericLoad = load => {
-      const value = parseFloat(String(load).replace(/[^0-9.]/g, ''));
+      // A comma is a decimal separator on plenty of keyboards. Stripping it turned
+      // 52,5 into 525 - a silent tenfold error in the next-weight suggestion.
+      const cleaned = String(load).trim().replace(/,(\d{1,2})$/, '.$1').replace(/[^0-9.]/g, '');
+      const value = parseFloat(cleaned);
       return Number.isFinite(value) && value > 0 ? value : null;
     };
     const suggestNext = load => {
@@ -1222,6 +1225,7 @@
 
     /* ================= tabs ================= */
     function setTab(name) {
+      flushPending();
       state.tab = name;
       document.querySelectorAll('.tab').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.tab === name)));
       ['train', 'fuel', 'progress'].forEach(id => { el(`panel-${id}`).hidden = id !== name; });
@@ -1327,6 +1331,7 @@
         renderSessionMeta();
       };
 
+      renderSession.commit = commit;
       document.querySelectorAll('.in-load, .in-reps, .in-sets').forEach(input => {
         input.addEventListener('change', event => { commit(event.target.dataset.ex); flash('Saved.'); });
         // A phone going into a pocket does not blur the field, so `change` never fires.
@@ -1344,6 +1349,7 @@
     }
 
     function stepSession(direction) {
+      flushPending();
       state.date = shiftDate(state.date, direction);
       localStorage.setItem('jt-lupe-active-date', state.date);
       renderSession();
@@ -1462,13 +1468,13 @@
         and locking the phone: no blur, so no change event, and the number is gone. */
     function flushPending() {
       const id = renderSession.pending;
-      if (!id) return;
-      const input = document.querySelector(`.in-load[data-ex="${id}"]`);
-      if (input && input.closest('.exercise')) {
-        input.dispatchEvent(new Event('change'));
-      }
       renderSession.pending = null;
-      if (document.activeElement === el('bwValue')) el('bwValue').dispatchEvent(new Event('change'));
+      // Commit directly. Re-dispatching `change` is not enough: a value set by paste
+      // or autofill never marks the field dirty, so the browser fires nothing on blur.
+      if (id && renderSession.commit && document.querySelector(`.in-load[data-ex="${id}"]`)) {
+        renderSession.commit(id);
+      }
+      if (document.activeElement === el('bwValue')) commitBodyweight();
     }
     document.addEventListener('visibilitychange', () => { if (document.hidden) flushPending(); });
     window.addEventListener('pagehide', flushPending);
