@@ -1,6 +1,6 @@
 # Data model — first principles
 
-Status: design agreed 2026-08-18, not yet implemented
+Status: implemented 2026-08-18 (schema v4)
 Supersedes: the flat `jt-lupe-{field}-w{week}-d{day}-e{index}-{profile}` keys
 
 ## Why this is being redone
@@ -86,6 +86,16 @@ The set count is genuinely unknown for historical rows and is left absent rather
 invented. `migrated: true` marks rows whose set count is unknown rather than one.
 
 Nothing is deleted until the new records are written and verified.
+
+## Implemented
+
+Schema v4. Live keys are `jt-lupe:{profile}:{type}:{date}[:...]`. The migration runs once
+on load, writes the replacements, verifies them, and only then removes the originals.
+
+Verified: a v3 device migrates with sets, habits, bodyweight and meals carried and the old
+grid keys gone; "3 sets of 12 at 55" now stores three set records; a timed carry stores
+seconds rather than reps; bodyweight work keeps `BW` with no invented reps; 972 seeded
+records sync to the per-user database; the coach stays sane across 84 profile-days.
 
 ## Explicitly not decided here
 

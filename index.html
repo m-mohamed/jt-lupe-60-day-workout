@@ -234,7 +234,7 @@
     }
     .coach[data-kind="hold"] { border-left-color: var(--muted); background: var(--surface-2); color: var(--muted); }
     .coach[data-kind="first"] { border-left-color: var(--focus); background: var(--surface-2); color: var(--ink); }
-    .entry { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; margin-top: 10px; }
+    .entry { display: grid; grid-template-columns: 1fr 1fr 4.2rem auto; gap: 7px; align-items: end; margin-top: 10px; }
     .entry label { display: grid; gap: 4px; color: var(--muted); font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
     .tick {
       display: grid;
@@ -542,7 +542,7 @@
   <script>
     /* ================= constants ================= */
     const SCHEMA_KEY = 'jt-lupe-schema-version';
-    const SCHEMA_VERSION = 3;
+    const SCHEMA_VERSION = 4;
     const PROFILE_KEY = 'jt-lupe-profile';
     const LEGACY_KEYS = ['jt-lupe-auth-v1', 'jt-lupe-session'];
     const PROFILES = ['jt', 'lupe'];
@@ -559,12 +559,6 @@
     const WEEK_COUNT = 9;
 
     /* ================= small helpers ================= */
-    const localDayKey = (date = new Date()) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
     const normalizedToday = () => {
       const now = new Date();
       return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -587,107 +581,275 @@
     const el = id => document.getElementById(id);
 
     function dayLabelFor(dateKey) {
-      const today = localDayKey();
+      const today = dateKey();
       if (dateKey === today) return 'today';
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      if (dateKey === localDayKey(yesterday)) return 'yesterday';
+      if (dateKey === dateKey(yesterday)) return 'yesterday';
       const [y, m, d] = dateKey.split('-').map(Number);
       return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     }
 
     /* ================= keys ================= */
-    const loadKey = (w, d, i, p) => `jt-lupe-load-w${w}-d${d}-e${i}-${p}`;
-    const repsKey = (w, d, i, p) => `jt-lupe-reps-w${w}-d${d}-e${i}-${p}`;
-    const doneKey = (w, d, i, p) => `jt-lupe-done-w${w}-d${d}-e${i}-${p}`;
-    const habitKey = (p, date, habit) => `jt-lupe-habit-${p}-${date}-${habit}`;
-    const weightLogKey = (p, date) => `jt-lupe-weightlog-${p}-${date}`;
-    const mealPrefix = (p, date) => `jt-lupe-meal-${p}-${date}-`;
-    const LEGACY_HABIT = /^jt-lupe-habit-(\d{4}-\d{2}-\d{2})-([a-z]+)$/;
-    const LEGACY_DONE = /^jt-lupe-done-w\d+-d\d+-e\d+$/;
+    /* ================= records =================
+       One key per record, each anchored to a calendar date and a stable exercise id.
+       Last-write-wins stays correct because each person is the only writer of their own
+       records. See schema.md for why the previous grid was replaced. */
+    const K = {
+      set:   (p, date, ex, n) => `jt-lupe:${p}:set:${date}:${ex}:${n}`,
+      setPrefix: (p, date, ex) => `jt-lupe:${p}:set:${date}:${ex}:`,
+      dayPrefix: (p, date) => `jt-lupe:${p}:set:${date}:`,
+      session: (p, date) => `jt-lupe:${p}:session:${date}`,
+      meal:  (p, date, id) => `jt-lupe:${p}:meal:${date}:${id}`,
+      mealPrefix: (p, date) => `jt-lupe:${p}:meal:${date}:`,
+      bodyweight: (p, date) => `jt-lupe:${p}:bodyweight:${date}`,
+      bwPrefix: p => `jt-lupe:${p}:bodyweight:`,
+      habit: (p, date, id) => `jt-lupe:${p}:habit:${date}:${id}`,
+      habitPrefix: p => `jt-lupe:${p}:habit:`
+    };
 
-    /* ================= prescriptions ================= */
-    // Turns "3 x 8-12" into something the coach can reason about. Time-based and
-    // per-side entries are recognised so they never get told to "add weight".
-    function parsePrescription(text) {
-      const match = String(text).match(/^(\d+)\s*x\s*(\d+)(?:\s*-\s*(\d+))?/);
-      const timed = /\bsec\b|\bmin\b/i.test(text);
-      if (!match) return { sets: null, low: null, high: null, timed, loadable: !timed, text };
-      return {
-        sets: Number(match[1]),
-        low: Number(match[2]),
-        high: match[3] ? Number(match[3]) : Number(match[2]),
-        timed,
-        warmup: /warm-up/i.test(text),
-        loadable: !timed,
-        text
-      };
+    const readJSON = key => {
+      const raw = localStorage.getItem(key);
+      if (raw === null) return null;
+      try { return JSON.parse(raw); } catch { return null; }
+    };
+    const writeJSON = (key, value) => saveData(key, JSON.stringify(value));
+
+    /** Every set logged for one exercise on one date, in set order. */
+    function setsFor(profile, date, exerciseId) {
+      const prefix = K.setPrefix(profile, date, exerciseId);
+      const out = [];
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(prefix)) continue;
+        const n = Number(key.slice(prefix.length));
+        const value = readJSON(key);
+        if (Number.isInteger(n) && value) out.push({ n, ...value });
+      }
+      return out.sort((a, b) => a.n - b.n);
+    }
+
+    /** Dates on which anything was logged for an exercise, newest first. */
+    function datesLogged(profile, exerciseId) {
+      const head = `jt-lupe:${profile}:set:`;
+      const dates = new Set();
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(head)) continue;
+        const rest = key.slice(head.length).split(':');
+        if (rest.length === 3 && (!exerciseId || rest[1] === exerciseId)) dates.add(rest[0]);
+      }
+      return [...dates].sort().reverse();
+    }
+
+    function writeSet(profile, date, exerciseId, n, entry) {
+      writeJSON(K.set(profile, date, exerciseId, n), { at: new Date().toISOString(), ...entry });
+    }
+    function clearSets(profile, date, exerciseId) {
+      const prefix = K.setPrefix(profile, date, exerciseId);
+      Object.keys(localStorage).filter(k => k.startsWith(prefix)).forEach(k => {
+        localStorage.removeItem(k); markDirty(k);
+      });
+    }
+
+    /* ---------- dates ---------- */
+    const dateKey = (d = new Date()) => {
+      const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+    const parseDate = key => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d); };
+    const shiftDate = (key, days) => { const d = parseDate(key); d.setDate(d.getDate() + days); return dateKey(d); };
+    const challengeDay = key => Math.floor((parseDate(key) - CHALLENGE_START) / 86400000) + 1;
+    const weekOf = key => Math.max(1, Math.min(9, Math.floor((challengeDay(key) - 1) / 7) + 1));
+
+    /** Which session a date calls for. Weekends fall back to the following Monday's plan. */
+    function dayForDate(key) {
+      const wd = parseDate(key).getDay();
+      return DAYS[wd >= 1 && wd <= 5 ? wd - 1 : 0];
+    }
+    function labelForDate(key) {
+      const today = dateKey();
+      if (key === today) return 'Today';
+      if (key === shiftDate(today, -1)) return 'Yesterday';
+      return parseDate(key).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+
+    /* ---------- v4: grid -> records ----------
+       Old keys were (week, weekday, exerciseIndex). Each becomes a dated record against
+       a stable exercise id. The set count is genuinely unknown for these rows - the old
+       shape had nowhere to store it - so they migrate as a single set marked
+       `migrated: true` rather than pretending the count was one. Nothing is deleted
+       until the replacement has been written. */
+    const V1_SET = /^jt-lupe-(load|reps|done)-w(\d+)-d(\d+)-e(\d+)-(jt|lupe)$/;
+    const V1_HABIT = /^jt-lupe-habit-(jt|lupe)-(\d{4}-\d{2}-\d{2})-([a-z]+)$/;
+    const V1_BW = /^jt-lupe-weightlog-(jt|lupe)-(\d{4}-\d{2}-\d{2})$/;
+    const V1_MEAL = /^jt-lupe-meal-(jt|lupe)-(\d{4}-\d{2}-\d{2})-(.+)$/;
+
+    /** week+weekday -> the calendar date that slot represented. */
+    function dateForSlot(week, dayIndex) {
+      const start = new Date(CHALLENGE_START);
+      start.setDate(start.getDate() + (week - 1) * 7);
+      // CHALLENGE_START is a Monday, so dayIndex maps straight onto it.
+      start.setDate(start.getDate() + dayIndex);
+      return dateKey(start);
+    }
+
+    function migrateToRecords() {
+      const grid = new Map();   // profile|date|exerciseId -> {load, reps, done}
+      const consumed = [];
+      const carried = { sets: 0, habits: 0, bodyweight: 0, meals: 0 };
+
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+
+        const m = key.match(V1_SET);
+        if (m) {
+          const [, field, w, d, e, profile] = m;
+          const day = DAYS[Number(d)];
+          const exercise = day && day.exercises[Number(e)];
+          if (!exercise) { consumed.push(key); continue; }   // index no longer exists
+          const id = `${profile}|${dateForSlot(Number(w), Number(d))}|${exercise.id}`;
+          const row = grid.get(id) || {};
+          row[field] = localStorage.getItem(key);
+          row.profile = profile;
+          row.date = dateForSlot(Number(w), Number(d));
+          row.exerciseId = exercise.id;
+          row.templateId = day.id;
+          grid.set(id, row);
+          consumed.push(key);
+          continue;
+        }
+
+        const h = key.match(V1_HABIT);
+        if (h) {
+          const [, profile, date, habit] = h;
+          const target = K.habit(profile, date, habit);
+          if (localStorage.getItem(target) === null) {
+            localStorage.setItem(target, JSON.stringify({ done: localStorage.getItem(key) === 'true' }));
+            markDirty(target); carried.habits += 1;
+          }
+          consumed.push(key);
+          continue;
+        }
+
+        const b = key.match(V1_BW);
+        if (b) {
+          const [, profile, date] = b;
+          const [value, unit] = String(localStorage.getItem(key)).split('|');
+          const target = K.bodyweight(profile, date);
+          if (Number(value) && localStorage.getItem(target) === null) {
+            localStorage.setItem(target, JSON.stringify({ value: Number(value), unit: unit || 'lb' }));
+            markDirty(target); carried.bodyweight += 1;
+          }
+          consumed.push(key);
+          continue;
+        }
+
+        const meal = key.match(V1_MEAL);
+        if (meal) {
+          const [, profile, date, id] = meal;
+          const target = K.meal(profile, date, id);
+          if (localStorage.getItem(target) === null) {
+            const parsed = readJSON(key);
+            if (parsed && parsed.name) {
+              localStorage.setItem(target, JSON.stringify(parsed));
+              markDirty(target); carried.meals += 1;
+            }
+          }
+          consumed.push(key);
+        }
+      }
+
+      grid.forEach(row => {
+        if (!row.load && row.done !== 'true') return;
+        const target = K.set(row.profile, row.date, row.exerciseId, 1);
+        if (localStorage.getItem(target) !== null) return;
+        const numeric = Number(row.load);
+        localStorage.setItem(target, JSON.stringify({
+          load: row.load === 'BW' || !Number.isFinite(numeric) ? (row.load || null) : numeric,
+          unit: 'lb',
+          reps: row.reps ? Number(row.reps) : null,
+          seconds: null,
+          rir: null,
+          migrated: true          // set count unknown, not one
+        }));
+        markDirty(target);
+        carried.sets += 1;
+        const session = K.session(row.profile, row.date);
+        if (localStorage.getItem(session) === null) {
+          localStorage.setItem(session, JSON.stringify({ templateId: row.templateId }));
+          markDirty(session);
+        }
+      });
+
+      // Only now, with replacements written, drop the originals.
+      consumed.forEach(key => { localStorage.removeItem(key); markDirty(key); });
+      return carried;
     }
 
     /* ================= progression coach =================
-       Double progression, the standard beginner-safe scheme: hold the weight until
-       you own the top of the rep range on your last set, then add the smallest
-       jump available. Working sets sit at 1-3 reps in reserve — close enough to
-       drive growth, far enough that form and the next session survive. */
-    function lastPerformance(dayIndex, exerciseIndex, beforeWeek) {
-      for (let week = beforeWeek - 1; week >= 1; week -= 1) {
-        const load = localStorage.getItem(loadKey(week, dayIndex, exerciseIndex, state.profile));
-        if (load) {
-          return { week, load, reps: Number(localStorage.getItem(repsKey(week, dayIndex, exerciseIndex, state.profile))) || null };
-        }
-      }
-      return null;
-    }
-
+       Reads the actual sets logged for an exercise on the most recent date they exist.
+       Double progression is judged on every working set reaching the top of the range,
+       not just the last one - which the old single-number model could not express. */
     const numericLoad = load => {
       const value = parseFloat(String(load).replace(/[^0-9.]/g, ''));
       return Number.isFinite(value) && value > 0 ? value : null;
     };
-
-    // Smallest sensible jump: 5 on the big loads, 2.5 on the light ones.
     const suggestNext = load => {
       const value = numericLoad(load);
       return value ? String(+(value + (value >= 100 ? 5 : 2.5)).toFixed(1)) : 'the next notch';
     };
+    const describe = sets => {
+      if (!sets.length) return '';
+      const load = sets[0].load;
+      const reps = sets.map(s => s.reps).filter(r => r != null);
+      if (!reps.length) return `${load}`;
+      const same = reps.every(r => r === reps[0]);
+      return `${sets.length} × ${same ? reps[0] : reps.join('/')} at ${load}`;
+    };
 
-    function coachFor(dayIndex, exerciseIndex, prescription) {
-      if (prescription.warmup) return { kind: 'hold', text: 'Warm-up. Stay light and easy — this is not a working set.' };
-      if (prescription.timed) return { kind: 'hold', text: 'Timed effort. Progress by holding the time with a heavier load or better pace.' };
+    function lastSession(profile, exerciseId, beforeDate) {
+      for (const date of datesLogged(profile, exerciseId)) {
+        if (date >= beforeDate) continue;
+        const sets = setsFor(profile, date, exerciseId).filter(s => s.load != null);
+        if (sets.length) return { date, sets };
+      }
+      return null;
+    }
 
-      // Once this session is logged, the useful advice is about next time — not a
-      // stale "first time" prompt sitting above the numbers you just entered.
-      const doneLoad = localStorage.getItem(loadKey(state.week, dayIndex, exerciseIndex, state.profile));
-      const doneReps = Number(localStorage.getItem(repsKey(state.week, dayIndex, exerciseIndex, state.profile))) || null;
-      if (doneLoad && doneReps) {
-        return doneReps >= prescription.high
-          ? { kind: 'up', text: `Logged ${doneLoad} × ${doneReps} — that is the top of the range. Next session start at ${suggestNext(doneLoad)}.` }
-          : { kind: 'hold', text: `Logged ${doneLoad} × ${doneReps}. Next session: same weight, chase ${doneReps + 1}.` };
+    function coachFor(exercise, date) {
+      if (exercise.kind === 'warmup') return { kind: 'hold', text: 'Warm-up. Stay light and easy — this is not a working set.' };
+      if (exercise.kind === 'timed')  return { kind: 'hold', text: 'Timed effort. Progress by holding the time with a heavier load or better pace.' };
+
+      const today = setsFor(state.profile, date, exercise.id).filter(s => s.load != null);
+      if (today.length) {
+        const reps = today.map(s => s.reps).filter(r => r != null);
+        const owned = reps.length === today.length && reps.every(r => r >= exercise.repHigh);
+        if (owned) return { kind: 'up', text: `Logged ${describe(today)} — every set at the top of the range. Next session start at ${suggestNext(today[0].load)}.` };
+        const weakest = reps.length ? Math.min(...reps) : null;
+        return { kind: 'hold', text: weakest === null
+          ? `Logged ${describe(today)} but no reps. Add the reps so this can advise you.`
+          : `Logged ${describe(today)}. Next session: same weight, chase ${weakest + 1} on every set.` };
       }
 
-      const previous = lastPerformance(dayIndex, exerciseIndex, state.week);
-      if (!previous) {
-        return {
-          kind: 'first',
-          text: `First time: pick a weight you could manage about ${prescription.high} reps with, and stop 2 reps short. Log what you did.`
-        };
-      }
-      const hitTop = previous.reps !== null && previous.reps >= prescription.high;
-      if (hitTop) {
-        return { kind: 'up', text: `You hit ${previous.reps} at ${previous.load} in week ${previous.week}. Go up to ${suggestNext(previous.load)} and expect reps to drop back to ${prescription.low}.` };
-      }
-      if (previous.reps !== null) {
-        return { kind: 'hold', text: `Week ${previous.week}: ${previous.load} × ${previous.reps}. Stay at ${previous.load} and chase ${previous.reps + 1} reps.` };
-      }
-      return { kind: 'hold', text: `Last time you used ${previous.load} but logged no reps. Repeat it and record the reps on your last set.` };
+      const previous = lastSession(state.profile, exercise.id, date);
+      if (!previous) return { kind: 'first', text: `First time: pick a weight you could manage about ${exercise.repHigh} reps with, and stop 2 reps short. Log what you did.` };
+
+      const reps = previous.sets.map(s => s.reps).filter(r => r != null);
+      const when = labelForDate(previous.date);
+      if (!reps.length) return { kind: 'hold', text: `${when} you used ${previous.sets[0].load} but logged no reps. Repeat it and record them.` };
+      const owned = reps.length === previous.sets.length && reps.every(r => r >= exercise.repHigh);
+      if (owned) return { kind: 'up', text: `${when}: ${describe(previous.sets)} — top of the range. Go up to ${suggestNext(previous.sets[0].load)} and expect reps to drop back to ${exercise.repLow}.` };
+      return { kind: 'hold', text: `${when}: ${describe(previous.sets)}. Stay at ${previous.sets[0].load} and chase ${Math.min(...reps) + 1}.` };
     }
 
     /* ================= state ================= */
     const state = {
       tab: 'train',
-      day: readNumber('jt-lupe-active-day', defaultWorkoutDay()),
-      week: readNumber('jt-lupe-week', defaultWeek()),
+      date: localStorage.getItem('jt-lupe-active-date') || dateKey(),
       profile: PROFILES.includes(localStorage.getItem(PROFILE_KEY)) ? localStorage.getItem(PROFILE_KEY) : 'jt',
-      fuelDate: localDayKey(),
+      fuelDate: dateKey(),
       timer: 90,
       timerId: null
     };
@@ -696,47 +858,10 @@
     function migrateStorage() {
       const from = readNumber(SCHEMA_KEY, 1);
       if (from >= SCHEMA_VERSION) return;
-
-      if (from < 2) {
-        const legacy = [];
-        for (let index = 0; index < localStorage.length; index += 1) {
-          const key = localStorage.key(index);
-          const match = key && key.match(LEGACY_HABIT);
-          if (match) legacy.push({ key, date: match[1], habit: match[2], value: localStorage.getItem(key) });
-        }
-        legacy.forEach(entry => {
-          PROFILES.forEach(profile => {
-            const target = habitKey(profile, entry.date, entry.habit);
-            if (localStorage.getItem(target) === null) localStorage.setItem(target, entry.value);
-          });
-          localStorage.removeItem(entry.key);
-        });
-        PROFILES.forEach(profile => {
-          const current = localStorage.getItem(`jt-lupe-${profile}-weight`);
-          const hasLog = Object.keys(localStorage).some(key => key.startsWith(`jt-lupe-weightlog-${profile}-`));
-          if (current && !hasLog) {
-            localStorage.setItem(weightLogKey(profile, localDayKey()), `${current}|${localStorage.getItem(`jt-lupe-${profile}-unit`) || 'lb'}`);
-          }
-        });
-        LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
-        sessionStorage.removeItem('jt-lupe-session-tab');
-      }
-
-      if (from < 3) {
-        const shared = [];
-        for (let index = 0; index < localStorage.length; index += 1) {
-          const key = localStorage.key(index);
-          if (key && LEGACY_DONE.test(key)) shared.push({ key, value: localStorage.getItem(key) });
-        }
-        shared.forEach(entry => {
-          PROFILES.forEach(profile => {
-            const target = `${entry.key}-${profile}`;
-            if (localStorage.getItem(target) === null) localStorage.setItem(target, entry.value);
-          });
-          localStorage.removeItem(entry.key);
-        });
-      }
-
+      const carried = migrateToRecords();
+      console.info('migrated to records:', carried);
+      LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
+      sessionStorage.removeItem('jt-lupe-session-tab');
       localStorage.setItem(SCHEMA_KEY, SCHEMA_VERSION);
     }
 
@@ -745,66 +870,355 @@
       navigator.storage.persisted().then(already => already || navigator.storage.persist()).catch(() => {});
     }
 
-    const workouts = [
-      {
-        day: 'Monday', focus: 'Pull', note: 'Back, biceps, grip',
-        exercises: [
-          ['Scapular pulls', '2 x 8'],
-          ['Pull-up variation', '3 x 3-6'],
-          ['Seated row', '3 x 8-12'],
-          ['Lat pulldown', '2 x 8-12'],
-          ['One-arm dumbbell row', '2 x 8-12 / side'],
-          ['Hammer curl', '2 x 10-15'],
-          ['Farmer carry', '2 x 30-45 sec']
-        ]
-      },
-      {
-        day: 'Tuesday', focus: 'Legs A', note: 'Quads, glutes, hamstrings',
-        exercises: [
-          ['Bodyweight squat', '2 x 10 warm-up'],
-          ['Leg press', '3 x 6-10'],
-          ['Split-squat variation', '3 x 8 / leg'],
-          ['Kettlebell Romanian deadlift', '3 x 8-12'],
-          ['Leg extension', '2 x 10-15'],
-          ['Suitcase carry', '2 x 30 sec / side']
-        ]
-      },
-      {
-        day: 'Wednesday', focus: 'Push', note: 'Chest, shoulders, triceps',
-        exercises: [
-          ['Machine chest press', '4 x 6-10'],
-          ['Dumbbell overhead press', '3 x 6-10'],
-          ['Dumbbell incline press', '3 x 8-12'],
-          ['Triceps pressdown', '3 x 10-15'],
-          ['Face pull', '3 x 12-20'],
-          ['Rowing machine', '5 min steady']
-        ]
-      },
-      {
-        day: 'Thursday', focus: 'Legs B', note: 'Posterior chain, calves, core',
-        exercises: [
-          ['Bodyweight squat', '2 x 10 warm-up'],
-          ['Kettlebell Romanian deadlift', '3 x 8-12'],
-          ['Leg press, high foot', '3 x 10-15'],
-          ['Split squat or reverse lunge', '2 x 10 / leg'],
-          ['Dumbbell goblet squat', '2 x 10-15'],
-          ['Calf press on leg press', '3 x 12-20'],
-          ['Suitcase carry', '2 x 30 sec / side']
-        ]
-      },
-      {
-        day: 'Friday', focus: 'Upper + Row', note: 'Full upper body, conditioning',
-        exercises: [
-          ['Pull-up variation', '2 x 3-6'],
-          ['Machine chest press', '3 x 8-12'],
-          ['Seated row', '3 x 8-12'],
-          ['Dumbbell overhead press', '2 x 8-12'],
-          ['Dumbbell lateral raise', '2 x 12-20'],
-          ['Hammer curl + pressdown', '2 x 10-15 each'],
-          ['Rowing machine', '5 x 30 sec hard / 30 sec easy']
-        ]
-      }
-    ];
+    // The plan, versioned and separate from the log. Exercise ids are stable:
+    // history points at `seated-row`, never at "third item in Monday's list".
+    const PROGRAMME = {
+      "version": 1,
+      "days": [
+        {
+          "id": "pull",
+          "label": "Monday",
+          "focus": "Pull",
+          "note": "Back, biceps, grip",
+          "exercises": [
+            {
+              "id": "scapular-pulls",
+              "label": "Scapular pulls",
+              "sets": 2,
+              "repLow": 8,
+              "repHigh": 8,
+              "kind": "load",
+              "note": "2 x 8"
+            },
+            {
+              "id": "pull-up-variation",
+              "label": "Pull-up variation",
+              "sets": 3,
+              "repLow": 3,
+              "repHigh": 6,
+              "kind": "load",
+              "note": "3 x 3-6"
+            },
+            {
+              "id": "seated-row",
+              "label": "Seated row",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 12,
+              "kind": "load",
+              "note": "3 x 8-12"
+            },
+            {
+              "id": "lat-pulldown",
+              "label": "Lat pulldown",
+              "sets": 2,
+              "repLow": 8,
+              "repHigh": 12,
+              "kind": "load",
+              "note": "2 x 8-12"
+            },
+            {
+              "id": "one-arm-dumbbell-row",
+              "label": "One-arm dumbbell row",
+              "sets": 2,
+              "repLow": 8,
+              "repHigh": 12,
+              "kind": "load",
+              "note": "2 x 8-12 / side"
+            },
+            {
+              "id": "hammer-curl",
+              "label": "Hammer curl",
+              "sets": 2,
+              "repLow": 10,
+              "repHigh": 15,
+              "kind": "load",
+              "note": "2 x 10-15"
+            },
+            {
+              "id": "farmer-carry",
+              "label": "Farmer carry",
+              "sets": 2,
+              "repLow": 30,
+              "repHigh": 45,
+              "kind": "timed",
+              "note": "2 x 30-45 sec"
+            }
+          ]
+        },
+        {
+          "id": "legs-a",
+          "label": "Tuesday",
+          "focus": "Legs A",
+          "note": "Quads, glutes, hamstrings",
+          "exercises": [
+            {
+              "id": "bodyweight-squat",
+              "label": "Bodyweight squat",
+              "sets": 2,
+              "repLow": 10,
+              "repHigh": 10,
+              "kind": "warmup",
+              "note": "2 x 10 warm-up"
+            },
+            {
+              "id": "leg-press",
+              "label": "Leg press",
+              "sets": 3,
+              "repLow": 6,
+              "repHigh": 10,
+              "kind": "load",
+              "note": "3 x 6-10"
+            },
+            {
+              "id": "split-squat-variation",
+              "label": "Split-squat variation",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 8,
+              "kind": "load",
+              "note": "3 x 8 / leg"
+            },
+            {
+              "id": "kettlebell-romanian-deadlift",
+              "label": "Kettlebell Romanian deadlift",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 12,
+              "kind": "load",
+              "note": "3 x 8-12"
+            },
+            {
+              "id": "leg-extension",
+              "label": "Leg extension",
+              "sets": 2,
+              "repLow": 10,
+              "repHigh": 15,
+              "kind": "load",
+              "note": "2 x 10-15"
+            },
+            {
+              "id": "suitcase-carry",
+              "label": "Suitcase carry",
+              "sets": 2,
+              "repLow": 30,
+              "repHigh": 30,
+              "kind": "timed",
+              "note": "2 x 30 sec / side"
+            }
+          ]
+        },
+        {
+          "id": "push",
+          "label": "Wednesday",
+          "focus": "Push",
+          "note": "Chest, shoulders, triceps",
+          "exercises": [
+            {
+              "id": "machine-chest-press",
+              "label": "Machine chest press",
+              "sets": 4,
+              "repLow": 6,
+              "repHigh": 10,
+              "kind": "load",
+              "note": "4 x 6-10"
+            },
+            {
+              "id": "dumbbell-overhead-press",
+              "label": "Dumbbell overhead press",
+              "sets": 3,
+              "repLow": 6,
+              "repHigh": 10,
+              "kind": "load",
+              "note": "3 x 6-10"
+            },
+            {
+              "id": "dumbbell-incline-press",
+              "label": "Dumbbell incline press",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 12,
+              "kind": "load",
+              "note": "3 x 8-12"
+            },
+            {
+              "id": "triceps-pressdown",
+              "label": "Triceps pressdown",
+              "sets": 3,
+              "repLow": 10,
+              "repHigh": 15,
+              "kind": "load",
+              "note": "3 x 10-15"
+            },
+            {
+              "id": "face-pull",
+              "label": "Face pull",
+              "sets": 3,
+              "repLow": 12,
+              "repHigh": 20,
+              "kind": "load",
+              "note": "3 x 12-20"
+            },
+            {
+              "id": "rowing-machine",
+              "label": "Rowing machine",
+              "sets": null,
+              "repLow": null,
+              "repHigh": null,
+              "kind": "timed",
+              "note": "5 min steady"
+            }
+          ]
+        },
+        {
+          "id": "legs-b",
+          "label": "Thursday",
+          "focus": "Legs B",
+          "note": "Posterior chain, calves, core",
+          "exercises": [
+            {
+              "id": "bodyweight-squat",
+              "label": "Bodyweight squat",
+              "sets": 2,
+              "repLow": 10,
+              "repHigh": 10,
+              "kind": "warmup",
+              "note": "2 x 10 warm-up"
+            },
+            {
+              "id": "kettlebell-romanian-deadlift",
+              "label": "Kettlebell Romanian deadlift",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 12,
+              "kind": "load",
+              "note": "3 x 8-12"
+            },
+            {
+              "id": "leg-press-high-foot",
+              "label": "Leg press, high foot",
+              "sets": 3,
+              "repLow": 10,
+              "repHigh": 15,
+              "kind": "load",
+              "note": "3 x 10-15"
+            },
+            {
+              "id": "split-squat-or-reverse-lunge",
+              "label": "Split squat or reverse lunge",
+              "sets": 2,
+              "repLow": 10,
+              "repHigh": 10,
+              "kind": "load",
+              "note": "2 x 10 / leg"
+            },
+            {
+              "id": "dumbbell-goblet-squat",
+              "label": "Dumbbell goblet squat",
+              "sets": 2,
+              "repLow": 10,
+              "repHigh": 15,
+              "kind": "load",
+              "note": "2 x 10-15"
+            },
+            {
+              "id": "calf-press-on-leg-press",
+              "label": "Calf press on leg press",
+              "sets": 3,
+              "repLow": 12,
+              "repHigh": 20,
+              "kind": "load",
+              "note": "3 x 12-20"
+            },
+            {
+              "id": "suitcase-carry",
+              "label": "Suitcase carry",
+              "sets": 2,
+              "repLow": 30,
+              "repHigh": 30,
+              "kind": "timed",
+              "note": "2 x 30 sec / side"
+            }
+          ]
+        },
+        {
+          "id": "upper-row",
+          "label": "Friday",
+          "focus": "Upper + Row",
+          "note": "Full upper body, conditioning",
+          "exercises": [
+            {
+              "id": "pull-up-variation",
+              "label": "Pull-up variation",
+              "sets": 2,
+              "repLow": 3,
+              "repHigh": 6,
+              "kind": "load",
+              "note": "2 x 3-6"
+            },
+            {
+              "id": "machine-chest-press",
+              "label": "Machine chest press",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 12,
+              "kind": "load",
+              "note": "3 x 8-12"
+            },
+            {
+              "id": "seated-row",
+              "label": "Seated row",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 12,
+              "kind": "load",
+              "note": "3 x 8-12"
+            },
+            {
+              "id": "dumbbell-overhead-press",
+              "label": "Dumbbell overhead press",
+              "sets": 2,
+              "repLow": 8,
+              "repHigh": 12,
+              "kind": "load",
+              "note": "2 x 8-12"
+            },
+            {
+              "id": "dumbbell-lateral-raise",
+              "label": "Dumbbell lateral raise",
+              "sets": 2,
+              "repLow": 12,
+              "repHigh": 20,
+              "kind": "load",
+              "note": "2 x 12-20"
+            },
+            {
+              "id": "hammer-curl-pressdown",
+              "label": "Hammer curl + pressdown",
+              "sets": 2,
+              "repLow": 10,
+              "repHigh": 15,
+              "kind": "load",
+              "note": "2 x 10-15 each"
+            },
+            {
+              "id": "rowing-machine",
+              "label": "Rowing machine",
+              "sets": 5,
+              "repLow": 30,
+              "repHigh": 30,
+              "kind": "timed",
+              "note": "5 x 30 sec hard / 30 sec easy"
+            }
+          ]
+        }
+      ]
+    };
+
+    const DAYS = PROGRAMME.days;
+    const EXERCISE_LABEL = Object.fromEntries(
+      DAYS.flatMap(day => day.exercises.map(ex => [ex.id, ex.label])));
+
 
     /* ================= tabs ================= */
     function setTab(name) {
@@ -840,86 +1254,94 @@
     };
 
     function renderSessionMeta() {
-      const workout = workouts[state.day];
-      const total = workout.exercises.length;
-      const done = workout.exercises.filter((_, index) =>
-        localStorage.getItem(doneKey(state.week, state.day, index, state.profile)) === 'true').length;
+      const day = dayForDate(state.date);
+      const total = day.exercises.length;
+      const done = day.exercises.filter(ex => setsFor(state.profile, state.date, ex.id).length).length;
       el('sessionMeter').style.width = `${total ? (done / total) * 100 : 0}%`;
-      el('sessionCount').textContent = `${done} of ${total} exercises done · week ${state.week}`;
+      el('sessionCount').textContent = `${done} of ${total} exercises done · week ${weekOf(state.date)}`;
     }
 
     function renderSession() {
-      const workout = workouts[state.day];
-      el('sessionTitle').textContent = `${workout.day} · ${workout.focus}`;
-      el('sessionSub').textContent = workout.note;
+      const day = dayForDate(state.date);
+      el('sessionTitle').textContent = `${day.label} · ${day.focus}`;
+      el('sessionSub').textContent = day.note;
 
-      const delta = challengeDelta();
-      const currentDay = delta + 1;
-      el('challengeLine').textContent = delta < 0
-        ? `Starts in ${Math.abs(delta)} day${Math.abs(delta) === 1 ? '' : 's'}`
-        : delta >= CHALLENGE_LENGTH ? 'Challenge complete' : `Day ${currentDay} of ${CHALLENGE_LENGTH}`;
+      const n = challengeDay(state.date);
+      el('challengeLine').textContent = n < 1 ? `Starts in ${1 - n} day${1 - n === 1 ? '' : 's'}`
+        : n > CHALLENGE_LENGTH ? 'Challenge complete' : `Day ${n} of ${CHALLENGE_LENGTH}`;
 
-      const current = state.week === defaultWeek() && state.day === defaultWorkoutDay();
+      const isToday = state.date === dateKey();
       const flag = el('backfillFlag');
-      flag.hidden = current;
-      if (!current) flag.textContent = `Catching up — saving to week ${state.week}, ${workout.day}. Not today.`;
+      flag.hidden = isToday;
+      if (!isToday) flag.textContent = `Catching up — logging ${labelForDate(state.date)}, ${day.label}. Not today.`;
 
-      el('exerciseList').innerHTML = workout.exercises.map(([name, prescription], index) => {
-        const spec = parsePrescription(prescription);
-        const coach = coachFor(state.day, index, spec);
-        const load = localStorage.getItem(loadKey(state.week, state.day, index, state.profile)) || '';
-        const reps = localStorage.getItem(repsKey(state.week, state.day, index, state.profile)) || '';
-        const done = localStorage.getItem(doneKey(state.week, state.day, index, state.profile)) === 'true';
-        const target = spec.timed || !spec.sets
-          ? esc(prescription)
-          : `${spec.sets} × ${spec.low === spec.high ? spec.low : `${spec.low}–${spec.high}`}${spec.warmup ? '' : ' @ 1–3 RIR'}`;
+      el('exerciseList').innerHTML = day.exercises.map(ex => {
+        const sets = setsFor(state.profile, state.date, ex.id);
+        const first = sets[0] || {};
+        const coach = coachFor(ex, state.date);
+        const target = ex.kind === 'timed' || !ex.sets ? esc(ex.note)
+          : `${ex.sets} × ${ex.repLow === ex.repHigh ? ex.repLow : `${ex.repLow}–${ex.repHigh}`}${ex.kind === 'warmup' ? '' : ' @ 1–3 RIR'}`;
         return `
-          <article class="exercise" data-done="${done}">
+          <article class="exercise" data-done="${sets.length > 0}">
             <div class="exercise-top">
-              <div class="exercise-name">${esc(name)}<p class="target">${target}</p></div>
+              <div class="exercise-name">${esc(ex.label)}<p class="target">${target}</p></div>
             </div>
             <p class="coach" data-kind="${coach.kind}">${esc(coach.text)}</p>
             <div class="entry">
               <label>Weight
-                <input type="text" class="in-load" data-index="${index}" value="${esc(load)}" inputmode="decimal" placeholder="—" aria-label="Weight for ${esc(name)}">
+                <input type="text" class="in-load" data-ex="${ex.id}" value="${esc(first.load ?? '')}" inputmode="decimal" placeholder="—" aria-label="Weight for ${esc(ex.label)}">
               </label>
-              <label>Reps last set
-                <input type="number" class="in-reps" data-index="${index}" value="${esc(reps)}" min="0" max="100" inputmode="numeric" placeholder="—" aria-label="Reps for ${esc(name)}">
+              <label>${ex.kind === 'timed' ? 'Seconds' : 'Reps'}
+                <input type="number" class="in-reps" data-ex="${ex.id}" value="${esc(first.reps ?? first.seconds ?? '')}" min="0" max="999" inputmode="numeric" placeholder="—" aria-label="Reps for ${esc(ex.label)}">
+              </label>
+              <label>Sets
+                <input type="number" class="in-sets" data-ex="${ex.id}" value="${esc(sets.length || ex.sets || 1)}" min="1" max="20" inputmode="numeric" aria-label="Sets for ${esc(ex.label)}">
               </label>
               <label class="tick" title="Done">
-                <input type="checkbox" class="in-done" data-index="${index}" ${done ? 'checked' : ''} aria-label="Mark ${esc(name)} done">
+                <input type="checkbox" class="in-done" data-ex="${ex.id}" ${sets.length ? 'checked' : ''} aria-label="Mark ${esc(ex.label)} done">
               </label>
             </div>
           </article>`;
       }).join('');
 
-      document.querySelectorAll('.in-load').forEach(input => input.addEventListener('change', event => {
-        saveData(loadKey(state.week, state.day, Number(event.target.dataset.index), state.profile), event.target.value.trim());
-        flash('Saved.');
-      }));
-      document.querySelectorAll('.in-reps').forEach(input => input.addEventListener('change', event => {
-        saveData(repsKey(state.week, state.day, Number(event.target.dataset.index), state.profile), event.target.value.trim());
-        flash('Saved.');
-      }));
-      document.querySelectorAll('.in-done').forEach(input => input.addEventListener('change', event => {
-        const index = Number(event.target.dataset.index);
-        saveData(doneKey(state.week, state.day, index, state.profile), event.target.checked);
-        event.target.closest('.exercise').dataset.done = String(event.target.checked);
+      const commit = exerciseId => {
+        const card = document.querySelector(`.in-load[data-ex="${exerciseId}"]`).closest('.exercise');
+        const load = card.querySelector('.in-load').value.trim();
+        const reps = card.querySelector('.in-reps').value.trim();
+        const count = Math.max(1, Math.min(20, Number(card.querySelector('.in-sets').value) || 1));
+        const ex = dayForDate(state.date).exercises.find(e => e.id === exerciseId);
+        clearSets(state.profile, state.date, exerciseId);
+        if (!load && !reps) { renderSessionMeta(); return; }
+        for (let n = 1; n <= count; n += 1) {
+          writeSet(state.profile, state.date, exerciseId, n, {
+            load: load || null, unit: 'lb',
+            reps: ex.kind === 'timed' ? null : (reps === '' ? null : Number(reps)),
+            seconds: ex.kind === 'timed' ? (reps === '' ? null : Number(reps)) : null,
+            rir: null
+          });
+        }
+        const session = K.session(state.profile, state.date);
+        if (localStorage.getItem(session) === null) writeJSON(session, { templateId: dayForDate(state.date).id });
+        card.dataset.done = 'true';
+        card.querySelector('.in-done').checked = true;
         renderSessionMeta();
+      };
+
+      document.querySelectorAll('.in-load, .in-reps, .in-sets').forEach(input =>
+        input.addEventListener('change', event => { commit(event.target.dataset.ex); flash('Saved.'); }));
+      document.querySelectorAll('.in-done').forEach(input => input.addEventListener('change', event => {
+        const id = event.target.dataset.ex;
+        if (event.target.checked) commit(id);
+        else { clearSets(state.profile, state.date, id); event.target.closest('.exercise').dataset.done = 'false'; renderSessionMeta(); }
+        scheduleSync();
       }));
 
       renderSessionMeta();
     }
 
     function stepSession(direction) {
-      let day = state.day + direction;
-      let week = state.week;
-      if (day > 4) { day = 0; week = Math.min(WEEK_COUNT, week + 1); }
-      if (day < 0) { day = 4; week = Math.max(1, week - 1); }
-      state.day = day;
-      state.week = week;
-      localStorage.setItem('jt-lupe-active-day', day);
-      localStorage.setItem('jt-lupe-week', week);
+      state.date = shiftDate(state.date, direction);
+      localStorage.setItem('jt-lupe-active-date', state.date);
       renderSession();
     }
     el('prevDay').addEventListener('click', () => stepSession(-1));
@@ -935,7 +1357,8 @@
       const wanted = normalise(label).split(' ').filter(w => w.length > 2);
       if (!wanted.length) return null;
       let best = null;
-      workouts[state.day].exercises.forEach(([name], index) => {
+      dayForDate(state.date).exercises.forEach((ex, index) => {
+        const name = ex.label;
         const have = normalise(name).split(' ');
         const hits = wanted.filter(w => have.some(h => h.startsWith(w) || w.startsWith(h))).length;
         if (!hits) return;
@@ -989,7 +1412,7 @@
         const label = lower
           .replace(/\d+(?:\.\d+)?/g, ' ')
           .replace(/\b(x|\u00d7|@|at|with|of|for|and|each|per|side|lbs?|pounds?|kgs?|kilos?|reps?|repetitions?|sets?|seconds?|secs?|rir|bw|bodyweight|body weight)\b/g, ' ');
-        return { raw, load, reps, match: matchExercise(label) };
+        return { raw, load, reps, sets: sets ? Number(sets[1]) : null, match: matchExercise(label) };
       });
     }
 
@@ -1001,7 +1424,7 @@
         ? `<div class="import-row"><span class="hit">${esc(row.match.name)}</span><span class="val">${esc(row.load)}${row.reps ? ` \u00d7 ${esc(row.reps)}` : ''}</span></div>`
         : `<div class="import-row"><span class="miss">${esc(row.raw)}</span><span class="val">skipped</span></div>`
       ).join('')}</div>
-      <p class="muted" style="margin:10px 0 0;font-size:.82rem">${usable.length} of ${rows.length} lines matched an exercise in ${esc(workouts[state.day].day)} \u00b7 ${esc(workouts[state.day].focus)}. Skipped lines are left alone.</p>`;
+      <p class="muted" style="margin:10px 0 0;font-size:.82rem">${usable.length} of ${rows.length} lines matched an exercise in ${esc(dayForDate(state.date).label)} \u00b7 ${esc(dayForDate(state.date).focus)}. Skipped lines are left alone.</p>`;
       el('importApply').hidden = usable.length === 0;
       renderImport.usable = usable;
     }
@@ -1011,12 +1434,22 @@
     el('importApply').addEventListener('click', () => {
       const rows = renderImport.usable || [];
       rows.forEach(row => {
-        saveData(loadKey(state.week, state.day, row.match.index, state.profile), String(row.load));
-        if (row.reps) saveData(repsKey(state.week, state.day, row.match.index, state.profile), String(row.reps));
-        saveData(doneKey(state.week, state.day, row.match.index, state.profile), true);
+        const ex = dayForDate(state.date).exercises[row.match.index];
+        const count = Math.max(1, Math.min(20, row.sets || ex.sets || 1));
+        clearSets(state.profile, state.date, ex.id);
+        for (let n = 1; n <= count; n += 1) {
+          writeSet(state.profile, state.date, ex.id, n, {
+            load: row.load, unit: 'lb',
+            reps: ex.kind === 'timed' ? null : (row.reps ? Number(row.reps) : null),
+            seconds: ex.kind === 'timed' ? (row.reps ? Number(row.reps) : null) : null,
+            rir: null
+          });
+        }
+        const session = K.session(state.profile, state.date);
+        if (localStorage.getItem(session) === null) writeJSON(session, { templateId: dayForDate(state.date).id });
       });
       el('importText').value = '';
-      el('importResult').innerHTML = `<p class="muted" style="margin:10px 0 0">Logged ${rows.length} exercise${rows.length === 1 ? '' : 's'} to ${esc(workouts[state.day].day)}, week ${state.week}.</p>`;
+      el('importResult').innerHTML = `<p class="muted" style="margin:10px 0 0">Logged ${rows.length} exercise${rows.length === 1 ? '' : 's'} to ${esc(labelForDate(state.date))}.</p>`;
       el('importApply').hidden = true;
       renderSession();
     });
@@ -1076,7 +1509,7 @@
     }
 
     function readMeals(profile, date) {
-      const prefix = mealPrefix(profile, date);
+      const prefix = K.mealPrefix(profile, date);
       const meals = [];
       for (let index = 0; index < localStorage.length; index += 1) {
         const key = localStorage.key(index);
@@ -1091,7 +1524,7 @@
 
     function renderFuel() {
       const date = state.fuelDate;
-      const today = localDayKey();
+      const today = dateKey();
       const picker = el('fuelDate');
       picker.value = date;
       picker.max = today;
@@ -1133,7 +1566,7 @@
       }));
 
       document.querySelectorAll('.habit').forEach(input => {
-        input.checked = localStorage.getItem(habitKey(state.profile, date, input.dataset.habit)) === 'true';
+        input.checked = (readJSON(K.habit(state.profile, date, input.dataset.habit)) || {}).done === true;
       });
 
       el('bwWho').textContent = PROFILE_LABEL[state.profile];
@@ -1200,7 +1633,7 @@
       if (!name) { el('mealName').focus(); return; }
       const protein = Math.max(0, Number(el('mealProtein').value) || 0);
       const id = `${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
-      saveData(`${mealPrefix(state.profile, state.fuelDate)}${id}`, JSON.stringify({ name, protein }));
+      writeJSON(K.meal(state.profile, state.fuelDate, id), { name, protein });
       el('mealName').value = '';
       el('mealProtein').value = '';
       renderFuel();
@@ -1210,12 +1643,12 @@
 
     el('fuelDate').addEventListener('change', event => {
       const chosen = event.target.value;
-      state.fuelDate = /^\d{4}-\d{2}-\d{2}$/.test(chosen) && chosen <= localDayKey() ? chosen : localDayKey();
+      state.fuelDate = /^\d{4}-\d{2}-\d{2}$/.test(chosen) && chosen <= dateKey() ? chosen : dateKey();
       renderFuel();
     });
 
     document.querySelectorAll('.habit').forEach(input => input.addEventListener('change', () => {
-      saveData(habitKey(state.profile, state.fuelDate, input.dataset.habit), input.checked);
+      writeJSON(K.habit(state.profile, state.fuelDate, input.dataset.habit), { done: input.checked });
     }));
 
     function commitBodyweight() {
@@ -1224,7 +1657,7 @@
       const unit = el('bwUnit').value;
       saveData(`jt-lupe-${state.profile}-weight`, value);
       saveData(`jt-lupe-${state.profile}-unit`, unit);
-      saveData(weightLogKey(state.profile, localDayKey()), `${value}|${unit}`);
+      writeJSON(K.bodyweight(state.profile, dateKey()), { value, unit });
       renderFuel();
     }
     el('bwValue').addEventListener('change', commitBodyweight);
@@ -1232,60 +1665,51 @@
 
     /* ================= progress ================= */
     function readWeightHistory(profile) {
-      const prefix = `jt-lupe-weightlog-${profile}-`;
+      const prefix = K.bwPrefix(profile);
       const rows = [];
-      for (let index = 0; index < localStorage.length; index += 1) {
-        const key = localStorage.key(index);
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
         if (!key || !key.startsWith(prefix)) continue;
         const date = key.slice(prefix.length);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-        const [value, unit] = String(localStorage.getItem(key)).split('|');
-        if (!Number(value)) continue;
-        rows.push({ date, value: Number(value), unit: unit || 'lb' });
+        const rec = readJSON(key);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !rec || !Number(rec.value)) continue;
+        rows.push({ date, value: Number(rec.value), unit: rec.unit || 'lb' });
       }
       return rows.sort((a, b) => b.date.localeCompare(a.date));
     }
 
     function readHabitHistory(profile) {
-      const prefix = `jt-lupe-habit-${profile}-`;
+      const prefix = K.habitPrefix(profile);
       const byDate = new Map();
-      for (let index = 0; index < localStorage.length; index += 1) {
-        const key = localStorage.key(index);
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
         if (!key || !key.startsWith(prefix)) continue;
-        const match = key.slice(prefix.length).match(/^(\d{4}-\d{2}-\d{2})-([a-z]+)$/);
-        if (!match) continue;
-        if (!byDate.has(match[1])) byDate.set(match[1], {});
-        byDate.get(match[1])[match[2]] = localStorage.getItem(key) === 'true';
+        const [date, habit] = key.slice(prefix.length).split(':');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !habit) continue;
+        if (!byDate.has(date)) byDate.set(date, {});
+        byDate.get(date)[habit] = (readJSON(key) || {}).done === true;
       }
       return [...byDate.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([date, marks]) => ({ date, marks }));
     }
 
-    // One row per exercise: where it started, where it is now.
     function readStrength(profile) {
       const byExercise = new Map();
-      workouts.forEach((workout, day) => {
-        workout.exercises.forEach(([name, prescription], index) => {
-          if (parsePrescription(prescription).warmup) return;
-          for (let week = 1; week <= WEEK_COUNT; week += 1) {
-            const load = localStorage.getItem(loadKey(week, day, index, profile));
-            if (!load) continue;
-            const reps = localStorage.getItem(repsKey(week, day, index, profile)) || '';
-            if (!byExercise.has(name)) byExercise.set(name, { name, days: new Set(), entries: [] });
-            const row = byExercise.get(name);
-            row.days.add(workout.day);
-            row.entries.push({ week, dayIndex: day, load, reps });
-          }
-        });
+      datesLogged(profile, null).slice().reverse().forEach(date => {
+        DAYS.forEach(day => day.exercises.forEach(ex => {
+          if (ex.kind === 'warmup') return;
+          const sets = setsFor(profile, date, ex.id).filter(x => x.load != null);
+          if (!sets.length) return;
+          if (!byExercise.has(ex.id)) byExercise.set(ex.id, { name: ex.label, days: new Set(), entries: [] });
+          const row = byExercise.get(ex.id);
+          if (row.entries.some(e => e.date === date)) return;
+          row.days.add(day.label);
+          row.entries.push({ date, load: sets[0].load, reps: sets[0].reps, count: sets.length });
+        }));
       });
       return [...byExercise.values()].map(row => {
-        // Eight lifts appear on two different days. Entries are gathered day-major,
-        // so they must be put back in real order before "first" and "latest" mean
-        // anything.
-        row.entries.sort((a, b) => a.week - b.week || a.dayIndex - b.dayIndex);
-        const first = row.entries[0];
-        const latest = row.entries[row.entries.length - 1];
-        const from = numericLoad(first.load);
-        const to = numericLoad(latest.load);
+        row.entries.sort((a, b) => a.date.localeCompare(b.date));
+        const first = row.entries[0], latest = row.entries[row.entries.length - 1];
+        const from = numericLoad(first.load), to = numericLoad(latest.load);
         return { ...row, first, latest, delta: from && to ? +(to - from).toFixed(1) : null, sessions: row.entries.length };
       }).sort((a, b) => a.name.localeCompare(b.name));
     }
@@ -1297,12 +1721,12 @@
       const habits = readHabitHistory(state.profile);
 
       let sets = 0;
-      const sessions = new Set();
-      workouts.forEach((workout, day) => workout.exercises.forEach((_, index) => {
-        for (let week = 1; week <= WEEK_COUNT; week += 1) {
-          if (localStorage.getItem(loadKey(week, day, index, state.profile))) { sets += 1; sessions.add(`${week}-${day}`); }
-        }
-      }));
+      const sessions = new Set(datesLogged(state.profile, null));
+      const head = `jt-lupe:${state.profile}:set:`;
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(head)) sets += 1;
+      }
 
       el('statSessions').textContent = sessions.size;
       el('statLifts').textContent = sets;
@@ -1319,7 +1743,7 @@
           <thead><tr><th class="grow">Exercise</th><th>First → latest</th><th>Change</th></tr></thead>
           <tbody>${strength.map(row => `<tr>
             <td class="grow">${esc(row.name)}<br><span class="muted" style="font-size:.78rem">${esc([...row.days].join(' + '))} · ${row.sessions} session${row.sessions === 1 ? '' : 's'}</span></td>
-            <td>${esc(row.first.load)}${row.first.reps ? `×${esc(row.first.reps)}` : ''} <span class="muted">→</span> ${esc(row.latest.load)}${row.latest.reps ? `×${esc(row.latest.reps)}` : ''}</td>
+            <td>${esc(row.first.count)}×${esc(row.first.reps ?? '?')} at ${esc(row.first.load)} <span class="muted">→</span> ${esc(row.latest.count)}×${esc(row.latest.reps ?? '?')} at ${esc(row.latest.load)}</td>
             <td class="${row.delta > 0 ? 'up' : 'flat'}">${row.delta === null ? '—' : row.delta > 0 ? `+${row.delta}` : row.delta}</td>
           </tr>`).join('')}</tbody>
         </table></div>`
@@ -1357,15 +1781,14 @@
     el('exportCsv').addEventListener('click', () => {
       const lines = [['dataset', 'profile', 'date', 'week', 'day', 'item', 'value', 'reps'].join(',')];
       PROFILES.forEach(profile => {
-        workouts.forEach((workout, day) => workout.exercises.forEach(([name], index) => {
-          for (let week = 1; week <= WEEK_COUNT; week += 1) {
-            const load = localStorage.getItem(loadKey(week, day, index, profile));
-            const reps = localStorage.getItem(repsKey(week, day, index, profile)) || '';
-            const done = localStorage.getItem(doneKey(week, day, index, profile)) === 'true';
-            if (!load && !done) continue;
-            lines.push(['lift', profile, '', week, workout.day, name, load || '', reps].map(csvCell).join(','));
-          }
-        }));
+        datesLogged(profile, null).forEach(date => {
+          DAYS.forEach(day => day.exercises.forEach(ex => {
+            setsFor(profile, date, ex.id).forEach(set => {
+              lines.push(['set', profile, date, weekOf(date), day.label, ex.label,
+                set.load ?? '', set.reps ?? set.seconds ?? ''].map(csvCell).join(','));
+            });
+          }));
+        });
         readHabitHistory(profile).forEach(row => HABITS.forEach(([id]) => {
           if (row.marks[id] !== undefined) lines.push(['habit', profile, row.date, '', '', id, row.marks[id], ''].map(csvCell).join(','));
         }));
@@ -1387,7 +1810,7 @@
       const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
       const link = document.createElement('a');
       link.href = url;
-      link.download = `jt-lupe-log-${localDayKey()}.csv`;
+      link.download = `jt-lupe-log-${dateKey()}.csv`;
       link.click();
       URL.revokeObjectURL(url);
     });
@@ -1396,13 +1819,13 @@
       const data = {};
       for (let index = 0; index < localStorage.length; index += 1) {
         const key = localStorage.key(index);
-        if (key && key.startsWith('jt-lupe-') && !LEGACY_KEYS.includes(key)) data[key] = localStorage.getItem(key);
+        if (key && key.startsWith('jt-lupe') && !LEGACY_KEYS.includes(key)) data[key] = localStorage.getItem(key);
       }
       const payload = JSON.stringify({ app: 'JT + Lupe Training Log', schema: SCHEMA_VERSION, exported: new Date().toISOString(), data }, null, 2);
       const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
       const link = document.createElement('a');
       link.href = url;
-      link.download = `jt-lupe-backup-${localDayKey()}.json`;
+      link.download = `jt-lupe-backup-${dateKey()}.json`;
       link.click();
       URL.revokeObjectURL(url);
     });
@@ -1416,7 +1839,7 @@
         const entries = Object.entries(payload.data || {});
         if (!entries.length) throw new Error('empty backup');
         entries.forEach(([key, value]) => {
-          if (key.startsWith('jt-lupe-') && !LEGACY_KEYS.includes(key)) localStorage.setItem(key, value);
+          if (key.startsWith('jt-lupe') && !LEGACY_KEYS.includes(key)) localStorage.setItem(key, value);
         });
         if (Number(payload.schema || 1) < SCHEMA_VERSION) localStorage.setItem(SCHEMA_KEY, payload.schema || 1);
         localStorage.removeItem(CURSOR_KEY);
@@ -1512,7 +1935,7 @@
       SCHEMA_KEY, PROFILE_KEY, CURSOR_KEY, DEVICE_KEY, DIRTY_KEY,
       'jt-lupe-active-day', 'jt-lupe-week', 'jt-lupe-theme'
     ]);
-    const isSyncable = key => key.startsWith('jt-lupe-') && !LOCAL_ONLY_KEYS.has(key);
+    const isSyncable = key => key.startsWith('jt-lupe') && !LOCAL_ONLY_KEYS.has(key);
 
     const syncState = { enabled: false, email: null, busy: false, timer: null };
 
@@ -1686,15 +2109,10 @@
       const text = params.get('log');
       if (!text) return;
 
-      const day = Number(params.get('day'));
-      if (Number.isInteger(day) && day >= 0 && day < workouts.length) {
-        state.day = day;
-        localStorage.setItem('jt-lupe-active-day', day);
-      }
-      const week = Number(params.get('week'));
-      if (Number.isInteger(week) && week >= 1 && week <= WEEK_COUNT) {
-        state.week = week;
-        localStorage.setItem('jt-lupe-week', week);
+      const date = params.get('date');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
+        state.date = date;
+        localStorage.setItem('jt-lupe-active-date', date);
       }
       renderSession();
 
@@ -1719,7 +2137,7 @@
 
     // A second tab, or the installed app in another window, should not go stale.
     window.addEventListener('storage', event => {
-      if (event.key && event.key.startsWith('jt-lupe-')) renderAll();
+      if (event.key && event.key.startsWith('jt-lupe')) renderAll();
     });
 
     initSync();
