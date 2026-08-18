@@ -83,10 +83,14 @@ is held as a Worker secret, never shipped to the browser:
 cd cloud && npx wrangler secret put USDA_API_KEY
 ```
 
-Without it the Worker falls back to the shared `DEMO_KEY`, which allows **10 lookups an
-hour** and is effectively unusable - the app says so plainly rather than failing quietly.
-A personal key from api.data.gov is free, instant, needs no card, and raises this to
-1,000 requests an hour. Responses are cached for 24 hours per query to conserve it.
+A personal key allows **3,600 requests an hour**. Without one the Worker falls back to
+the shared `DEMO_KEY`, which allows **10 lookups an hour** and is effectively unusable - the app says so plainly rather than failing quietly.
+Keys from api.data.gov are free, instant and need no card. Responses are cached for 24
+hours per query, which also makes a repeat lookup effectively instant.
+
+The search is issued as a **POST** with a JSON body. Multiple `dataType` values cannot be
+expressed on the query string - repeating the parameter and comma-joining it are both
+rejected by the edge with a bare nginx 400 before the API sees them.
 
 Nutrients come back **per 100 g** for every dataType requested, so the grams of the
 chosen portion are what turn a row into a meal. Survey (FNDDS) rows carry real portions

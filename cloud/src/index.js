@@ -96,17 +96,19 @@ export default {
         const hit = await cache.match(cacheKey);
         if (hit) return hit;
 
-        const usda = new URL('https://api.nal.usda.gov/fdc/v1/foods/search');
-        usda.searchParams.set('query', query);
-        usda.searchParams.set('pageSize', '10');
-        usda.searchParams.set('api_key', env.USDA_API_KEY || 'DEMO_KEY');
-        // Survey foods are the generic restaurant-style dishes ("chicken teriyaki");
-        // SR Legacy carries the older chain entries; Branded covers packaged goods.
-        // This must be ONE comma-separated parameter - repeating the key returns 400.
-        usda.searchParams.set('dataType', 'Survey (FNDDS),SR Legacy,Branded');
-
+        // POST, not GET. Several dataType values cannot be expressed on the query
+        // string - repeating the key and comma-joining it are both rejected by the
+        // edge with a 400 before the API ever sees them - but the POST body takes a
+        // plain array. Survey foods are the generic restaurant dishes ("chicken
+        // teriyaki"), SR Legacy carries the older chain entries, Branded the packaged
+        // goods.
+        const usda = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(env.USDA_API_KEY || 'DEMO_KEY')}`;
         const usingDemoKey = !env.USDA_API_KEY;
-        const response = await fetch(usda, { headers: { Accept: 'application/json' } });
+        const response = await fetch(usda, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ query, pageSize: 10, dataType: ['Survey (FNDDS)', 'SR Legacy', 'Branded'] })
+        });
         const payload = await response.json().catch(() => null);
 
         // FDC signals OVER_RATE_LIMIT with a 200 and an error body as well as with a
@@ -132,10 +134,15 @@ export default {
           // per 100 g, which is how FDC reports every dataType we ask for
           protein100: nutrient(food, 'Protein'),
           kcal100: nutrient(food, 'Energy'),
-          portions: (food.foodMeasures || [])
-            .filter(m => m.gramWeight > 0 && m.disseminationText)
-            .slice(0, 6)
-            .map(m => ({ label: String(m.disseminationText).slice(0, 40), grams: Math.round(m.gramWeight) })),
+          // "Quantity not specified" is a real FDC portion but a useless label; keep it
+          // only when nothing better exists, and never as the default.
+          portions: (() => {
+            const all = (food.foodMeasures || [])
+              .filter(m => m.gramWeight > 0 && m.disseminationText)
+              .map(m => ({ label: String(m.disseminationText).slice(0, 40), grams: Math.round(m.gramWeight) }));
+            const named = all.filter(m => !/^quantity not specified$/i.test(m.label));
+            return (named.length ? named : all.map(m => ({ ...m, label: `${m.grams} g` }))).slice(0, 6);
+          })(),
           servingGrams: food.servingSizeUnit === 'g' && food.servingSize > 0 ? Math.round(food.servingSize) : null
         })).filter(food => food.protein100 !== null);
 
