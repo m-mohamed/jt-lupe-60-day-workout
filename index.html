@@ -380,9 +380,9 @@
       <h1 class="brand">JT <span>+</span> LUPE</h1>
       <div class="topbar-spacer"></div>
       <button class="chip who" id="whoChip" type="button" title="Switch profile">JT</button>
-      <div class="chip sync-chip" id="syncChip" data-state="local" title="Local only">
+      <button class="chip sync-chip" id="syncChip" type="button" data-state="local" title="Local only">
         <span class="sync-dot" aria-hidden="true"></span><span id="syncText">Local</span>
-      </div>
+      </button>
     </header>
 
     <nav class="tabbar" role="tablist" aria-label="Sections">
@@ -2004,6 +2004,19 @@
 
     const syncState = { enabled: false, mode: 'unknown', email: null, busy: false, timer: null };
 
+    /**
+     * Call the API knowing what Access actually does when a session ends.
+     *
+     * It does not answer 401. It answers 302 to a login page on a different origin —
+     * which a normal `fetch` follows, fails CORS on, and rejects. So the app never saw
+     * "signed out"; it saw a network error, called itself offline, and retried for
+     * ever while nothing uploaded. `redirect: 'manual'` turns that redirect into an
+     * opaque response we can actually recognise.
+     */
+    const apiFetch = (path, init = {}) => fetch(path, { ...init, redirect: 'manual' });
+    const isSignedOut = response =>
+      response.type === 'opaqueredirect' || response.status === 401 || response.status === 403;
+
     function deviceId() {
       let id = localStorage.getItem(DEVICE_KEY);
       if (!id) {
@@ -2051,12 +2064,12 @@
     const SYNC_BATCH = 400;
 
     async function pushBatch(batch, cursor) {
-      const response = await fetch(`./api/sync?ns=${SYNC_NS}`, {
+      const response = await apiFetch(`./api/sync?ns=${SYNC_NS}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ since: cursor, device: deviceId(), changes: batch })
       });
-      if (response.status === 401) return { signedOut: true };
+      if (isSignedOut(response)) return { signedOut: true };
       if (!response.ok) {
         let detail = String(response.status);
         try { detail = (await response.json()).error || detail; } catch { /* keep status */ }
@@ -2096,7 +2109,8 @@
           const { signedOut, result } = await pushBatch(batch, cursor);
           if (signedOut) {
             syncState.enabled = false;
-            setSyncChip('error', 'Signed out', 'Reload the page to sign in again.');
+            syncState.mode = 'rejected';
+            setSyncChip('error', 'Sign in', 'Your sign-in expired. Tap to sign in again — nothing logged here is lost.');
             return;
           }
 
@@ -2135,9 +2149,8 @@
      * a backend we simply could not reach.
      */
     async function identify() {
-      const response = await fetch(`./api/me?ns=${SYNC_NS}`, { headers: { Accept: 'application/json' } });
-      // Access answers API-style requests with 401 rather than a login redirect.
-      if (response.status === 401) return { state: 'rejected' };
+      const response = await apiFetch(`./api/me?ns=${SYNC_NS}`, { headers: { Accept: 'application/json' } });
+      if (isSignedOut(response)) return { state: 'rejected' };
       if (!response.ok) return { state: 'absent' };
       return { state: 'signed-in', me: await response.json() };
     }
@@ -2156,7 +2169,7 @@
 
       if (outcome.state === 'rejected') {
         syncState.mode = 'rejected';
-        setSyncChip('error', 'No account', 'The backend is reachable but rejected this session. Reload to sign in again.');
+        setSyncChip('error', 'Sign in', 'Your sign-in expired. Tap to sign in again — nothing logged here is lost.');
         return;
       }
       if (outcome.state === 'absent') {
@@ -2199,6 +2212,14 @@
         if (syncState.enabled) scheduleSync(200);
         else if (syncState.mode === 'unreachable') connectSync();
       };
+
+      // Signing back in is a navigation, which is the only thing Access will answer
+      // with a login page. A reload is exactly that.
+      el('syncChip').addEventListener('click', () => {
+        if (syncState.mode === 'rejected') { location.reload(); return; }
+        if (syncState.enabled) { setSyncChip('syncing', 'Syncing…'); runSync(); }
+        else retry();
+      });
 
       window.addEventListener('online', retry);
       window.addEventListener('offline', () => setSyncChip('offline', 'Offline', 'Changes are saved here and will upload when you reconnect.'));

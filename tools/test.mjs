@@ -24,6 +24,7 @@ const SUITES = [
   { file: 'import.test.js', port: STATIC_PORT },
   { file: 'migration.test.js', port: STATIC_PORT },
   { file: 'edge-cases.test.js', port: WORKER_PORT },
+  { file: 'signed-out.test.js', port: WORKER_PORT },
   { file: 'offline.test.js', port: WORKER_PORT },
   { file: 'upgrade.test.js', port: WORKER_PORT },
   { file: 'stress.test.js', port: WORKER_PORT }

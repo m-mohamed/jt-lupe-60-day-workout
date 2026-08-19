@@ -13,19 +13,28 @@ const CORE_ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg
  * ERR_FAILED instead of loading the app. Rebuilding the response drops the flag.
  */
 async function cacheClean(cache, request) {
-  const response = await fetch(request, { credentials: 'same-origin' });
-  if (!response.ok) throw new Error(`${request} → ${response.status}`);
+  // `redirect: 'manual'` matters twice over. It stops the asset server's
+  // /index.html → / redirect from being stored, and it stops an expired Access
+  // session from taking the whole install down: that login redirect points at
+  // another origin, a following fetch fails CORS and rejects, and one rejection
+  // used to mean the new version never installed at all — so the app could not
+  // update itself precisely when someone needed to sign back in.
+  const response = await fetch(request, { credentials: 'same-origin', redirect: 'manual' });
+  if (!response.ok || response.type !== 'basic') return false;
   const body = await response.blob();
   await cache.put(request, new Response(body, {
     status: response.status,
     statusText: response.statusText,
     headers: response.headers
   }));
+  return true;
 }
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(async cache => {
-    await Promise.all(CORE_ASSETS.map(asset => cacheClean(cache, asset)));
+    // Best effort, one asset at a time failing on its own. Install must succeed even
+    // if nothing could be cached; the navigation handler refills the shell later.
+    await Promise.all(CORE_ASSETS.map(asset => cacheClean(cache, asset).catch(() => false)));
   }));
   self.skipWaiting();
 });
