@@ -2,11 +2,17 @@
 // today's session, editing what was already logged, and going back to fill in a
 // missed day. Real taps and real typing only — see README.md for why.
 const { chromium } = require('playwright-core');
-const { launchOptions } = require('./browser.js');
+const { launchOptions, SELECT_ALL } = require('./browser.js');
 const R = []; const t = (n, ok, d = '') => R.push(`${ok ? 'PASS' : 'FAIL'}  ${n}${d ? `  -> ${d}` : ''}`);
 const url = 'http://127.0.0.1:8911/';
-const TODAY = '2026-08-18';        // Tuesday, day 2
-const YESTERDAY = '2026-08-17';
+
+// Computed here, not hardcoded. Pinning these to the day they were written meant the
+// suite passed on that Tuesday and failed everywhere else — CI caught it the first
+// time it ran past midnight UTC.
+const key = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const now = new Date();
+const TODAY = key(now);
+const YESTERDAY = key(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
 
 (async () => {
   const b = await chromium.launch(launchOptions());
@@ -24,11 +30,17 @@ const YESTERDAY = '2026-08-17';
   // --- today is Tuesday: the app must open on legs, day 2 ---
   await fresh();
   let r = await p.evaluate(() => ({
+    date: state.date,
     title: document.getElementById('sessionTitle').textContent,
     day: document.getElementById('challengeLine').textContent,
     flagged: !document.getElementById('backfillFlag').hidden
   }));
-  t('opens on today, not flagged as catching up', /Tuesday/i.test(r.title) && /day 2 of 60/i.test(r.day) && !r.flagged, JSON.stringify(r));
+  // The invariant is that it opens on the real calendar date and does not claim to be
+  // catching up. Which session that maps to is the programme's business — on a weekend
+  // it shows Monday's, because there is no weekend session to show.
+  t('opens on today, not flagged as catching up',
+    r.date === TODAY && Boolean(r.title.trim()) && !r.flagged, JSON.stringify(r));
+  t('the day counter names a day of the challenge', /day \d+ of 60|starts in|complete/i.test(r.day), r.day);
 
   // --- log one exercise the way a person does, then change their mind ---
   let id = await exId(0);
@@ -39,21 +51,21 @@ const YESTERDAY = '2026-08-17';
 
   // correct the weight after the fact: the record must change, not accumulate
   await p.locator('.in-load').nth(0).tap();
-  await p.keyboard.press('Meta+A'); await p.keyboard.type('105');
+  await p.keyboard.press(SELECT_ALL); await p.keyboard.type('105');
   await p.locator('.in-reps').nth(0).tap(); await p.waitForTimeout(400);
   const edited = await sets(TODAY, id);
   t('editing a logged weight replaces it', edited.length === first.length && edited.every(s => s.l === '105'), JSON.stringify({ first, edited }));
 
   // --- cut the set count from 3 to 2: the third record must be gone ---
   await p.locator('.in-sets').nth(0).tap();
-  await p.keyboard.press('Meta+A'); await p.keyboard.type('2');
+  await p.keyboard.press(SELECT_ALL); await p.keyboard.type('2');
   await p.locator('.in-load').nth(1).tap(); await p.waitForTimeout(400);
   const cut = await sets(TODAY, id);
   t('cutting sets 3 -> 2 removes the third record', cut.length === 2, JSON.stringify(cut));
 
   // --- a garbage set count must not wipe the exercise ---
   await p.locator('.in-sets').nth(0).tap();
-  await p.keyboard.press('Meta+A'); await p.keyboard.type('abc');
+  await p.keyboard.press(SELECT_ALL); await p.keyboard.type('abc');
   await p.locator('.in-load').nth(1).tap(); await p.waitForTimeout(400);
   const junk = await sets(TODAY, id);
   t('garbage set count falls back to one set, keeps the load', junk.length >= 1 && junk[0].l === '105', JSON.stringify(junk));
@@ -74,7 +86,7 @@ const YESTERDAY = '2026-08-17';
     names: [...document.querySelectorAll('#mealList .meal-name')].map(n => n.textContent)
   }));
   t('backfilled fuel day shows that day, not today', r.total === '0 g' && r.names.length === 0, JSON.stringify({ todayTotal, ...r }));
-  t('backfilled fuel day is labelled', /yesterday/i.test(r.flag), r.flag);
+  t('backfilled fuel day is labelled', /^Backfilling .+\.$/.test(r.flag) && /yesterday/i.test(r.flag), r.flag);
 
   // --- a meal added while backfilling belongs to the backfilled day ---
   await p.locator('#mealName').tap(); await p.keyboard.type('Leftover rice');

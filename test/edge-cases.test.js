@@ -124,4 +124,7 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   t('no page errors', errors.length===0, errors.slice(0,2).join(' | '));
   console.log(JSON.stringify({results:R}, null, 1));
   await b.close();
+  // Non-zero on a failed check, not just on an exception. Without this the suite
+  // exited 0 with FAIL lines in its output and the runner called it green.
+  process.exit(R.some(x => x.startsWith('FAIL')) ? 1 : 0);
 })().catch(e=>{console.error('FAILED:',e.message);process.exit(1);});

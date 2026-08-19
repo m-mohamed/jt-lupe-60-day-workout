@@ -70,7 +70,10 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
              day: document.getElementById('challengeLine').innerText };
   });
   t('navigates by date', /Monday/.test(nav.title) && /DAY 1 OF 60/i.test(nav.day), JSON.stringify(nav));
-  t('backfill flag names the date', /Yesterday/.test(nav.flag), nav.flag);
+  // The flag has to name the day being logged and say it is not today. Asserting the
+  // literal word "Yesterday" only held on the day this was written.
+  t('backfill flag names the date and denies it is today',
+    /Catching up/i.test(nav.flag) && /Monday/i.test(nav.flag) && /Not today/i.test(nav.flag), nav.flag);
 
   const prog = await p.evaluate(() => { setTab('progress'); renderProgress();
     return { sets: document.getElementById('statLifts').textContent,
@@ -81,4 +84,7 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   t('no page errors', errors.length===0, errors.slice(0,2).join(' | '));
   console.log(JSON.stringify({results:R, pageErrors:errors}, null, 1));
   await b.close();
+  // Non-zero on a failed check, not just on an exception. Without this the suite
+  // exited 0 with FAIL lines in its output and the runner called it green.
+  process.exit(R.some(x => x.startsWith('FAIL')) ? 1 : 0);
 })().catch(e=>{console.error('FAILED:',e.message);process.exit(1);});

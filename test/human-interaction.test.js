@@ -98,4 +98,7 @@ const url='http://127.0.0.1:8911/';
   t('no page errors', errors.length===0, errors.slice(0,3).join(' | '));
   console.log(JSON.stringify({results:R}, null, 1));
   await b.close();
+  // Non-zero on a failed check, not just on an exception. Without this the suite
+  // exited 0 with FAIL lines in its output and the runner called it green.
+  process.exit(R.some(x => x.startsWith('FAIL')) ? 1 : 0);
 })().catch(e=>{console.error('FAILED:',e.message);process.exit(1);});

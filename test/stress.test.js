@@ -4,7 +4,7 @@
 //
 // Needs `wrangler dev --port 8777` with the dev-auth flags from README.md.
 const { chromium } = require('playwright-core');
-const { launchOptions } = require('./browser.js');
+const { launchOptions, SELECT_ALL } = require('./browser.js');
 const R = []; const t = (n, ok, d = '') => R.push(`${ok ? 'PASS' : 'FAIL'}  ${n}${d ? `  -> ${d}` : ''}`);
 const settle = p => p.waitForFunction(
   () => ['synced', 'local', 'offline', 'error'].includes(document.getElementById('syncChip').dataset.state),
@@ -165,7 +165,7 @@ const url = 'http://127.0.0.1:8777/';
   await p.waitForTimeout(400);
   const exId = await p.evaluate(() => document.querySelectorAll('.in-load')[0].dataset.ex);
   await p.locator('.in-load').nth(0).tap();
-  await p.keyboard.press('Meta+A');            // the field already holds that day's load
+  await p.keyboard.press(SELECT_ALL);            // the field already holds that day's load
   await p.keyboard.type('137');
   // Sequential on purpose: a person taps one tab at a time, fast.
   /* eslint-disable no-await-in-loop */

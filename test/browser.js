@@ -19,3 +19,8 @@ exports.launchOptions = () => {
   // --no-sandbox is for containers; harmless on a desktop.
   return { executablePath, args: process.env.CI ? ['--no-sandbox'] : [] };
 };
+
+// Select-all is Cmd+A on macOS and Ctrl+A everywhere else. Hardcoding Meta+A meant
+// every "type over an existing value" check silently appended on Linux instead of
+// replacing — and still reported PASS on a laptop.
+exports.SELECT_ALL = process.platform === 'darwin' ? 'Meta+A' : 'Control+A';

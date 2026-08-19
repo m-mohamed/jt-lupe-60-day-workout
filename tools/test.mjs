@@ -75,6 +75,14 @@ const run = (label, command, args, options = {}) => {
   try {
     const output = execFileSync(command, args, { encoding: 'utf8', ...options });
     const passes = (output.match(/"PASS/g) || []).length || (output.match(/^PASS/gm) || []).length;
+    // Do not trust the exit code alone. Four suites once exited 0 with FAIL lines in
+    // their output, so a real failure read as green for as long as nobody looked.
+    const failures = output.split('\n').filter(line => /(^|")FAIL/.test(line));
+    if (failures.length) {
+      console.log(`  FAIL  ${label}  (exited 0 while reporting failures)`);
+      for (const line of failures) console.log(`        ${line.trim()}`);
+      return { label, ok: false, passes: 0 };
+    }
     console.log(`  ok    ${label.padEnd(28)} ${String(passes).padStart(3)} checks  ${Date.now() - started}ms`);
     return { label, ok: true, passes };
   } catch (error) {

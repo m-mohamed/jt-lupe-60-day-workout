@@ -66,12 +66,26 @@ redirects `/index.html` to `/`, so the cached shell carried `redirected: true`, 
 Chrome refuses a redirected response for a navigation. Same file, same code, different
 origin, opposite result.
 
+## The fourth rule
+
+**A test may not depend on the day it was written, or the laptop it was written on.**
+CI's first run was past midnight UTC on a different machine, and four suites broke at
+once: dates pinned to one Tuesday, `Meta+A` (which is `Ctrl+A` off macOS, so every
+"type over the old value" check appended instead of replacing and still said PASS),
+and a fixture read from `/tmp` on one developer's disk. Derive dates at runtime, take
+the browser from `CHROME_PATH`, keep fixtures in the repo.
+
 ## The second rule
 
 **A suite that cannot fail is worse than no suite.** Both times this repo shipped a bug
 past a green run, the tests were exercising something other than the thing under test —
 once the storage function instead of the user, once local-only mode instead of the API.
 Every suite should assert its own preconditions and exit non-zero when they are not met.
+
+Four suites once exited 0 while printing `FAIL` lines, because they only failed on an
+exception — so a broken assertion read as green for as long as nobody read the output.
+They all exit non-zero on a failed check now, and the runner independently treats any
+`FAIL` in a suite's output as a failure whatever its exit code.
 
 ## Lint
 

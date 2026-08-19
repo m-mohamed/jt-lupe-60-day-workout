@@ -5,7 +5,7 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   const b = await chromium.launch(launchOptions());
   const p = await (await b.newContext({viewport:{width:390,height:844}})).newPage();
   const errors=[]; p.on('pageerror', e=>errors.push(String(e)));
-  const q = require('fs').readFileSync('/tmp/prefill_v4.txt','utf8').trim()
+  const q = require('fs').readFileSync(require('path').join(__dirname, 'fixtures', 'prefill-day1.txt'), 'utf8').trim()
     .replace('https://jt-lupe-workout.jt-lupe-workout-cloud.workers.dev/','http://127.0.0.1:8911/');
   await p.goto('http://127.0.0.1:8911/');
   await p.evaluate(()=>localStorage.clear());
@@ -37,4 +37,7 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   t('no page errors', errors.length===0, errors.slice(0,2).join(' | '));
   console.log(JSON.stringify({results:R}, null, 1));
   await b.close();
+  // Non-zero on a failed check, not just on an exception. Without this the suite
+  // exited 0 with FAIL lines in its output and the runner called it green.
+  process.exit(R.some(x => x.startsWith('FAIL')) ? 1 : 0);
 })().catch(e=>{console.error('FAILED:',e.message);process.exit(1);});
