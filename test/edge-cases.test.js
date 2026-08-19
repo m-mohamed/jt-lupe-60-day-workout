@@ -1,8 +1,9 @@
 const { chromium } = require('playwright-core');
+const { launchOptions } = require('./browser.js');
 const settle = p => p.waitForFunction(()=>['synced','local','offline','error'].includes(document.getElementById('syncChip').dataset.state), null, {timeout:25000});
 const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}`:''}`);
 (async () => {
-  const b = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' });
+  const b = await chromium.launch(launchOptions());
   const ctx = await b.newContext({viewport:{width:390,height:844}});
   const p = await ctx.newPage();
   const errors=[]; p.on('pageerror', e=>errors.push(String(e)));

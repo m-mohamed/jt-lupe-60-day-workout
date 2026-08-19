@@ -2,13 +2,14 @@
 // today's session, editing what was already logged, and going back to fill in a
 // missed day. Real taps and real typing only — see README.md for why.
 const { chromium } = require('playwright-core');
+const { launchOptions } = require('./browser.js');
 const R = []; const t = (n, ok, d = '') => R.push(`${ok ? 'PASS' : 'FAIL'}  ${n}${d ? `  -> ${d}` : ''}`);
 const url = 'http://127.0.0.1:8911/';
 const TODAY = '2026-08-18';        // Tuesday, day 2
 const YESTERDAY = '2026-08-17';
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' });
+  const b = await chromium.launch(launchOptions());
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const p = await ctx.newPage();
   const errors = []; p.on('pageerror', e => errors.push(String(e)));

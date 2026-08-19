@@ -61,7 +61,19 @@ self.addEventListener('fetch', event => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then(response => (response.redirected ? Response.redirect(response.url, 303) : response))
+        .then(response => {
+          // Refresh the offline shell on every successful navigation. The cache is
+          // only filled at install, so a browser evicting it - iOS does this under
+          // storage pressure - used to leave the app permanently unable to open
+          // offline, with no way back short of a reinstall.
+          if (response.ok && response.type === 'basic' && !response.redirected) {
+            const copy = response.clone();
+            event.waitUntil(copy.blob().then(body => caches.open(CACHE_NAME).then(cache => cache.put('./', new Response(body, {
+              status: copy.status, statusText: copy.statusText, headers: copy.headers
+            })))));
+          }
+          return response.redirected ? Response.redirect(response.url, 303) : response;
+        })
         .catch(async () => {
           // './' first: on the Workers origin it is the URL that serves the app
           // directly, while './index.html' is a redirect to it.

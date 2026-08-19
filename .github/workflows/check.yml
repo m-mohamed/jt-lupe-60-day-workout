@@ -1,0 +1,35 @@
+# Runs the same command a person runs: `npm test` in tools/, which starts both
+# servers, runs every suite against the right one, and lints. Nothing here is a
+# CI-only path, so a green run here means the same thing as a green run locally.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The runner image ships Google Chrome; the suites find it through CHROME_PATH.
+      - name: Locate Chrome
+        run: |
+          which google-chrome || which chromium-browser || which chromium
+          echo "CHROME_PATH=$(which google-chrome || which chromium-browser || which chromium)" >> "$GITHUB_ENV"
+
+      - name: Install tools
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint and test
+        working-directory: tools
+        run: npm test

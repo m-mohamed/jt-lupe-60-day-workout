@@ -9,11 +9,12 @@
 //
 // Needs `wrangler dev --port 8777` with the dev-auth flags from README.md.
 const { chromium } = require('playwright-core');
+const { launchOptions } = require('./browser.js');
 const R = []; const t = (n, ok, d = '') => R.push(`${ok ? 'PASS' : 'FAIL'}  ${n}${d ? `  -> ${d}` : ''}`);
 const url = 'http://127.0.0.1:8777/';
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' });
+  const b = await chromium.launch(launchOptions());
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const p = await ctx.newPage();
   const errors = []; p.on('pageerror', e => errors.push(String(e)));

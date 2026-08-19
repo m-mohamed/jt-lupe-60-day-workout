@@ -122,12 +122,22 @@ the sync backend instead, use `wrangler dev` as described in
 ## Checks
 
 ```sh
-cd tools && npm install && npm run lint
+cd tools && npm install && npm test
 ```
 
-oxlint over the Worker, the tests and the inline script in `index.html`, with
-[anti-slop](https://github.com/dmmulroy/anti-slop) registered — see
-[tools/README.md](tools/README.md) for what it is and what it caught. Must exit 0.
+Starts both servers, runs every suite against the one it needs, lints, and tears
+down. [CI](.github/workflows/check.yml) runs the same command on every push.
 
-The browser suites live in [test/](test/README.md); that file also carries the two
-rules they exist to enforce, both of them written after a bug shipped past a green run.
+Lint is oxlint with [anti-slop](https://github.com/dmmulroy/anti-slop) registered —
+see [tools/README.md](tools/README.md) for what it is and what it caught. The browser
+suites live in [test/](test/README.md), along with the three rules they exist to
+enforce, each written after a bug shipped past a green run.
+
+## Updating
+
+A deploy reaches an installed phone on its own. The service worker calls
+`skipWaiting()` and `clients.claim()`, so the next time the app is opened with a
+connection the new version installs, takes over, and deletes the previous cache. The
+offline shell is also refreshed on every successful load, so a browser that evicts
+storage does not strand the app without one. `upgrade.test.js` drives that path from a
+device deliberately left on the old, broken cache.

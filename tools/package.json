@@ -4,11 +4,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "lint": "node lint.mjs"
+    "lint": "node lint.mjs",
+    "test": "node test.mjs"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.78.0",
-    "oxlint": "1.78.0"
+    "oxlint": "1.78.0",
+    "playwright-core": "1.58.0"
   },
   "//": [
     "Lives in its own folder so its node_modules never lands in the static-asset",

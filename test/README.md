@@ -1,5 +1,15 @@
 # Tests
 
+```sh
+cd tools && npm install && npm test
+```
+
+That is the whole check: it starts both servers, runs every suite against the one it
+needs, lints, tears down, and exits non-zero if anything failed. CI runs the same
+command — there is no CI-only path.
+
+To run a single suite, start the servers yourself:
+
 Two servers, depending on the suite.
 
 ```sh
@@ -16,13 +26,15 @@ Those three flags matter. `wrangler dev` reads the production Access config out 
 sync, offline queueing and multi-device do not exist. The suite used to run happily
 in that state and report nothing wrong. It now checks `/api/me` first and exits 2.
 
-Then `node test/<file>` with `playwright-core` resolvable.
+Then `node test/<file>` with `playwright-core` resolvable (`NODE_PATH=tools/node_modules`).
+`CHROME_PATH` picks the browser; macOS Chrome is the default.
 
 | File | Port | Covers |
 | --- | --- | --- |
 | `session-flow.test.js` | 8911 | a training night: log, correct, cut sets, backfill a day |
 | `stress.test.js` | 8777 | a full 60-day challenge: batching, two devices, flapping, Worker limits |
 | `offline.test.js` | 8777 | service worker, offline reload, recovery — on the origin people use |
+| `upgrade.test.js` | 8777 | a device on an old version healing itself on one open |
 | `human-interaction.test.js` | 8911 | real typing, tapping, pasting, backgrounding |
 | `edge-cases.test.js` | 8777 | injection, corrupt records, offline queue, restore |
 | `migration.test.js` | 8911 | v3 grid → v4 dated records |
