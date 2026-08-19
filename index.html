@@ -616,6 +616,34 @@
       return out.toSorted((a, b) => a.n - b.n);
     }
 
+    /**
+     * Every set record for one person, grouped date -> exercise -> sets, in one pass.
+     * Progress needs the whole log at once, and calling setsFor for each exercise on
+     * each date rescanned all of localStorage every time: with a full challenge
+     * logged that was ~1,100 scans of ~2,000 keys and took the tab past 1.7s.
+     */
+    function indexSets(profile) {
+      const head = `jt-lupe:${profile}:set:`;
+      const byDate = new Map();
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(head)) continue;
+        const [date, exerciseId, n] = key.slice(head.length).split(':');
+        const index = Number(n);
+        if (!date || !exerciseId || !Number.isInteger(index)) continue;
+        const value = readJSON(key);
+        if (!value) continue;
+        if (!byDate.has(date)) byDate.set(date, new Map());
+        const forDate = byDate.get(date);
+        if (!forDate.has(exerciseId)) forDate.set(exerciseId, []);
+        forDate.get(exerciseId).push({ n: index, ...value });
+      }
+      for (const forDate of byDate.values()) {
+        for (const [exerciseId, list] of forDate) forDate.set(exerciseId, list.toSorted((a, b) => a.n - b.n));
+      }
+      return byDate;
+    }
+
     /** Dates on which anything was logged for an exercise, newest first. */
     function datesLogged(profile, exerciseId) {
       const head = `jt-lupe:${profile}:set:`;
@@ -1717,10 +1745,14 @@
 
     function readStrength(profile) {
       const byExercise = new Map();
-      datesLogged(profile, null).toReversed().forEach(date => {
+      const index = indexSets(profile);
+      // Oldest first, so first/latest fall out of insertion order.
+      const dates = [...index.keys()].toSorted((a, b) => a.localeCompare(b));
+      dates.forEach(date => {
+        const forDate = index.get(date);
         DAYS.forEach(day => day.exercises.forEach(ex => {
           if (ex.kind === 'warmup') return;
-          const sets = setsFor(profile, date, ex.id).filter(x => x.load != null);
+          const sets = (forDate.get(ex.id) || []).filter(x => x.load != null);
           if (!sets.length) return;
           if (!byExercise.has(ex.id)) byExercise.set(ex.id, { name: ex.label, days: new Set(), entries: [] });
           const row = byExercise.get(ex.id);
@@ -1965,7 +1997,7 @@
     ]);
     const isSyncable = key => key.startsWith('jt-lupe') && !LOCAL_ONLY_KEYS.has(key);
 
-    const syncState = { enabled: false, email: null, busy: false, timer: null };
+    const syncState = { enabled: false, mode: 'unknown', email: null, busy: false, timer: null };
 
     function deviceId() {
       let id = localStorage.getItem(DEVICE_KEY);
@@ -2092,43 +2124,81 @@
       }
     }
 
-    async function initSync() {
-      let me;
+    /**
+     * Who the backend says we are. Four outcomes, and they are not the same thing:
+     * signed in, no backend at all (the Pages copy), a backend that rejected us, and
+     * a backend we simply could not reach.
+     */
+    async function identify() {
+      const response = await fetch(`./api/me?ns=${SYNC_NS}`, { headers: { Accept: 'application/json' } });
+      // Access answers API-style requests with 401 rather than a login redirect.
+      if (response.status === 401) return { state: 'rejected' };
+      if (!response.ok) return { state: 'absent' };
+      return { state: 'signed-in', me: await response.json() };
+    }
+
+    async function connectSync() {
+      let outcome;
       try {
-        const response = await fetch(`./api/me?ns=${SYNC_NS}`, { headers: { Accept: 'application/json' } });
-        if (response.status === 401) {
-          setSyncChip('error', 'No account', 'The backend is reachable but rejected this session. Reload to sign in again.');
-          return;
-        }
-        if (!response.ok) throw new Error(String(response.status));
-        me = await response.json();
+        outcome = await identify();
       } catch {
-        // No backend here (the GitHub Pages copy) — stay a purely local app.
+        // Could not reach anything. This used to be treated as "no backend here" and
+        // the app went local for the life of the page — so opening it in a gym with no
+        // signal meant the whole session sat on the phone until a full reload, even
+        // after the connection came back.
+        outcome = { state: 'unreachable' };
+      }
+
+      if (outcome.state === 'rejected') {
+        syncState.mode = 'rejected';
+        setSyncChip('error', 'No account', 'The backend is reachable but rejected this session. Reload to sign in again.');
+        return;
+      }
+      if (outcome.state === 'absent') {
+        syncState.mode = 'local';
         setSyncChip('local', 'Local', 'This copy stores everything on this device only.');
         return;
       }
+      if (outcome.state === 'unreachable') {
+        syncState.mode = 'unreachable';
+        setSyncChip('offline', 'Offline', 'No connection. Everything is saved here and uploads when you reconnect.');
+        return;
+      }
 
+      syncState.mode = 'signed-in';
       syncState.enabled = true;
-      syncState.email = me.email;
+      syncState.email = outcome.me.email;
       // Food lookup proxies through the Worker, so it only exists on the signed-in copy.
       el('foodSearch').hidden = false;
 
-      const mapped = PROFILE_BY_EMAIL[me.email];
+      const mapped = PROFILE_BY_EMAIL[outcome.me.email];
       if (mapped && PROFILES.includes(mapped)) {
         // Identity decides who you are; the chip stops being a toggle.
         setProfile(mapped, { rerender: false });
         el('whoChip').dataset.locked = 'true';
         el('whoChip').setAttribute('aria-disabled', 'true');
-        el('whoChip').title = `Signed in as ${me.email}`;
+        el('whoChip').title = `Signed in as ${outcome.me.email}`;
       }
 
       setSyncChip('syncing', 'Syncing…');
       runSync();
+    }
 
-      window.addEventListener('online', () => scheduleSync(200));
+    async function initSync() {
+      await connectSync();
+
+      // Attached whatever happened above. A page that started with no signal has to be
+      // able to recover on its own — nobody reloads a PWA on the way out of the gym.
+      // 'local' and 'rejected' are settled answers, so they are left alone.
+      const retry = () => {
+        if (syncState.enabled) scheduleSync(200);
+        else if (syncState.mode === 'unreachable') connectSync();
+      };
+
+      window.addEventListener('online', retry);
       window.addEventListener('offline', () => setSyncChip('offline', 'Offline', 'Changes are saved here and will upload when you reconnect.'));
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleSync(200); });
-      setInterval(() => scheduleSync(0), 120000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) retry(); });
+      setInterval(retry, 120000);
     }
 
     /* ---------- prefilled import link ----------

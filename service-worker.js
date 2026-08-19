@@ -1,10 +1,32 @@
 // This worker caches app *files* only. All workout data lives in localStorage, which
 // the Cache API never touches — clearing or renaming a cache cannot delete a log entry.
-const CACHE_NAME = 'jt-lupe-workout-v5';
+const CACHE_NAME = 'jt-lupe-workout-v6';
 const CORE_ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 
+/**
+ * Store a response the browser will accept for a navigation.
+ *
+ * The Workers asset server redirects `/index.html` to `/`, so `cache.addAll` stored a
+ * response with `redirected: true` — and Chrome refuses a redirected response for a
+ * navigation, which is the same rule the online branch below already works around.
+ * Offline, the fallback handed back exactly that entry and the tab died with
+ * ERR_FAILED instead of loading the app. Rebuilding the response drops the flag.
+ */
+async function cacheClean(cache, request) {
+  const response = await fetch(request, { credentials: 'same-origin' });
+  if (!response.ok) throw new Error(`${request} → ${response.status}`);
+  const body = await response.blob();
+  await cache.put(request, new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+  }));
+}
+
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS)));
+  event.waitUntil(caches.open(CACHE_NAME).then(async cache => {
+    await Promise.all(CORE_ASSETS.map(asset => cacheClean(cache, asset)));
+  }));
   self.skipWaiting();
 });
 
@@ -40,7 +62,17 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request)
         .then(response => (response.redirected ? Response.redirect(response.url, 303) : response))
-        .catch(async () => (await caches.match('./index.html')) || Response.error())
+        .catch(async () => {
+          // './' first: on the Workers origin it is the URL that serves the app
+          // directly, while './index.html' is a redirect to it.
+          const hit = (await caches.match('./')) || (await caches.match('./index.html'));
+          if (!hit) return Response.error();
+          // Belt and braces for a response cached by an older version of this worker,
+          // which the browser would reject for a navigation.
+          return hit.redirected
+            ? new Response(await hit.blob(), { status: hit.status, statusText: hit.statusText, headers: hit.headers })
+            : hit;
+        })
     );
     return;
   }

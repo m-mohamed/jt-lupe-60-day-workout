@@ -21,6 +21,8 @@ Then `node test/<file>` with `playwright-core` resolvable.
 | File | Port | Covers |
 | --- | --- | --- |
 | `session-flow.test.js` | 8911 | a training night: log, correct, cut sets, backfill a day |
+| `stress.test.js` | 8777 | a full 60-day challenge: batching, two devices, flapping, Worker limits |
+| `offline.test.js` | 8777 | service worker, offline reload, recovery — on the origin people use |
 | `human-interaction.test.js` | 8911 | real typing, tapping, pasting, backgrounding |
 | `edge-cases.test.js` | 8777 | injection, corrupt records, offline queue, restore |
 | `migration.test.js` | 8911 | v3 grid → v4 dated records |
@@ -42,6 +44,15 @@ either; and switching tab or day inside the app left a half-typed field behind.
 So: `tap()` the field, `keyboard.type()` the value, and leave the way a person leaves —
 another field, another tab, the home button, a reload. Assert on what reached storage,
 never on what the handler did.
+
+## The third rule
+
+**Test the origin people use.** Every offline check ran against the plain static
+server, where they passed — while the Cloudflare copy, the one actually installed on
+their phones, would not load at all with the network off. The Workers asset server
+redirects `/index.html` to `/`, so the cached shell carried `redirected: true`, and
+Chrome refuses a redirected response for a navigation. Same file, same code, different
+origin, opposite result.
 
 ## The second rule
 

@@ -23,5 +23,14 @@ export default {
     'anti-slop/no-unsafe-dictionary-type': 'error',
     'anti-slop/no-widen-then-assert': 'error',
     'anti-slop/require-safety-comment-for-type-assertion': 'error'
-  }
+  },
+  overrides: [
+    {
+      // Helpers declared inside a page.evaluate callback cannot be hoisted out of
+      // it - the callback is serialised and run in the browser, and the test file's
+      // module scope does not exist there. The rule is inapplicable, not ignored.
+      files: ['**/test/*.test.js'],
+      rules: { 'unicorn/consistent-function-scoping': 'off' }
+    }
+  ]
 };
