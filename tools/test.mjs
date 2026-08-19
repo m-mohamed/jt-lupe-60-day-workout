@@ -46,6 +46,9 @@ const waitFor = async (url, seconds) => {
   while (Date.now() < deadline) {
     try {
       const response = await fetch(url);
+      // Drain the body. Leaving it unread while the socket closes crashes undici's
+      // parser outright — it took CI down before a single suite had run.
+      await response.arrayBuffer().catch(() => {});
       if (response.status < 500) return true;
     } catch { /* not up yet */ }
     await new Promise(s => setTimeout(s, 500));
