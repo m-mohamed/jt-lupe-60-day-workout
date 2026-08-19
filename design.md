@@ -75,8 +75,16 @@ Three colours carry all meaning, and the vocabulary never varies:
 
 Every foreground/background pair is checked against WCAG AA - 4.5:1 for text, 3:1 for
 borders and UI - in both themes. The light accent is `#6B9A1C` specifically because the
-brighter lime measured 2.46:1 as a border on white and failed. Re-run the audit after
-any palette change; do not eyeball it.
+brighter lime measured 2.46:1 as a border on white and failed.
+
+That accent is a **border** colour. Set as text it measures 3.1:1 on the page and
+3.35:1 on a card, and fails - which is what it was doing on the brand mark and every
+citation link until the audit was automated. Words in the accent use `--accent-text`
+(`#4C6B08` light, `#A8E04A` dark), which measures 5.7:1 and 5.5:1 on the soft band.
+
+The audit is `test/a11y.test.js`, and it computes the ratios rather than reading them
+off this table, so it stays true through a redesign. Re-run it after any palette
+change; do not eyeball it.
 
 A finished exercise is marked by its border plus a 7% tint, while the coach line keeps
 the solid `--accent-soft` band. Tinting both the same made the card one green block and
@@ -152,7 +160,8 @@ Shows time, one toggle, one reset. It is the only floating element in the app.
 
 ## 7. Accessibility and performance
 
-- Minimum 40px touch targets; 42px on primary inputs.
+- Minimum 40px touch targets; 42px on primary inputs. Measured against the real hit
+  area - a checkbox inside a label is as big as the label - not the bare control.
 - Every control has a visible focus ring and an accessible name.
 - Tabs use `role="tab"` / `aria-selected`; panels use `role="tabpanel"`.
 - Checkboxes are wrapped in labels so the whole row is tappable.

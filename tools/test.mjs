@@ -18,6 +18,7 @@ const WORKER_PORT = 8777;
 // Suites are declared with the server they need, because that is the thing that goes
 // wrong silently.
 const SUITES = [
+  { file: 'a11y.test.js', port: STATIC_PORT },
   { file: 'human-interaction.test.js', port: STATIC_PORT },
   { file: 'session-flow.test.js', port: STATIC_PORT },
   { file: 'import.test.js', port: STATIC_PORT },

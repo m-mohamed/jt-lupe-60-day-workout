@@ -30,6 +30,9 @@
       --line: #DCE0E6;
       --accent: #6B9A1C;
       --accent-strong: #4C6B08;
+      /* --accent is tuned to pass as a border on white; as text it measures 3.1:1 and
+         fails AA. Anything that renders words in the accent uses this instead. */
+      --accent-text: #4C6B08;
       --accent-soft: #EDF6D5;
       --on-accent: #0F1115;
       --warm: #A8480F;
@@ -50,6 +53,7 @@
       --line: #2A2E36;
       --accent: #A8E04A;
       --accent-strong: #C4EE80;
+      --accent-text: #A8E04A;
       --accent-soft: #1E2A12;
       --on-accent: #0B0C0F;
       --warm: #F0A45C;
@@ -94,15 +98,16 @@
       border-bottom: 1px solid var(--line);
     }
     .brand { font-weight: 800; font-size: .82rem; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
-    .brand span { color: var(--accent); }
+    .brand { margin: 0; }
+    .brand span { color: var(--accent-text); }
     .topbar-spacer { flex: 1; }
 
     .chip {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      min-height: 32px;
-      padding: 0 10px;
+      min-height: 40px;   /* the standard in design.md, and whoChip is a real button */
+      padding: 0 12px;
       border: 1px solid var(--line);
       border-radius: 999px;
       background: var(--surface);
@@ -268,7 +273,9 @@
     .timer-fab[hidden] { display: none; }
     /* Keep the last exercise clear of the floating timer. */
     #panel-train { padding-bottom: 58px; }
-    .timer-fab .btn { min-height: 30px; padding: 3px 9px; font-size: .8rem; }
+    /* 40px even here. These are the two controls tapped mid-set, one-handed, with
+       chalk on your fingers - the last place to shave a touch target. */
+    .timer-fab .btn { min-height: 40px; min-width: 40px; padding: 3px 11px; font-size: .8rem; }
 
     /* ---------- meals ---------- */
     .meal-list { margin: 0; padding: 0; list-style: none; }
@@ -338,7 +345,7 @@
     details.explain .body { padding: 0 14px 14px; color: var(--muted); font-size: .9rem; }
     details.explain .body p { margin: 0 0 10px; }
     details.explain .body ul { margin: 0 0 10px; padding-left: 18px; }
-    details.explain .body a { color: var(--accent); }
+    details.explain .body a { color: var(--accent-text); }
 
     @media (min-width: 721px) {
       :root { --tabbar: 0px; }
@@ -370,7 +377,7 @@
 <body>
   <div class="app">
     <header class="topbar">
-      <div class="brand">JT <span>+</span> LUPE</div>
+      <h1 class="brand">JT <span>+</span> LUPE</h1>
       <div class="topbar-spacer"></div>
       <button class="chip who" id="whoChip" type="button" title="Switch profile">JT</button>
       <div class="chip sync-chip" id="syncChip" data-state="local" title="Local only">
@@ -418,7 +425,7 @@
           <p>Logged this session somewhere else? Paste it here - one exercise per line,
           in whatever shape you wrote it. <code>Seated row 100 x 10</code>,
           <code>lat pulldown 90x8</code>, <code>Pull-ups BW 6</code> all read fine.</p>
-          <textarea id="importText" rows="6" placeholder="Seated row 100 x 10&#10;Lat pulldown 90 x 8&#10;Hammer curl 30x12"></textarea>
+          <textarea id="importText" rows="6" aria-label="Paste a session logged elsewhere" placeholder="Seated row 100 x 10&#10;Lat pulldown 90 x 8&#10;Hammer curl 30x12"></textarea>
           <div class="btn-row" style="margin-top:10px">
             <button class="btn" id="importPreview" type="button">Read it</button>
             <button class="btn primary" id="importApply" type="button" hidden>Log these</button>
@@ -566,17 +573,6 @@
     const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
     const el = id => document.getElementById(id);
 
-    // The parameter is `key`, not `dateKey`: naming it after the helper it calls
-    // shadowed that helper with a string and threw on the first line, so every
-    // backfilled Fuel day rendered the previous day's meals.
-    function dayLabelFor(key) {
-      const today = dateKey();
-      if (key === today) return 'today';
-      if (key === shiftDate(today, -1)) return 'yesterday';
-      const [y, m, d] = key.split('-').map(Number);
-      return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-    }
-
     /* ================= keys ================= */
     /* ================= records =================
        One key per record, each anchored to a calendar date and a stable exercise id.
@@ -682,11 +678,20 @@
       const wd = parseDate(key).getDay();
       return DAYS[wd >= 1 && wd <= 5 ? wd - 1 : 0];
     }
-    function labelForDate(key) {
+    /**
+     * How a date reads to a person: "Today", "Yesterday", or the date itself.
+     *
+     * The parameter is `key`, not `dateKey` — a near-copy of this function named it
+     * after the helper it calls, shadowed that helper with a string, and threw on the
+     * first line, so every backfilled Fuel day silently rendered the previous day's
+     * meals. That copy is gone; this is the only one.
+     */
+    function labelForDate(key, { lower = false } = {}) {
       const today = dateKey();
-      if (key === today) return 'Today';
-      if (key === shiftDate(today, -1)) return 'Yesterday';
-      return parseDate(key).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      const said = key === today ? 'Today'
+        : key === shiftDate(today, -1) ? 'Yesterday'
+          : parseDate(key).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      return lower && said.length < 10 ? said.toLowerCase() : said;
     }
 
     /* ---------- v4: grid -> records ----------
@@ -1569,7 +1574,7 @@
 
       const flag = el('fuelBackfill');
       flag.hidden = date === today;
-      if (date !== today) flag.textContent = `Backfilling ${dayLabelFor(date)}.`;
+      if (date !== today) flag.textContent = `Backfilling ${labelForDate(date, { lower: true })}.`;
 
       const kg = bodyweightKg();
       const low = kg ? Math.round(kg * 1.6) : null;

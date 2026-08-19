@@ -31,6 +31,7 @@ Then `node test/<file>` with `playwright-core` resolvable (`NODE_PATH=tools/node
 
 | File | Port | Covers |
 | --- | --- | --- |
+| `a11y.test.js` | 8911 | computed AA contrast, 40px targets, names, focus, one H1 — both themes |
 | `session-flow.test.js` | 8911 | a training night: log, correct, cut sets, backfill a day |
 | `stress.test.js` | 8777 | a full 60-day challenge: batching, two devices, flapping, Worker limits |
 | `offline.test.js` | 8777 | service worker, offline reload, recovery — on the origin people use |
