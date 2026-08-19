@@ -27,7 +27,7 @@ const OLD_CACHE = 'jt-lupe-workout-v5';
   // wiped, and an old cache holding a redirected shell — the exact entry the browser
   // refuses to serve for a navigation.
   const poisoned = await p.evaluate(async name => {
-    for (const key of await caches.keys()) await caches.delete(key);
+    await Promise.all((await caches.keys()).map(key => caches.delete(key)));
     const cache = await caches.open(name);
     await cache.put('./index.html', await fetch('./index.html'));   // the asset server redirects this to '/'
     const stored = await cache.match('./index.html');
