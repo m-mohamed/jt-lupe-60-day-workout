@@ -22,6 +22,11 @@ const OLD_CACHE = 'jt-lupe-workout-v5';
     console.error('Not signed in to the dev worker — this suite would test nothing. Got:', JSON.stringify(me));
     await b.close(); process.exit(2);
   }
+  await p.evaluate(() => {
+    state.date = '2026-08-28';
+    localStorage.setItem('jt-lupe-active-date', state.date);
+    renderSession();
+  });
 
   // Put the device back in the state the previous release left it in: everything
   // wiped, and an old cache holding a redirected shell — the exact entry the browser

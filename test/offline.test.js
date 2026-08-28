@@ -25,6 +25,11 @@ const url = 'http://127.0.0.1:8777/';
     console.error('Not signed in to the dev worker — this suite would test nothing. Got:', JSON.stringify(me));
     await b.close(); process.exit(2);
   }
+  await p.evaluate(() => {
+    state.date = '2026-08-28';
+    localStorage.setItem('jt-lupe-active-date', state.date);
+    renderSession();
+  });
   await p.waitForFunction(() => navigator.serviceWorker.controller !== null, null, { timeout: 30000 }).catch(() => {});
   await p.waitForTimeout(1500);
 

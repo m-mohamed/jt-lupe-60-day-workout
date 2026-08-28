@@ -3,13 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="A private training, nutrition, and progression log for JT and Lupe.">
-  <meta name="theme-color" content="#0B0C0F">
+  <meta name="description" content="A private workout, weight, food, and supplement tracker for JT and Lupe.">
+  <meta name="theme-color" content="#F8F9FB">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <title>JT + Lupe | Training Log</title>
+  <link rel="stylesheet" href="./beautiful-ui.css">
+  <title>JT + Lupe | Training OS</title>
   <script>
     (() => {
       const saved = localStorage.getItem('jt-lupe-theme');
@@ -17,367 +18,11 @@
       document.documentElement.dataset.theme = saved || preferred;
     })();
   </script>
-  <style>
-    :root {
-      color-scheme: light;
-      /* One disciplined accent, neutral greys, near-black rather than warm off-white.
-         Every pair below is checked against WCAG AA; see design.md. */
-      --bg: #F5F6F8;
-      --surface: #FFFFFF;
-      --surface-2: #EBEDF1;
-      --ink: #0F1115;
-      --muted: #58606C;
-      --line: #DCE0E6;
-      --accent: #6B9A1C;
-      --accent-strong: #4C6B08;
-      /* --accent is tuned to pass as a border on white; as text it measures 3.1:1 and
-         fails AA. Anything that renders words in the accent uses this instead. */
-      --accent-text: #4C6B08;
-      --accent-soft: #EDF6D5;
-      --on-accent: #0F1115;
-      --warm: #A8480F;
-      --warm-soft: #FBEADE;
-      --focus: #1F5FD0;
-      --shadow: 0 10px 30px rgba(15, 17, 21, .08);
-      --radius: 12px;
-      --tabbar: 62px;
-    }
-
-    html[data-theme="dark"] {
-      color-scheme: dark;
-      --bg: #0B0C0F;
-      --surface: #14161A;
-      --surface-2: #1C1F25;
-      --ink: #ECEFF3;
-      --muted: #98A1AE;
-      --line: #2A2E36;
-      --accent: #A8E04A;
-      --accent-strong: #C4EE80;
-      --accent-text: #A8E04A;
-      --accent-soft: #1E2A12;
-      --on-accent: #0B0C0F;
-      --warm: #F0A45C;
-      --warm-soft: #2A1D10;
-      --focus: #74A9FF;
-      --shadow: 0 14px 40px rgba(0, 0, 0, .5);
-    }
-
-    * { box-sizing: border-box; }
-    html { -webkit-text-size-adjust: 100%; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--ink);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.45;
-      font-size: 16px;
-    }
-    button, input, select, textarea { font: inherit; color: inherit; }
-    button { cursor: pointer; }
-    :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-    h1, h2, h3 { margin: 0; line-height: 1.2; letter-spacing: -.02em; }
-    .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
-
-    /* ---------- shell ---------- */
-    .app {
-      width: min(760px, 100%);
-      margin: 0 auto;
-      padding: 0 14px calc(var(--tabbar) + env(safe-area-inset-bottom) + 28px);
-    }
-
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 30;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 0 9px;
-      background: color-mix(in srgb, var(--bg) 92%, transparent);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--line);
-    }
-    .brand { font-weight: 800; font-size: .82rem; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
-    .brand { margin: 0; }
-    .brand span { color: var(--accent-text); }
-    .topbar-spacer { flex: 1; }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      min-height: 40px;   /* the standard in design.md, and whoChip is a real button */
-      padding: 0 12px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: var(--surface);
-      font-size: .76rem;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-    .who { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
-    .who[data-locked="true"] { cursor: default; }
-    .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
-    .sync-chip[data-state="synced"] { border-color: var(--accent); color: var(--accent-strong); }
-    .sync-chip[data-state="synced"] .sync-dot { background: var(--accent); }
-    .sync-chip[data-state="syncing"] .sync-dot { background: var(--focus); animation: pulse 1s ease-in-out infinite; }
-    .sync-chip[data-state="offline"], .sync-chip[data-state="error"] { border-color: var(--warm); color: var(--warm); }
-    .sync-chip[data-state="offline"] .sync-dot, .sync-chip[data-state="error"] .sync-dot { background: var(--warm); }
-    @keyframes pulse { 50% { opacity: .3; } }
-
-    /* ---------- tab bar ---------- */
-    .tabbar {
-      position: fixed;
-      left: 0; right: 0; bottom: 0;
-      z-index: 40;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 2px;
-      padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
-      background: color-mix(in srgb, var(--surface) 96%, transparent);
-      backdrop-filter: blur(14px);
-      border-top: 1px solid var(--line);
-    }
-    .tab {
-      display: grid;
-      justify-items: center;
-      gap: 2px;
-      padding: 6px 4px;
-      border: 0;
-      border-radius: 10px;
-      background: none;
-      color: var(--muted);
-      font-size: .72rem;
-      font-weight: 700;
-      letter-spacing: .02em;
-    }
-    .tab svg { width: 21px; height: 21px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-    .tab[aria-selected="true"] { color: var(--accent-strong); background: var(--accent-soft); }
-    .panel[hidden] { display: none; }
-
-    /* ---------- generic pieces ---------- */
-    .card {
-      margin: 12px 0;
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--surface);
-    }
-    .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-    .card-head h2, .card-head h3 { font-size: 1rem; }
-    .eyebrow { margin: 0; color: var(--muted); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-    .muted { color: var(--muted); }
-    .btn {
-      min-height: 40px;
-      padding: 8px 14px;
-      border: 1px solid var(--line);
-      border-radius: 9px;
-      background: var(--surface);
-      font-weight: 600;
-      transition: border-color .12s ease, background .12s ease;
-    }
-    .btn:hover { border-color: var(--accent); }
-    .btn.primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 750; }
-    .btn.small { min-height: 34px; padding: 5px 10px; font-size: .84rem; }
-    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
-    input[type="text"], input[type="number"], input[type="date"], select {
-      min-height: 42px;
-      padding: 8px 10px;
-      border: 1px solid var(--line);
-      border-radius: 9px;
-      background: var(--bg);
-      font-size: 1rem;
-      width: 100%;
-    }
-
-    /* ---------- session header ---------- */
-    .session-nav { display: flex; align-items: center; gap: 8px; }
-    .session-nav .btn { min-width: 42px; padding: 8px 10px; }
-    .session-now { flex: 1; text-align: center; }
-    .session-now strong { display: block; font-size: 1.12rem; }
-    .session-now span { color: var(--muted); font-size: .8rem; }
-    .backfill-flag {
-      margin: 10px 0 0;
-      padding: 8px 11px;
-      border-radius: 9px;
-      background: var(--warm-soft);
-      color: var(--warm);
-      font-size: .82rem;
-      font-weight: 700;
-    }
-    .meter { height: 7px; margin-top: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
-    .meter span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s ease; }
-    /* Two columns on a phone: four stats in a flex row wrapped into an orphan. */
-    .stat-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 16px; }
-    @media (min-width: 560px) { .stat-row { grid-template-columns: repeat(4, 1fr); } }
-    .stat strong { display: block; font-size: 1.5rem; line-height: 1.1; }
-    .stat span { color: var(--muted); font-size: .76rem; }
-
-    /* ---------- exercise ---------- */
-    .exercise {
-      margin: 10px 0;
-      padding: 13px 14px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--surface);
-    }
-    /* A finished card is marked by its border and a whisper of tint - the coach line
-       keeps the solid accent-soft band so it still reads as the loudest thing. */
-    .exercise[data-done="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
-    .exercise-top { display: flex; align-items: flex-start; gap: 10px; }
-    .exercise-name { flex: 1; font-weight: 700; font-size: 1.02rem; }
-    .target { margin: 3px 0 0; color: var(--muted); font-size: .82rem; }
-    .coach {
-      margin: 9px 0 0;
-      padding: 8px 10px;
-      border-left: 3px solid var(--accent);
-      border-radius: 0 8px 8px 0;
-      background: var(--accent-soft);
-      color: var(--accent-strong);
-      font-size: .84rem;
-      font-weight: 600;
-    }
-    .coach[data-kind="hold"] { border-left-color: var(--muted); background: var(--surface-2); color: var(--muted); }
-    .coach[data-kind="first"] { border-left-color: var(--focus); background: var(--surface-2); color: var(--ink); }
-    .entry { display: grid; grid-template-columns: 1fr 1fr 4.2rem auto; gap: 7px; align-items: end; margin-top: 10px; }
-    .entry label { display: grid; gap: 4px; color: var(--muted); font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
-    .tick {
-      display: grid;
-      place-items: center;
-      width: 46px; height: 42px;
-      border: 1px solid var(--line);
-      border-radius: 9px;
-      background: var(--bg);
-    }
-    .tick input { width: 21px; height: 21px; accent-color: var(--accent); }
-
-    /* ---------- timer ---------- */
-    .timer-fab {
-      position: fixed;
-      right: 14px;
-      bottom: calc(var(--tabbar) + env(safe-area-inset-bottom) + 12px);
-      z-index: 35;
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      padding: 9px 13px;
-      border: 1px solid var(--accent);
-      border-radius: 999px;
-      background: var(--surface);
-      box-shadow: var(--shadow);
-      font-variant-numeric: tabular-nums;
-      font-weight: 800;
-    }
-    .timer-fab[data-running="true"] { background: var(--accent-soft); color: var(--accent-strong); }
-    /* [hidden] loses to display:flex without this, so the timer leaked onto other tabs. */
-    .timer-fab[hidden] { display: none; }
-    /* Keep the last exercise clear of the floating timer. */
-    #panel-train { padding-bottom: 58px; }
-    /* 40px even here. These are the two controls tapped mid-set, one-handed, with
-       chalk on your fingers - the last place to shave a touch target. */
-    .timer-fab .btn { min-height: 40px; min-width: 40px; padding: 3px 11px; font-size: .8rem; }
-
-    /* ---------- meals ---------- */
-    .meal-list { margin: 0; padding: 0; list-style: none; }
-    .meal-list li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
-    .meal-list li:last-child { border-bottom: 0; }
-    /* A flex child will not shrink below its content without min-width:0, so one
-       long unbroken meal name used to widen the whole page. */
-    .meal-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-    .meal-protein { color: var(--accent-strong); font-weight: 700; font-variant-numeric: tabular-nums; }
-    .icon-btn { min-height: 32px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--muted); }
-    .icon-btn:hover { border-color: var(--warm); color: var(--warm); }
-    .food-search { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 10px; }
-    .food-hit { padding: 9px 0; border-bottom: 1px solid var(--line); }
-    .food-hit:last-child { border-bottom: 0; }
-    .food-hit-name { font-weight: 600; font-size: .9rem; overflow-wrap: anywhere; }
-    .food-hit-meta { color: var(--muted); font-size: .76rem; margin-top: 2px; }
-    .food-portions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
-    .food-portions .btn { min-height: 30px; padding: 3px 9px; font-size: .78rem; }
-    .food-note { margin: 8px 0 0; color: var(--muted); font-size: .8rem; }
-    .food-note[data-warn="true"] { color: var(--warm); }
-
-    .meal-add { display: grid; grid-template-columns: 1fr 92px auto; gap: 8px; margin-top: 10px; }
-
-    /* ---------- habits ---------- */
-    .habits { margin: 0; padding: 0; list-style: none; }
-    .habits li { display: flex; align-items: center; gap: 11px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-    .habits li:last-child { border-bottom: 0; }
-    .habits input { width: 21px; height: 21px; accent-color: var(--accent); flex: none; }
-    .habits strong { display: block; font-size: .95rem; }
-    .habits span { color: var(--muted); font-size: .8rem; }
-
-    /* ---------- tables ---------- */
-    .scroller { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
-    table.data { width: 100%; border-collapse: collapse; font-size: .88rem; }
-    table.data th, table.data td { padding: 8px 10px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line); }
-    table.data thead th { background: var(--surface-2); color: var(--muted); font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; }
-    table.data tr:last-child td { border-bottom: 0; }
-    table.data :is(th, td) { width: 1px; }
-    /* The label column wraps so the numeric columns are never pushed off the edge. */
-    table.data :is(th, td).grow { width: 100%; white-space: normal; min-width: 7.5rem; }
-    table.data abbr { text-decoration: none; }
-    @media (max-width: 460px) { table.data th, table.data td { padding: 8px 7px; } }
-    .up { color: var(--accent-strong); font-weight: 700; }
-    .flat { color: var(--muted); }
-    .empty { margin: 0; padding: 20px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); text-align: center; font-size: .9rem; }
-
-    #importText {
-      width: 100%;
-      min-height: 118px;
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 9px;
-      background: var(--bg);
-      color: var(--ink);
-      font-size: .95rem;
-      font-family: inherit;
-      resize: vertical;
-    }
-    .import-row { display: flex; align-items: baseline; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: .88rem; }
-    .import-row:last-child { border-bottom: 0; }
-    .import-row .hit { color: var(--accent-strong); font-weight: 700; flex: 1; min-width: 0; overflow-wrap: anywhere; }
-    .import-row .miss { color: var(--warm); flex: 1; min-width: 0; overflow-wrap: anywhere; }
-    .import-row .val { font-variant-numeric: tabular-nums; white-space: nowrap; }
-
-    details.explain { margin: 12px 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-    details.explain summary { padding: 13px 14px; font-weight: 700; cursor: pointer; }
-    details.explain .body { padding: 0 14px 14px; color: var(--muted); font-size: .9rem; }
-    details.explain .body p { margin: 0 0 10px; }
-    details.explain .body ul { margin: 0 0 10px; padding-left: 18px; }
-    details.explain .body a { color: var(--accent-text); }
-
-    @media (min-width: 721px) {
-      :root { --tabbar: 0px; }
-      .app { padding-bottom: 40px; }
-      .tabbar {
-        position: sticky;
-        top: 52px;
-        bottom: auto;
-        max-width: 760px;
-        margin: 10px auto 0;
-        padding: 5px;
-        border: 1px solid var(--line);
-        border-top: 1px solid var(--line);
-        border-radius: 11px;
-      }
-      .tab { grid-auto-flow: column; align-items: center; gap: 7px; padding: 8px; font-size: .86rem; }
-      .timer-fab { bottom: 18px; }
-    }
-
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
-
-    @media print {
-      .topbar, .tabbar, .timer-fab, .btn, details.explain { display: none !important; }
-      .panel[hidden] { display: block !important; }
-      body { background: #fff; color: #000; }
-    }
-  </style>
 </head>
 <body>
   <div class="app">
     <header class="topbar">
-      <h1 class="brand">JT <span>+</span> LUPE</h1>
+      <h1 class="brand">JT <span>+</span> LUPE · TRAINING OS</h1>
       <div class="topbar-spacer"></div>
       <button class="chip who" id="whoChip" type="button" title="Switch profile">JT</button>
       <button class="chip sync-chip" id="syncChip" type="button" data-state="local" title="Local only">
@@ -388,11 +33,15 @@
     <nav class="tabbar" role="tablist" aria-label="Sections">
       <button class="tab" type="button" role="tab" data-tab="train" aria-selected="true">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg>
-        Train
+        Workout
       </button>
       <button class="tab" type="button" role="tab" data-tab="fuel" aria-selected="false">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v7a3 3 0 0 0 6 0V3M9 10v11M18 3c-1.5 2-2 4-2 6.5S17 14 18 14v7"/></svg>
-        Fuel
+        Food
+      </button>
+      <button class="tab" type="button" role="tab" data-tab="supplements" aria-selected="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5 19.5 15.5a4 4 0 0 1-5.7 5.7L2.8 10.2a4 4 0 0 1 5.7-5.7ZM6.5 14.5l8-8"/></svg>
+        Supplements
       </button>
       <button class="tab" type="button" role="tab" data-tab="progress" aria-selected="false">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M8 16V11M12.5 16V7.5M17 16v-3.5"/></svg>
@@ -402,15 +51,20 @@
 
     <!-- ============ TRAIN ============ -->
     <section class="panel" id="panel-train" role="tabpanel" aria-label="Train">
+      <div class="page-heading">
+        <p class="eyebrow">Workout tracker</p>
+        <h2>Today’s training</h2>
+        <p>Every working set, every weight, and every lighter finish.</p>
+      </div>
       <div class="card">
         <p class="eyebrow" id="challengeLine">Day 1 of 60</p>
         <div class="session-nav">
-          <button class="btn" id="prevDay" type="button" aria-label="Previous session">‹</button>
+          <button class="btn" id="prevDay" type="button" aria-label="Previous day">‹</button>
           <div class="session-now">
             <strong id="sessionTitle">Wednesday · Push</strong>
             <span id="sessionSub">Chest, shoulders, triceps</span>
           </div>
-          <button class="btn" id="nextDay" type="button" aria-label="Next session">›</button>
+          <button class="btn" id="nextDay" type="button" aria-label="Next day">›</button>
         </div>
         <div class="meter" aria-hidden="true"><span id="sessionMeter"></span></div>
         <p class="muted" id="sessionCount" style="margin:8px 0 0;font-size:.82rem"></p>
@@ -441,10 +95,15 @@
     </section>
 
     <!-- ============ FUEL ============ -->
-    <section class="panel" id="panel-fuel" role="tabpanel" aria-label="Fuel" hidden>
+    <section class="panel" id="panel-fuel" role="tabpanel" aria-label="Food" hidden>
+      <div class="page-heading">
+        <p class="eyebrow">Food tracker</p>
+        <h2>Nutrition</h2>
+        <p>Log protein quickly, search the food database, and keep estimates editable.</p>
+      </div>
       <div class="card">
         <div class="card-head">
-          <h2>Fuel</h2>
+          <h2>Daily protein</h2>
           <input type="date" id="fuelDate" style="width:auto" aria-label="Log date">
         </div>
         <p class="backfill-flag" id="fuelBackfill" hidden></p>
@@ -472,10 +131,9 @@
       </div>
 
       <div class="card">
-        <div class="card-head"><h3>Daily stack</h3></div>
+        <div class="card-head"><h3>Daily fundamentals</h3><span class="muted" style="font-size:.8rem">task rows</span></div>
         <ul class="habits" id="habitList">
           <li><input class="habit" type="checkbox" data-habit="protein" id="h-protein"><label for="h-protein"><strong>Hit protein target</strong><span>Total for the day beats perfect timing</span></label></li>
-          <li><input class="habit" type="checkbox" data-habit="creatine" id="h-creatine"><label for="h-creatine"><strong>Creatine 3–5 g</strong><span>Every day, including rest days</span></label></li>
           <li><input class="habit" type="checkbox" data-habit="preworkout" id="h-pre"><label for="h-pre"><strong>Pre-workout meal</strong><span>Protein plus easy carbs</span></label></li>
           <li><input class="habit" type="checkbox" data-habit="sleep" id="h-sleep"><label for="h-sleep"><strong>Protect sleep</strong><span>Recovery is where the muscle is built</span></label></li>
         </ul>
@@ -493,14 +151,66 @@
       </div>
     </section>
 
+    <!-- ============ SUPPLEMENTS ============ -->
+    <section class="panel" id="panel-supplements" role="tabpanel" aria-label="Supplements" hidden>
+      <div class="page-heading">
+        <p class="eyebrow">Supplement tracker</p>
+        <h2>Daily intake</h2>
+        <p>Record what you actually took. The tracker does not prescribe a stack.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Log date</h3>
+          <input type="date" id="supplementDate" style="width:auto" aria-label="Supplement log date">
+        </div>
+        <p class="backfill-flag" id="supplementBackfill" hidden></p>
+        <div class="stat-row">
+          <div class="stat"><strong id="supplementToday">0</strong><span>taken this day</span></div>
+          <div class="stat"><strong id="supplementDays">0</strong><span>days recorded</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Taken</h3><span class="muted" style="font-size:.8rem">completed task rows</span></div>
+        <div class="supplement-list" id="supplementList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Log a supplement</h3><span class="muted" style="font-size:.8rem">name + dose</span></div>
+        <div class="supplement-add">
+          <input type="text" id="supplementName" maxlength="80" list="supplementNames" placeholder="Supplement name" aria-label="Supplement name">
+          <datalist id="supplementNames"><option value="Creatine monohydrate"><option value="Protein powder"></datalist>
+          <input type="number" id="supplementDose" min="0" max="10000" step="0.1" inputmode="decimal" placeholder="Dose" aria-label="Supplement dose">
+          <select id="supplementUnit" aria-label="Supplement unit"><option value="g">g</option><option value="mg">mg</option><option value="mcg">mcg</option><option value="capsule">capsule</option><option value="serving">serving</option></select>
+          <button class="btn primary" id="addSupplement" type="button">Log taken</button>
+        </div>
+        <div class="preset-row">
+          <span class="preset-label">Quick add</span>
+          <button class="btn" type="button" data-supplement-preset="creatine">Creatine · 5 g</button>
+        </div>
+        <p class="food-note">Use the label or your clinician’s instructions for dose. This screen records intake; it does not recommend medical treatment.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Recent history</h3><span class="muted" style="font-size:.8rem">last 14 days</span></div>
+        <div id="supplementHistory"></div>
+      </div>
+    </section>
+
     <!-- ============ PROGRESS ============ -->
     <section class="panel" id="panel-progress" role="tabpanel" aria-label="Progress" hidden>
+      <div class="page-heading">
+        <p class="eyebrow">Weight + workout trends</p>
+        <h2>Progress</h2>
+        <p>Strength records, bodyweight history, and consistency in one view.</p>
+      </div>
       <div class="card">
         <div class="card-head"><h2>Progress</h2><span class="muted" id="progressWho" style="font-size:.8rem"></span></div>
         <div class="stat-row">
           <div class="stat"><strong id="statSessions">0</strong><span>sessions logged</span></div>
           <div class="stat"><strong id="statLifts">0</strong><span>sets recorded</span></div>
-          <div class="stat"><strong id="statStack">0</strong><span>stack days</span></div>
+          <div class="stat"><strong id="statStack">0</strong><span>supplement days</span></div>
           <div class="stat"><strong id="statBw">—</strong><span>bodyweight change</span></div>
         </div>
       </div>
@@ -516,7 +226,7 @@
       </div>
 
       <div class="card">
-        <div class="card-head"><h3>Daily stack</h3></div>
+        <div class="card-head"><h3>Daily fundamentals</h3></div>
         <div id="stackBody"></div>
       </div>
 
@@ -557,7 +267,6 @@
     // id, full label, short label for narrow table headers
     const HABITS = [
       ['protein', 'Protein', 'Pro'],
-      ['creatine', 'Creatine', 'Crea'],
       ['preworkout', 'Pre-workout', 'Pre'],
       ['sleep', 'Sleep', 'Sleep']
     ];
@@ -588,7 +297,9 @@
       bodyweight: (p, date) => `jt-lupe:${p}:bodyweight:${date}`,
       bwPrefix: p => `jt-lupe:${p}:bodyweight:`,
       habit: (p, date, id) => `jt-lupe:${p}:habit:${date}:${id}`,
-      habitPrefix: p => `jt-lupe:${p}:habit:`
+      habitPrefix: p => `jt-lupe:${p}:habit:`,
+      supplement: (p, date, id) => `jt-lupe:${p}:supplement:${date}:${id}`,
+      supplementPrefix: (p, date = '') => `jt-lupe:${p}:supplement:${date}`
     };
 
     const readJSON = key => {
@@ -673,17 +384,25 @@
     const challengeDay = key => Math.floor((parseDate(key) - CHALLENGE_START) / 86400000) + 1;
     const weekOf = key => Math.max(1, Math.min(9, Math.floor((challengeDay(key) - 1) / 7) + 1));
 
-    /** Which session a date calls for. Weekends fall back to the following Monday's plan. */
+    /** Monday, Wednesday and Friday are training days. Every other date is recovery. */
     function dayForDate(key) {
       const wd = parseDate(key).getDay();
-      return DAYS[wd >= 1 && wd <= 5 ? wd - 1 : 0];
+      const index = { 1: 0, 3: 1, 5: 2 }[wd];
+      if (index !== undefined) return DAYS[index];
+      return {
+        id: 'recovery',
+        label: parseDate(key).toLocaleDateString(undefined, { weekday: 'long' }),
+        focus: 'Recovery',
+        note: 'No lifting today. Walk, move, eat, and recover.',
+        exercises: []
+      };
     }
     /**
      * How a date reads to a person: "Today", "Yesterday", or the date itself.
      *
      * The parameter is `key`, not `dateKey` — a near-copy of this function named it
      * after the helper it calls, shadowed that helper with a string, and threw on the
-     * first line, so every backfilled Fuel day silently rendered the previous day's
+     * first line, so every backfilled Food day silently rendered the previous day's
      * meals. That copy is gone; this is the only one.
      */
     function labelForDate(key, { lower = false } = {}) {
@@ -726,7 +445,10 @@
         const m = key.match(V1_SET);
         if (m) {
           const [, field, w, d, e, profile] = m;
-          const day = DAYS[Number(d)];
+          // V1 grid indexes belong to the original five-day programme, not the
+          // current three-day plan. Keep that frozen map so old history migrates to
+          // the exercise it actually represented.
+          const day = LEGACY_PROGRAMME.days[Number(d)];
           const exercise = day && day.exercises[Number(e)];
           if (!exercise) { consumed.push(key); continue; }   // index no longer exists
           const id = `${profile}|${dateForSlot(Number(w), Number(d))}|${exercise.id}`;
@@ -815,7 +537,9 @@
     const numericLoad = load => {
       // A comma is a decimal separator on plenty of keyboards. Stripping it turned
       // 52,5 into 525 - a silent tenfold error in the next-weight suggestion.
-      const cleaned = String(load).trim().replace(/,(\d{1,2})$/, '.$1').replace(/[^0-9.]/g, '');
+      const raw = String(load).trim();
+      if (!/^\d+(?:[.,]\d{1,2})?(?:\s*(?:lb|lbs|kg))?$/i.test(raw)) return null;
+      const cleaned = raw.replace(/,(\d{1,2})$/, '.$1').replace(/[^0-9.]/g, '');
       const value = parseFloat(cleaned);
       return Number.isFinite(value) && value > 0 ? value : null;
     };
@@ -823,13 +547,17 @@
       const value = numericLoad(load);
       return value ? String(+(value + (value >= 100 ? 5 : 2.5)).toFixed(1)) : 'the next notch';
     };
+    const describeEffort = effort => {
+      const amount = effort.reps ?? effort.seconds;
+      return `${effort.load ?? '—'}${amount == null ? '' : `×${amount}`}`;
+    };
     const describe = sets => {
       if (!sets.length) return '';
-      const load = sets[0].load;
-      const reps = sets.map(s => s.reps).filter(r => r != null);
-      if (!reps.length) return `${load}`;
-      const same = reps.every(r => r === reps[0]);
-      return `${sets.length} × ${same ? reps[0] : reps.join('/')} at ${load}`;
+      return sets.map(set => {
+        const parts = [set, ...(Array.isArray(set.drops) ? set.drops : [])]
+          .filter(part => part && (part.load != null || part.reps != null || part.seconds != null));
+        return parts.map(describeEffort).join(' + ');
+      }).join(', ');
     };
 
     function lastSession(profile, exerciseId, beforeDate) {
@@ -848,7 +576,8 @@
       const today = setsFor(state.profile, date, exercise.id).filter(s => s.load != null);
       if (today.length) {
         const reps = today.map(s => s.reps).filter(r => r != null);
-        const owned = reps.length === today.length && reps.every(r => r >= exercise.repHigh);
+        const owned = reps.length === today.length && reps.every(r => r >= exercise.repHigh)
+          && today.every(set => !Array.isArray(set.drops) || set.drops.length === 0);
         if (owned) return { kind: 'up', text: `Logged ${describe(today)} — every set at the top of the range. Next session start at ${suggestNext(today[0].load)}.` };
         const weakest = reps.length ? Math.min(...reps) : null;
         return { kind: 'hold', text: weakest === null
@@ -862,7 +591,8 @@
       const reps = previous.sets.map(s => s.reps).filter(r => r != null);
       const when = labelForDate(previous.date);
       if (!reps.length) return { kind: 'hold', text: `${when} you used ${previous.sets[0].load} but logged no reps. Repeat it and record them.` };
-      const owned = reps.length === previous.sets.length && reps.every(r => r >= exercise.repHigh);
+      const owned = reps.length === previous.sets.length && reps.every(r => r >= exercise.repHigh)
+        && previous.sets.every(set => !Array.isArray(set.drops) || set.drops.length === 0);
       if (owned) return { kind: 'up', text: `${when}: ${describe(previous.sets)} — top of the range. Go up to ${suggestNext(previous.sets[0].load)} and expect reps to drop back to ${exercise.repLow}.` };
       return { kind: 'hold', text: `${when}: ${describe(previous.sets)}. Stay at ${previous.sets[0].load} and chase ${Math.min(...reps) + 1}.` };
     }
@@ -873,6 +603,7 @@
       date: localStorage.getItem('jt-lupe-active-date') || dateKey(),
       profile: PROFILES.includes(localStorage.getItem(PROFILE_KEY)) ? localStorage.getItem(PROFILE_KEY) : 'jt',
       fuelDate: dateKey(),
+      supplementDate: dateKey(),
       timer: 90,
       timerId: null
     };
@@ -895,7 +626,9 @@
 
     // The plan, versioned and separate from the log. Exercise ids are stable:
     // history points at `seated-row`, never at "third item in Monday's list".
-    const PROGRAMME = {
+    // Frozen only for migrating the original week/day/index storage keys. Current
+    // sessions use PROGRAMME below; changing this legacy order would rewrite history.
+    const LEGACY_PROGRAMME = {
       "version": 1,
       "days": [
         {
@@ -1238,16 +971,82 @@
       ]
     };
 
+    // Weight-first, three-day programme. The Anime Physique research informs the
+    // priorities (lats, shoulders, chest, balanced legs and core), while the actual
+    // plan uses the gym equipment JT and Lupe already have.
+    const PROGRAMME = {
+      version: 2,
+      days: [
+        {
+          id: 'v-taper-quads',
+          label: 'Monday',
+          focus: 'V-Taper + Quads',
+          note: 'Back width, shoulders, quads, arms',
+          exercises: [
+            { id: 'lat-pulldown', label: 'Lat pulldown', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
+            { id: 'seated-row', label: 'Seated row', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
+            { id: 'leg-press', label: 'Leg press', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
+            { id: 'dumbbell-overhead-press', label: 'Dumbbell overhead press', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
+            { id: 'dumbbell-lateral-raise', label: 'Dumbbell lateral raise', sets: 3, repLow: 12, repHigh: 20, kind: 'load', note: '3 × 12–20' },
+            { id: 'hammer-curl', label: 'Hammer curl', sets: 2, repLow: 10, repHigh: 15, kind: 'load', note: '2 × 10–15' },
+            { id: 'hanging-knee-raise', label: 'Hanging knee raise', sets: 3, repLow: 8, repHigh: 15, kind: 'bodyweight', note: '3 × 8–15' }
+          ]
+        },
+        {
+          id: 'chest-posterior',
+          label: 'Wednesday',
+          focus: 'Chest + Posterior',
+          note: 'Chest, hamstrings, single-leg strength, upper back',
+          exercises: [
+            { id: 'dumbbell-incline-press', label: 'Dumbbell incline press', sets: 4, repLow: 6, repHigh: 10, kind: 'load', note: '4 × 6–10' },
+            { id: 'pull-up-variation', label: 'Pull-up variation', sets: 3, repLow: 5, repHigh: 8, kind: 'bodyweight', note: '3 × 5–8' },
+            { id: 'kettlebell-romanian-deadlift', label: 'Kettlebell Romanian deadlift', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
+            { id: 'split-squat-variation', label: 'Split-squat variation', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12 / leg' },
+            { id: 'triceps-pressdown', label: 'Triceps pressdown', sets: 3, repLow: 10, repHigh: 15, kind: 'load', note: '3 × 10–15' },
+            { id: 'face-pull', label: 'Face pull', sets: 3, repLow: 12, repHigh: 20, kind: 'load', note: '3 × 12–20' },
+            { id: 'dragon-flag-progression', label: 'Dragon flag progression', sets: 3, repLow: 6, repHigh: 10, kind: 'bodyweight', note: '3 × 6–10 or controlled negatives' }
+          ]
+        },
+        {
+          id: 'full-body',
+          label: 'Friday',
+          focus: 'Full Body + V-Taper',
+          note: 'Chest, back thickness, legs, shoulders, grip',
+          exercises: [
+            { id: 'machine-chest-press', label: 'Machine chest press', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
+            { id: 'lat-pulldown', label: 'Lat pulldown', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
+            { id: 'one-arm-dumbbell-row', label: 'One-arm dumbbell row', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12 / side' },
+            { id: 'dumbbell-goblet-squat', label: 'Dumbbell goblet squat', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
+            { id: 'kettlebell-romanian-deadlift', label: 'Kettlebell Romanian deadlift', sets: 2, repLow: 10, repHigh: 15, kind: 'load', note: '2 × 10–15' },
+            { id: 'dumbbell-lateral-raise', label: 'Dumbbell lateral raise', sets: 3, repLow: 12, repHigh: 20, kind: 'load', note: '3 × 12–20' },
+            { id: 'suitcase-carry', label: 'Suitcase carry', sets: 3, repLow: 30, repHigh: 45, kind: 'timed', note: '3 × 30–45 sec / side' }
+          ]
+        }
+      ]
+    };
+
     const DAYS = PROGRAMME.days;
+    // Keep removed exercises addressable so changing the programme never makes old
+    // training history disappear from Progress or CSV export. Current definitions
+    // win when an exercise id exists in both plans.
+    const EXERCISE_META = new Map();
+    [...LEGACY_PROGRAMME.days, ...DAYS].forEach(day => day.exercises.forEach(ex => {
+      const previous = EXERCISE_META.get(ex.id);
+      EXERCISE_META.set(ex.id, {
+        ...ex,
+        days: new Set([...(previous ? previous.days : []), day.label])
+      });
+    }));
 
     /* ================= tabs ================= */
     function setTab(name) {
       flushPending();
       state.tab = name;
       document.querySelectorAll('.tab').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.tab === name)));
-      ['train', 'fuel', 'progress'].forEach(id => { el(`panel-${id}`).hidden = id !== name; });
+      ['train', 'fuel', 'supplements', 'progress'].forEach(id => { el(`panel-${id}`).hidden = id !== name; });
       paintTimerVisibility();
       if (name === 'fuel') renderFuel();
+      if (name === 'supplements') renderSupplements();
       if (name === 'progress') renderProgress();
       window.scrollTo(0, 0);
     }
@@ -1296,60 +1095,109 @@
       flag.hidden = isToday;
       if (!isToday) flag.textContent = `Catching up — logging ${labelForDate(state.date)}, ${day.label}. Not today.`;
 
+      if (!day.exercises.length) {
+        el('exerciseList').innerHTML = '<p class="empty">Recovery day. The next lifting sessions are Monday, Wednesday, and Friday.</p>';
+        renderSession.commit = null;
+        renderSessionMeta();
+        return;
+      }
+
       el('exerciseList').innerHTML = day.exercises.map(ex => {
         const sets = setsFor(state.profile, state.date, ex.id);
-        const first = sets[0] || {};
         const coach = coachFor(ex, state.date);
         const target = ex.kind === 'timed' || !ex.sets ? esc(ex.note)
           : `${ex.sets} × ${ex.repLow === ex.repHigh ? ex.repLow : `${ex.repLow}–${ex.repHigh}`}${ex.kind === 'warmup' ? '' : ' @ 1–3 RIR'}`;
+        const count = Math.max(ex.sets || 1, sets.reduce((max, set) => Math.max(max, set.n), 0));
+        const rows = Array.from({ length: count }, (_, index) => {
+          const n = index + 1;
+          const set = sets.find(item => item.n === n) || {};
+          const drop = Array.isArray(set.drops) ? set.drops[0] || {} : {};
+          const amount = set.reps ?? set.seconds ?? '';
+          const dropAmount = drop.reps ?? drop.seconds ?? '';
+          const hasDrop = drop.load != null || dropAmount !== '';
+          const amountLabel = ex.kind === 'timed' ? 'Seconds' : 'Reps';
+          return `<fieldset class="set-row" data-set="${n}">
+            <legend class="set-number">Set ${n}</legend>
+            <div class="set-main">
+              <label class="set-field">Weight
+                <input type="text" class="in-load" data-ex="${ex.id}" data-set="${n}" value="${esc(set.load ?? '')}" inputmode="decimal" placeholder="BW or weight" aria-label="Set ${n} weight for ${esc(ex.label)}">
+              </label>
+              <label class="set-field">${amountLabel}
+                <input type="number" class="in-reps" data-ex="${ex.id}" data-set="${n}" value="${esc(amount)}" min="0" max="999" inputmode="numeric" placeholder="—" aria-label="Set ${n} ${amountLabel.toLowerCase()} for ${esc(ex.label)}">
+              </label>
+            </div>
+            <details class="set-adjustment" ${hasDrop ? 'open' : ''}>
+              <summary>Drop / assisted reps</summary>
+              <div class="drop-grid">
+                <label class="set-field">Finish weight
+                  <input type="text" class="in-drop-load" data-ex="${ex.id}" data-set="${n}" value="${esc(drop.load ?? '')}" inputmode="decimal" placeholder="Lower or assisted" aria-label="Set ${n} finish weight for ${esc(ex.label)}">
+                </label>
+                <label class="set-field">Finish ${amountLabel}
+                  <input type="number" class="in-drop-reps" data-ex="${ex.id}" data-set="${n}" value="${esc(dropAmount)}" min="0" max="999" inputmode="numeric" placeholder="—" aria-label="Set ${n} finish ${amountLabel.toLowerCase()} for ${esc(ex.label)}">
+                </label>
+              </div>
+              <p>Example: 6 reps at the working weight, then 4 lighter or assisted reps.</p>
+            </details>
+          </fieldset>`;
+        }).join('');
         return `
           <article class="exercise" data-done="${sets.length > 0}">
             <div class="exercise-top">
               <div class="exercise-name">${esc(ex.label)}<p class="target">${target}</p></div>
-            </div>
-            <p class="coach" data-kind="${coach.kind}">${esc(coach.text)}</p>
-            <div class="entry">
-              <label>Weight
-                <input type="text" class="in-load" data-ex="${ex.id}" value="${esc(first.load ?? '')}" inputmode="decimal" placeholder="—" aria-label="Weight for ${esc(ex.label)}">
-              </label>
-              <label>${ex.kind === 'timed' ? 'Seconds' : 'Reps'}
-                <input type="number" class="in-reps" data-ex="${ex.id}" value="${esc(first.reps ?? first.seconds ?? '')}" min="0" max="999" inputmode="numeric" placeholder="—" aria-label="Reps for ${esc(ex.label)}">
-              </label>
-              <label>Sets
-                <input type="number" class="in-sets" data-ex="${ex.id}" value="${esc(sets.length || ex.sets || 1)}" min="1" max="20" inputmode="numeric" aria-label="Sets for ${esc(ex.label)}">
-              </label>
               <label class="tick" title="Done">
                 <input type="checkbox" class="in-done" data-ex="${ex.id}" ${sets.length ? 'checked' : ''} aria-label="Mark ${esc(ex.label)} done">
               </label>
             </div>
+            <p class="coach" data-kind="${coach.kind}">${esc(coach.text)}</p>
+            <div class="set-list">${rows}</div>
+            <p class="set-help">Log each set as performed. Leave an unperformed set blank.</p>
           </article>`;
       }).join('');
 
       const commit = exerciseId => {
         const card = document.querySelector(`.in-load[data-ex="${exerciseId}"]`).closest('.exercise');
-        const load = card.querySelector('.in-load').value.trim();
-        const reps = card.querySelector('.in-reps').value.trim();
-        const count = Math.max(1, Math.min(20, Number(card.querySelector('.in-sets').value) || 1));
         const ex = dayForDate(state.date).exercises.find(e => e.id === exerciseId);
-        clearSets(state.profile, state.date, exerciseId);
-        if (!load && !reps) { renderSessionMeta(); return; }
-        for (let n = 1; n <= count; n += 1) {
-          writeSet(state.profile, state.date, exerciseId, n, {
-            load: load || null, unit: 'lb',
-            reps: ex.kind === 'timed' ? null : (reps === '' ? null : Number(reps)),
-            seconds: ex.kind === 'timed' ? (reps === '' ? null : Number(reps)) : null,
+        const records = [];
+        for (const row of card.querySelectorAll('.set-row')) {
+          const load = row.querySelector('.in-load').value.trim();
+          const amount = row.querySelector('.in-reps').value.trim();
+          const dropLoad = row.querySelector('.in-drop-load').value.trim();
+          const dropAmount = row.querySelector('.in-drop-reps').value.trim();
+          if (!load && !amount && !dropLoad && !dropAmount) continue;
+          const timed = ex.kind === 'timed';
+          const drops = !dropLoad && !dropAmount ? [] : [{
+            load: dropLoad || null,
+            unit: 'lb',
+            reps: timed ? null : (dropAmount === '' ? null : Number(dropAmount)),
+            seconds: timed ? (dropAmount === '' ? null : Number(dropAmount)) : null
+          }];
+          const entry = {
+            n: Number(row.dataset.set),
+            load: load || null,
+            unit: 'lb',
+            reps: timed ? null : (amount === '' ? null : Number(amount)),
+            seconds: timed ? (amount === '' ? null : Number(amount)) : null,
             rir: null
-          });
+          };
+          if (drops.length) entry.drops = drops;
+          records.push(entry);
         }
+
+        clearSets(state.profile, state.date, exerciseId);
+        records.forEach(record => {
+          const entry = Object.assign({}, record);
+          delete entry.n;
+          writeSet(state.profile, state.date, exerciseId, record.n, entry);
+        });
         const session = K.session(state.profile, state.date);
-        if (localStorage.getItem(session) === null) writeJSON(session, { templateId: dayForDate(state.date).id });
-        card.dataset.done = 'true';
-        card.querySelector('.in-done').checked = true;
+        if (records.length && localStorage.getItem(session) === null) writeJSON(session, { templateId: dayForDate(state.date).id });
+        card.dataset.done = String(records.length > 0);
+        card.querySelector('.in-done').checked = records.length > 0;
         renderSessionMeta();
       };
 
       renderSession.commit = commit;
-      document.querySelectorAll('.in-load, .in-reps, .in-sets').forEach(input => {
+      document.querySelectorAll('.in-load, .in-reps, .in-drop-load, .in-drop-reps').forEach(input => {
         input.addEventListener('change', event => { commit(event.target.dataset.ex); flash('Saved.'); });
         // A phone going into a pocket does not blur the field, so `change` never fires.
         // Remember which exercise is mid-edit so it can be flushed on the way out.
@@ -1629,11 +1477,11 @@
 
     function proteinFor(food, grams) { return Math.round((food.protein100 * grams) / 100); }
 
-    function renderFoodHits(foods, note) {
+    function renderFoodHits(foods, note, info = '') {
       const box = el('foodResults');
       if (note) { box.innerHTML = `<p class="food-note" data-warn="true">${esc(note)}</p>`; return; }
       if (!foods.length) { box.innerHTML = '<p class="food-note">No match. Type the meal in below instead.</p>'; return; }
-      box.innerHTML = foods.slice(0, 6).map((food, index) => {
+      box.innerHTML = `${info ? `<p class="food-note">${esc(info)}</p>` : ''}${foods.slice(0, 6).map((food, index) => {
         const options = (food.portions && food.portions.length ? food.portions : [{ label: `${gramsFor(food)} g`, grams: gramsFor(food) }])
           .slice(0, 4)
           .map(portion => `<button class="btn" type="button" data-food="${index}" data-grams="${portion.grams}">${esc(portion.label)} · ${proteinFor(food, portion.grams)} g</button>`)
@@ -1643,7 +1491,7 @@
           <div class="food-hit-meta">${esc(food.brand || food.kind)} · ${Math.round(food.protein100)} g protein per 100 g</div>
           <div class="food-portions">${options}</div>
         </div>`;
-      }).join('') + '<p class="food-note">Pick a portion and it fills the line below - adjust before adding.</p>';
+      }).join('')}<p class="food-note">Pick a portion and it fills the line below - adjust before adding.</p>`;
 
       box.querySelectorAll('[data-food]').forEach(button => button.addEventListener('click', () => {
         const food = foods[Number(button.dataset.food)];
@@ -1665,7 +1513,9 @@
         const payload = await response.json();
         if (payload.error === 'rate_limited') return renderFoodHits([], payload.hint || 'Food lookup is rate-limited right now. Type it in below.');
         if (payload.error) return renderFoodHits([], 'Food lookup is unavailable right now. Type it in below.');
-        renderFoodHits(payload.foods || []);
+        renderFoodHits(payload.foods || [], '', payload.estimated
+          ? 'Hot Bar recipes vary by store and day. These are generic estimates; adjust the filled protein before adding.'
+          : '');
       } catch {
         renderFoodHits([], 'Could not reach the food database. Type it in below.');
       }
@@ -1719,6 +1569,125 @@
     el('bwValue').addEventListener('change', commitBodyweight);
     el('bwUnit').addEventListener('change', commitBodyweight);
 
+    /* ================= supplements =================
+       A supplement is an intake record, not a recommendation. Each record keeps the
+       product name and the dose the person entered on the date it was taken. */
+    function readSupplements(profile, date) {
+      const prefix = `${K.supplementPrefix(profile, date)}:`;
+      const rows = [];
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index);
+        if (!key || !key.startsWith(prefix)) continue;
+        const record = readJSON(key);
+        if (!record || !record.name) continue;
+        rows.push({ ...record, key, id: key.slice(prefix.length) });
+      }
+      return rows.toSorted((a, b) => String(a.at || a.id).localeCompare(String(b.at || b.id)));
+    }
+
+    function readSupplementHistory(profile) {
+      const prefix = K.supplementPrefix(profile);
+      const byDate = new Map();
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index);
+        if (!key || !key.startsWith(prefix)) continue;
+        const date = key.slice(prefix.length).split(':').find(Boolean);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) continue;
+        const record = readJSON(key);
+        if (!record || !record.name) continue;
+        if (!byDate.has(date)) byDate.set(date, []);
+        byDate.get(date).push(record);
+      }
+
+      // Preserve creatine checkmarks made in the previous UI as supplement history.
+      readHabitHistory(profile).forEach(row => {
+        if (!row.marks.creatine) return;
+        if (!byDate.has(row.date)) byDate.set(row.date, []);
+        const entries = byDate.get(row.date);
+        if (!entries.some(item => /creatine/i.test(item.name))) {
+          entries.push({ name: 'Creatine', dose: '3–5', unit: 'g', legacy: true });
+        }
+      });
+
+      return [...byDate.entries()]
+        .toSorted((a, b) => b[0].localeCompare(a[0]))
+        .map(([date, entries]) => ({ date, entries }));
+    }
+
+    function renderSupplements() {
+      const date = state.supplementDate;
+      const today = dateKey();
+      const picker = el('supplementDate');
+      picker.value = date;
+      picker.max = today;
+
+      const flag = el('supplementBackfill');
+      flag.hidden = date === today;
+      if (date !== today) flag.textContent = `Backfilling ${labelForDate(date, { lower: true })}.`;
+
+      const entries = readSupplements(state.profile, date);
+      const history = readSupplementHistory(state.profile);
+      el('supplementToday').textContent = entries.length;
+      el('supplementDays').textContent = history.length;
+      el('supplementList').innerHTML = entries.length
+        ? entries.map(item => `<div class="supplement-row">
+            <span class="supplement-check" aria-hidden="true">✓</span>
+            <div><div class="supplement-name">${esc(item.name)}</div><div class="supplement-dose">${esc(item.dose)} ${esc(item.unit)} · taken</div></div>
+            <button class="icon-btn" type="button" data-supplement-key="${esc(item.key)}" aria-label="Remove ${esc(item.name)}">Undo</button>
+          </div>`).join('')
+        : '<p class="empty">No supplements recorded for this day.</p>';
+
+      document.querySelectorAll('[data-supplement-key]').forEach(button => button.addEventListener('click', () => {
+        localStorage.removeItem(button.dataset.supplementKey);
+        markDirty(button.dataset.supplementKey);
+        scheduleSync();
+        renderSupplements();
+      }));
+
+      const recent = history.slice(0, 14);
+      el('supplementHistory').innerHTML = recent.length ? `
+        <div class="scroller"><table class="data">
+          <thead><tr><th class="grow">Date</th><th>Recorded intake</th></tr></thead>
+          <tbody>${recent.map(row => `<tr><td class="grow">${esc(row.date)}</td><td>${esc(row.entries.map(item => `${item.name} ${item.dose} ${item.unit}`).join(' · '))}</td></tr>`).join('')}</tbody>
+        </table></div>`
+        : '<p class="empty">Your supplement history will appear here.</p>';
+    }
+
+    function logSupplement() {
+      const name = el('supplementName').value.trim();
+      const rawDose = el('supplementDose').value.trim();
+      const dose = Number(rawDose);
+      if (!name) { el('supplementName').focus(); return; }
+      if (!rawDose || !Number.isFinite(dose) || dose <= 0) { el('supplementDose').focus(); return; }
+      const id = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
+      writeJSON(K.supplement(state.profile, state.supplementDate, id), {
+        name,
+        dose,
+        unit: el('supplementUnit').value,
+        at: new Date().toISOString()
+      });
+      el('supplementName').value = '';
+      el('supplementDose').value = '';
+      renderSupplements();
+    }
+
+    el('addSupplement').addEventListener('click', logSupplement);
+    el('supplementName').addEventListener('keydown', event => { if (event.key === 'Enter') logSupplement(); });
+    el('supplementDose').addEventListener('keydown', event => { if (event.key === 'Enter') logSupplement(); });
+    el('supplementDate').addEventListener('change', event => {
+      const chosen = event.target.value;
+      state.supplementDate = /^\d{4}-\d{2}-\d{2}$/.test(chosen) && chosen <= dateKey() ? chosen : dateKey();
+      renderSupplements();
+    });
+    document.querySelectorAll('[data-supplement-preset]').forEach(button => button.addEventListener('click', () => {
+      if (button.dataset.supplementPreset === 'creatine') {
+        el('supplementName').value = 'Creatine monohydrate';
+        el('supplementDose').value = '5';
+        el('supplementUnit').value = 'g';
+        logSupplement();
+      }
+    }));
+
     /* ================= progress ================= */
     function readWeightHistory(profile) {
       const prefix = K.bwPrefix(profile);
@@ -1755,16 +1724,21 @@
       const dates = [...index.keys()].toSorted((a, b) => a.localeCompare(b));
       dates.forEach(date => {
         const forDate = index.get(date);
-        DAYS.forEach(day => day.exercises.forEach(ex => {
-          if (ex.kind === 'warmup') return;
-          const sets = (forDate.get(ex.id) || []).filter(x => x.load != null);
-          if (!sets.length) return;
+        for (const [exerciseId, rawSets] of forDate) {
+          const ex = EXERCISE_META.get(exerciseId) || {
+            id: exerciseId,
+            label: exerciseId.replaceAll('-', ' '),
+            kind: 'load',
+            days: new Set(['History'])
+          };
+          if (ex.kind === 'warmup') continue;
+          const sets = rawSets.filter(x => x.load != null);
+          if (!sets.length) continue;
           if (!byExercise.has(ex.id)) byExercise.set(ex.id, { name: ex.label, days: new Set(), entries: [] });
           const row = byExercise.get(ex.id);
-          if (row.entries.some(e => e.date === date)) return;
-          row.days.add(day.label);
-          row.entries.push({ date, load: sets[0].load, reps: sets[0].reps, count: sets.length });
-        }));
+          ex.days.forEach(day => row.days.add(day));
+          row.entries.push({ date, load: sets[0].load, summary: describe(sets) });
+        }
       });
       return [...byExercise.values()].map(row => {
         const entries = row.entries.toSorted((a, b) => a.date.localeCompare(b.date));
@@ -1784,6 +1758,7 @@
       const strength = readStrength(state.profile);
       const weights = readWeightHistory(state.profile);
       const habits = readHabitHistory(state.profile);
+      const supplements = readSupplementHistory(state.profile);
 
       let sets = 0;
       const sessions = new Set(datesLogged(state.profile, null));
@@ -1795,7 +1770,7 @@
 
       el('statSessions').textContent = sessions.size;
       el('statLifts').textContent = sets;
-      el('statStack').textContent = habits.length;
+      el('statStack').textContent = supplements.length;
       if (weights.length >= 2) {
         const change = +(weights[0].value - weights[weights.length - 1].value).toFixed(1);
         el('statBw').textContent = `${change > 0 ? '+' : ''}${change} ${weights[0].unit}`;
@@ -1808,11 +1783,11 @@
           <thead><tr><th class="grow">Exercise</th><th>First → latest</th><th>Change</th></tr></thead>
           <tbody>${strength.map(row => `<tr>
             <td class="grow">${esc(row.name)}<br><span class="muted" style="font-size:.78rem">${esc([...row.days].join(' + '))} · ${row.sessions} session${row.sessions === 1 ? '' : 's'}</span></td>
-            <td>${esc(row.first.count)}×${esc(row.first.reps ?? '?')} at ${esc(row.first.load)} <span class="muted">→</span> ${esc(row.latest.count)}×${esc(row.latest.reps ?? '?')} at ${esc(row.latest.load)}</td>
+            <td>${esc(row.first.summary)} <span class="muted">→</span> ${esc(row.latest.summary)}</td>
             <td class="${row.delta > 0 ? 'up' : 'flat'}">${row.delta === null ? '—' : row.delta > 0 ? `+${row.delta}` : row.delta}</td>
           </tr>`).join('')}</tbody>
         </table></div>`
-        : '<p class="empty">Log a weight on the Train tab and your strength history starts here.</p>';
+        : '<p class="empty">Log a weight on the Workout tab and your strength history starts here.</p>';
 
       el('bodyweightBody').innerHTML = weights.length ? `
         <div class="scroller"><table class="data">
@@ -1833,7 +1808,7 @@
             return `<tr><td class="grow">${row.date}</td>${HABITS.map(([id]) => `<td class="${row.marks[id] ? 'up' : 'flat'}">${row.marks[id] ? '✓' : '·'}</td>`).join('')}<td>${hits}/${HABITS.length}</td></tr>`;
           }).join('')}</tbody>
         </table></div>`
-        : '<p class="empty">No daily stack history yet.</p>';
+        : '<p class="empty">No daily fundamentals history yet.</p>';
 
       el('dataNote').textContent = syncState.enabled
         ? `Synced to your private database as ${syncState.email}. Backup still works offline.`
@@ -1846,19 +1821,33 @@
     el('exportCsv').addEventListener('click', () => {
       const lines = [['dataset', 'profile', 'date', 'week', 'day', 'item', 'value', 'reps'].join(',')];
       PROFILES.forEach(profile => {
-        datesLogged(profile, null).forEach(date => {
-          DAYS.forEach(day => day.exercises.forEach(ex => {
-            setsFor(profile, date, ex.id).forEach(set => {
-              lines.push(['set', profile, date, weekOf(date), day.label, ex.label,
+        const indexed = indexSets(profile);
+        for (const [date, exercises] of indexed) {
+          for (const [exerciseId, sets] of exercises) {
+            const ex = EXERCISE_META.get(exerciseId) || {
+              label: exerciseId.replaceAll('-', ' '),
+              days: new Set(['History'])
+            };
+            const day = [...ex.days].at(-1);
+            sets.forEach(set => {
+              const item = `${ex.label} · set ${set.n}`;
+              lines.push(['set', profile, date, weekOf(date), day, item,
                 set.load ?? '', set.reps ?? set.seconds ?? ''].map(csvCell).join(','));
+              (Array.isArray(set.drops) ? set.drops : []).forEach(drop => {
+                lines.push(['drop', profile, date, weekOf(date), day, item,
+                  drop.load ?? '', drop.reps ?? drop.seconds ?? ''].map(csvCell).join(','));
+              });
             });
-          }));
-        });
+          }
+        }
         readHabitHistory(profile).forEach(row => HABITS.forEach(([id]) => {
           if (row.marks[id] !== undefined) lines.push(['habit', profile, row.date, '', '', id, row.marks[id], ''].map(csvCell).join(','));
         }));
         readWeightHistory(profile).forEach(row =>
           lines.push(['bodyweight', profile, row.date, '', '', row.unit, row.value, ''].map(csvCell).join(',')));
+        readSupplementHistory(profile).forEach(row => row.entries.forEach(item => {
+          lines.push(['supplement', profile, row.date, '', '', item.name, item.dose, item.unit].map(csvCell).join(','));
+        }));
         const mealPattern = new RegExp(`^jt-lupe-meal-${profile}-(\\d{4}-\\d{2}-\\d{2})-`);
         const seen = new Set();
         for (let index = 0; index < localStorage.length; index += 1) {
@@ -1886,7 +1875,7 @@
         const key = localStorage.key(index);
         if (key && key.startsWith('jt-lupe') && !LEGACY_KEYS.includes(key)) data[key] = localStorage.getItem(key);
       }
-      const payload = JSON.stringify({ app: 'JT + Lupe Training Log', schema: SCHEMA_VERSION, exported: new Date().toISOString(), data }, null, 2);
+      const payload = JSON.stringify({ app: 'JT + Lupe Training OS', schema: SCHEMA_VERSION, exported: new Date().toISOString(), data }, null, 2);
       const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
       const link = document.createElement('a');
       link.href = url;
@@ -1941,16 +1930,16 @@
     /* ================= static copy ================= */
     el('rulesBody').innerHTML = `
       <p><strong>Double progression.</strong> Keep the same weight until you hit the top of
-      the rep range on your last set. Then add the smallest jump available and expect
+      the rep range on every working set. Then add the smallest jump available and expect
       reps to fall back to the bottom of the range. Climb again.</p>
       <p><strong>Leave 1–3 reps in the tank.</strong> A set that ends with 5+ reps left is
       too light to matter. Grinding to absolute failure buys very little extra growth and
       costs you the next session.</p>
       <ul>
         <li>Roughly 10+ hard sets per muscle per week drives growth.</li>
-        <li>Each muscle trained about twice a week — which this five-day split already does.</li>
+        <li>Train Monday, Wednesday, and Friday. The rest days are part of the plan.</li>
         <li>Rest 2–3 minutes on the big lifts. The timer defaults to 90 seconds for the rest.</li>
-        <li>Log the reps on your <em>last</em> set. That single number is what the coach line reads.</li>
+        <li>Log every set. If a set becomes a drop set, record the working reps and the lighter finish separately.</li>
       </ul>
       <p class="muted">Sources:
         <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/">2026 ACSM position stand</a>,
@@ -1958,15 +1947,20 @@
         <a href="https://pubmed.ncbi.nlm.nih.gov/42410632/">failure vs non-failure review</a>.</p>`;
 
     el('evidenceBody').innerHTML = `
-      <p>Five sessions, two exposures per muscle, one progression rule. The evidence keeps
-      pointing at the same boring answer: enough hard sets, close enough to failure, done
-      consistently, with enough protein.</p>
+      <p>Three weight-first sessions, repeated exposure for the major muscle groups, and
+      one progression rule. The plan borrows the Anime Physique priorities — lats,
+      shoulders, chest, balanced legs and core — without pretending a gym has no weights.</p>
       <ul>
+        <li><strong>Monday:</strong> V-taper and quads.</li>
+        <li><strong>Wednesday:</strong> chest and posterior chain.</li>
+        <li><strong>Friday:</strong> full body with extra back and shoulder work.</li>
         <li><strong>Protein 1.6–2.2 g/kg</strong> daily. Total matters far more than timing.</li>
         <li><strong>Creatine monohydrate 3–5 g</strong> every day. No loading phase needed.</li>
         <li><strong>Definition comes from losing fat</strong> while training preserves the muscle.</li>
       </ul>
       <p class="muted">
+        <a href="https://www.youtube.com/watch?v=3Zgrh5009_k">Anime Physique exercise priorities</a> ·
+        <a href="https://www.youtube.com/watch?v=qQrfSU3TTwc">Anime Physique split guidance</a> ·
         <a href="https://jissn.biomedcentral.com/counter/pdf/10.1186/s12970-017-0177-8.pdf">ISSN protein stand</a> ·
         <a href="https://link.springer.com/article/10.1186/s12970-021-00412-w">ISSN creatine review</a> ·
         <a href="https://pubmed.ncbi.nlm.nih.gov/41433021/">2025 creatine meta-analysis</a></p>
@@ -1978,6 +1972,7 @@
     function renderAll() {
       renderSession();
       renderFuel();
+      renderSupplements();
       if (state.tab === 'progress') renderProgress();
     }
 
@@ -2228,7 +2223,7 @@
     }
 
     /* ---------- prefilled import link ----------
-       ?log=<text>&day=<0-4>&week=<n> opens the importer with a session already typed
+       ?log=<text>&date=YYYY-MM-DD opens the importer with a session already typed
        in and previewed. It never writes on its own: the parse still has to be read and
        confirmed, which is the same gate as a manual paste. Lets a session logged
        elsewhere be handed to each person as a link they open in their own account. */
@@ -2261,6 +2256,7 @@
     setTab('train');
     renderSession();
     renderFuel();
+    renderSupplements();
     paintTimer();
 
     // A second tab, or the installed app in another window, should not go stale.

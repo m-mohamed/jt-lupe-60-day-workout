@@ -1,7 +1,7 @@
 // This worker caches app *files* only. All workout data lives in localStorage, which
 // the Cache API never touches — clearing or renaming a cache cannot delete a log entry.
-const CACHE_NAME = 'jt-lupe-workout-v6';
-const CORE_ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
+const CACHE_NAME = 'jt-lupe-workout-v8';
+const CORE_ASSETS = ['./', './index.html', './beautiful-ui.css', './manifest.webmanifest', './icon.svg'];
 
 /**
  * Store a response the browser will accept for a navigation.

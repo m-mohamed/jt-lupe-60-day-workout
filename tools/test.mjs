@@ -21,6 +21,7 @@ const SUITES = [
   { file: 'a11y.test.js', port: STATIC_PORT },
   { file: 'human-interaction.test.js', port: STATIC_PORT },
   { file: 'session-flow.test.js', port: STATIC_PORT },
+  { file: 'supplements.test.js', port: STATIC_PORT },
   { file: 'import.test.js', port: STATIC_PORT },
   { file: 'migration.test.js', port: STATIC_PORT },
   { file: 'edge-cases.test.js', port: WORKER_PORT },

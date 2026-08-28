@@ -44,6 +44,7 @@ of the response, so a device never re-applies its own writes.
 | --- | --- |
 | `GET /api/me` | verified email; also how the client detects a backend exists |
 | `POST /api/sync` | push changes, pull everything newer |
+| `GET /api/food` | USDA lookup plus clearly labelled Whole Foods Hot Bar estimates |
 | `GET /api/export` | full namespace dump for backup |
 | `GET /api/stats` | record count, version, database size |
 

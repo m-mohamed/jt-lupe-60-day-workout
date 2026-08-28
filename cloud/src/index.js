@@ -16,6 +16,42 @@ const MAX_KEY = 256;
 const MAX_VALUE = 64 * 1024;
 const NS_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 
+// FoodData Central has branded Whole Foods products, but it does not have a stable
+// "Whole Foods Hot Bar" menu. Searching that phrase currently returns unrelated
+// matches for the words whole and hot. These conservative generic estimates make the
+// common plate components reliably searchable while making the estimate explicit.
+// Hot-bar recipes vary by store and day, so the client still lets the person adjust
+// the filled protein number before saving it.
+const WHOLE_FOODS_HOT_BAR = [
+  { id: 'wfm-hotbar-chicken', name: 'Whole Foods Hot Bar — chicken breast (estimate)', protein100: 31, kcal100: 165 },
+  { id: 'wfm-hotbar-salmon', name: 'Whole Foods Hot Bar — baked salmon (estimate)', protein100: 22, kcal100: 206 },
+  { id: 'wfm-hotbar-meatballs', name: 'Whole Foods Hot Bar — turkey meatballs (estimate)', protein100: 18, kcal100: 220 },
+  { id: 'wfm-hotbar-tofu', name: 'Whole Foods Hot Bar — tofu and vegetables (estimate)', protein100: 8, kcal100: 120 },
+  { id: 'wfm-hotbar-mac', name: 'Whole Foods Hot Bar — macaroni and cheese (estimate)', protein100: 7, kcal100: 164 },
+  { id: 'wfm-hotbar-rice', name: 'Whole Foods Hot Bar — brown rice (estimate)', protein100: 2.6, kcal100: 123 }
+].map(food => Object.assign(food, {
+  brand: 'Whole Foods Hot Bar · estimate',
+  kind: 'Built-in estimate',
+  portions: [
+    { label: '4 oz', grams: 113 },
+    { label: '6 oz', grams: 170 },
+    { label: '8 oz', grams: 227 }
+  ],
+  servingGrams: 113
+}));
+
+function hotBarFoods(query) {
+  const normalized = query.toLowerCase();
+  if (!normalized.includes('whole foods') && !normalized.includes('hot bar')) return null;
+  const wanted = normalized
+    .replace(/whole\s*foods?|market|hot\s*bar|prepared|food|plate/g, ' ')
+    .trim();
+  if (!wanted) return WHOLE_FOODS_HOT_BAR;
+  const tokens = wanted.split(/\s+/).filter(Boolean);
+  const matches = WHOLE_FOODS_HOT_BAR.filter(food => tokens.every(token => food.name.toLowerCase().includes(token)));
+  return matches.length ? matches : WHOLE_FOODS_HOT_BAR;
+}
+
 // FDC has shipped nutrient amounts as both numbers and numeric strings. Coerce once
 // here so everything downstream gets a number or nothing.
 const nutrient = (food, name) => {
@@ -108,6 +144,9 @@ export default {
       if (url.pathname === '/api/food' && request.method === 'GET') {
         const query = (url.searchParams.get('q') || '').trim().slice(0, 120);
         if (!query) return json({ foods: [] });
+
+        const hotBar = hotBarFoods(query);
+        if (hotBar) return json({ foods: hotBar, estimated: true });
 
         // Cache hard: the same lunch gets looked up repeatedly and the free key is
         // metered per hour.

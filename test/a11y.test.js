@@ -13,7 +13,27 @@ const url = 'http://127.0.0.1:8911/';
 const AUDIT = () => {
   const parse = colour => {
     const m = colour.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
-    return m ? { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] } : null;
+    if (m) return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
+    const srgb = colour.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)/);
+    if (srgb) return { r: +srgb[1] * 255, g: +srgb[2] * 255, b: +srgb[3] * 255, a: srgb[4] === undefined ? 1 : +srgb[4] };
+    const oklch = colour.match(/oklch\(([\d.]+)(%)?\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+)(%)?)?\)/);
+    if (!oklch) return null;
+    const L = +oklch[1] / (oklch[2] ? 100 : 1);
+    const C = +oklch[3];
+    const h = +oklch[4] * Math.PI / 180;
+    const a = C * Math.cos(h); const b = C * Math.sin(h);
+    const l0 = L + 0.3963377774 * a + 0.2158037573 * b;
+    const m0 = L - 0.1055613458 * a - 0.0638541728 * b;
+    const s0 = L - 0.0894841775 * a - 1.291485548 * b;
+    const l = l0 ** 3; const mm = m0 ** 3; const s = s0 ** 3;
+    const linear = [
+      4.0767416621 * l - 3.3077115913 * mm + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * mm - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * mm + 1.707614701 * s
+    ];
+    const gamma = value => 255 * Math.max(0, Math.min(1, value <= 0.0031308 ? 12.92 * value : 1.055 * value ** (1 / 2.4) - 0.055));
+    return { r: gamma(linear[0]), g: gamma(linear[1]), b: gamma(linear[2]),
+      a: oklch[5] === undefined ? 1 : +oklch[5] / (oklch[6] ? 100 : 1) };
   };
   const channel = v => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
   const luminance = c => 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b);
@@ -25,13 +45,16 @@ const AUDIT = () => {
     return (hi + 0.05) / (lo + 0.05);
   };
   const backdrop = node => {
+    const layers = [];
     let current = node;
     while (current && current !== document.documentElement) {
       const colour = parse(getComputedStyle(current).backgroundColor);
-      if (colour && colour.a > 0) return colour;
+      if (colour && colour.a > 0) layers.push(colour);
       current = current.parentElement;
     }
-    return parse(getComputedStyle(document.body).backgroundColor) || { r: 255, g: 255, b: 255, a: 1 };
+    let result = layers.pop() || { r: 255, g: 255, b: 255, a: 1 };
+    while (layers.length) result = flatten(layers.pop(), result);
+    return result;
   };
   const shown = node => {
     const box = node.getBoundingClientRect();
@@ -96,13 +119,19 @@ const AUDIT = () => {
     contrastFailures, smallTargets, unnamed, unfocusable,
     h1: document.querySelectorAll('h1').length,
     tabsWired: [...document.querySelectorAll('[role="tab"]')].every(tab => tab.hasAttribute('aria-selected')),
-    panels: document.querySelectorAll('[role="tabpanel"]').length
+    panels: document.querySelectorAll('[role="tabpanel"]').length,
+    overflows: document.documentElement.scrollWidth > window.innerWidth + 1,
+    scrollWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth
   };
 };
 
 (async () => {
   const b = await chromium.launch(launchOptions());
   const findings = [];
+  // These audits deliberately reuse one browser in sequence so each theme/tab has
+  // an isolated context and cannot leak media preferences or local state.
+  /* eslint-disable no-await-in-loop */
   for (const scheme of ['light', 'dark']) {
     const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, colorScheme: scheme, hasTouch: true, isMobile: true });
     const p = await ctx.newPage();
@@ -112,8 +141,15 @@ const AUDIT = () => {
     // the pairs that failed.
     await p.evaluate(() => document.querySelectorAll('details').forEach(d => { d.open = true; }));
 
-    for (const tab of ['train', 'fuel', 'progress']) {
+    for (const tab of ['train', 'fuel', 'supplements', 'progress']) {
       await p.evaluate(name => setTab(name), tab);
+      if (tab === 'train') {
+        await p.evaluate(() => {
+          state.date = '2026-08-28';
+          renderSession();
+          document.querySelectorAll('details').forEach(details => { details.open = true; });
+        });
+      }
       await p.waitForTimeout(400);
       const audit = await p.evaluate(AUDIT);
       findings.push({ scheme, tab, ...audit });
@@ -125,14 +161,17 @@ const AUDIT = () => {
         JSON.stringify(audit.unnamed.slice(0, 4)));
       t(`${scheme}/${tab}: every button shows focus`, audit.unfocusable.length === 0,
         JSON.stringify(audit.unfocusable.slice(0, 4)));
+      t(`${scheme}/${tab}: no horizontal overflow`, !audit.overflows,
+        `${audit.scrollWidth}/${audit.viewportWidth}`);
     }
     const first = findings.find(f => f.scheme === scheme);
     t(`${scheme}: exactly one H1`, first.h1 === 1, String(first.h1));
-    t(`${scheme}: tabs and panels wired`, first.tabsWired && first.panels === 3,
+    t(`${scheme}: tabs and panels wired`, first.tabsWired && first.panels === 4,
       JSON.stringify({ wired: first.tabsWired, panels: first.panels }));
     t(`${scheme}: no page errors`, errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
+  /* eslint-enable no-await-in-loop */
 
   console.log(JSON.stringify({ results: R }, null, 1));
   await b.close();

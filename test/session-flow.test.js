@@ -24,10 +24,10 @@ const YESTERDAY = key(new Date(now.getFullYear(), now.getMonth(), now.getDate() 
     await p.goto(url); await p.evaluate(() => localStorage.clear());
     await p.goto(url, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1200);
   };
-  const sets = (date, ex) => p.evaluate(([d, e]) => setsFor('jt', d, e).map(s => ({ l: s.load, r: s.reps })), [date, ex]);
-  const exId = i => p.evaluate(n => document.querySelectorAll('.in-load')[n].dataset.ex, i);
+  const sets = (date, ex) => p.evaluate(([d, e]) => setsFor('jt', d, e)
+    .map(s => ({ n: s.n, l: s.load, r: s.reps, drops: s.drops || [] })), [date, ex]);
 
-  // --- today is Tuesday: the app must open on legs, day 2 ---
+  // --- opening always reflects the real calendar date, including a recovery day ---
   await fresh();
   let r = await p.evaluate(() => ({
     date: state.date,
@@ -36,39 +36,50 @@ const YESTERDAY = key(new Date(now.getFullYear(), now.getMonth(), now.getDate() 
     flagged: !document.getElementById('backfillFlag').hidden
   }));
   // The invariant is that it opens on the real calendar date and does not claim to be
-  // catching up. Which session that maps to is the programme's business — on a weekend
-  // it shows Monday's, because there is no weekend session to show.
+  // catching up. Monday, Wednesday and Friday are sessions; other dates say recovery.
   t('opens on today, not flagged as catching up',
     r.date === TODAY && Boolean(r.title.trim()) && !r.flagged, JSON.stringify(r));
   t('the day counter names a day of the challenge', /day \d+ of 60|starts in|complete/i.test(r.day), r.day);
 
-  // --- log one exercise the way a person does, then change their mind ---
-  let id = await exId(0);
-  await p.locator('.in-load').nth(0).tap(); await p.keyboard.type('95');
-  await p.locator('.in-reps').nth(0).tap(); await p.keyboard.type('10');
-  await p.locator('.in-load').nth(1).tap(); await p.waitForTimeout(400);
-  const first = await sets(TODAY, id);
+  // --- log each set at the weight actually used, including one in-set drop ---
+  const TRAINING_DATE = '2026-08-24'; // Monday
+  await p.evaluate(date => { state.date = date; renderSession(); }, TRAINING_DATE);
+  const card = p.locator('.exercise').first();
+  const id = await card.locator('.in-load').first().getAttribute('data-ex');
+  const weights = card.locator('.in-load');
+  const reps = card.locator('.in-reps');
 
-  // correct the weight after the fact: the record must change, not accumulate
-  await p.locator('.in-load').nth(0).tap();
-  await p.keyboard.press(SELECT_ALL); await p.keyboard.type('105');
-  await p.locator('.in-reps').nth(0).tap(); await p.waitForTimeout(400);
-  const edited = await sets(TODAY, id);
-  t('editing a logged weight replaces it', edited.length === first.length && edited.every(s => s.l === '105'), JSON.stringify({ first, edited }));
+  /* eslint-disable no-await-in-loop */
+  for (const [index, weight, count] of [[0, '100', '6'], [1, '100', '10'], [2, '90', '10']]) {
+    await weights.nth(index).tap(); await p.keyboard.type(weight);
+    await reps.nth(index).tap(); await p.keyboard.type(count);
+  }
+  /* eslint-enable no-await-in-loop */
+  await card.locator('.set-adjustment summary').first().tap();
+  await card.locator('.in-drop-load').first().tap(); await p.keyboard.type('70');
+  await card.locator('.in-drop-reps').first().tap(); await p.keyboard.type('4');
+  await p.locator('.exercise').nth(1).locator('.in-load').first().tap();
+  await p.waitForTimeout(500);
 
-  // --- cut the set count from 3 to 2: the third record must be gone ---
-  await p.locator('.in-sets').nth(0).tap();
-  await p.keyboard.press(SELECT_ALL); await p.keyboard.type('2');
-  await p.locator('.in-load').nth(1).tap(); await p.waitForTimeout(400);
-  const cut = await sets(TODAY, id);
-  t('cutting sets 3 -> 2 removes the third record', cut.length === 2, JSON.stringify(cut));
+  const first = await sets(TRAINING_DATE, id);
+  t('each set keeps its own weight and reps',
+    JSON.stringify(first.map(s => [s.l, s.r])) === JSON.stringify([['100', 6], ['100', 10], ['90', 10]]), JSON.stringify(first));
+  t('a partial set keeps the lighter finish separately',
+    first[0].drops.length === 1 && first[0].drops[0].load === '70' && first[0].drops[0].reps === 4, JSON.stringify(first[0]));
 
-  // --- a garbage set count must not wipe the exercise ---
-  await p.locator('.in-sets').nth(0).tap();
-  await p.keyboard.press(SELECT_ALL); await p.keyboard.type('abc');
-  await p.locator('.in-load').nth(1).tap(); await p.waitForTimeout(400);
-  const junk = await sets(TODAY, id);
-  t('garbage set count falls back to one set, keeps the load', junk.length >= 1 && junk[0].l === '105', JSON.stringify(junk));
+  // Correcting set 2 changes only set 2, not the whole exercise.
+  await weights.nth(1).tap(); await p.keyboard.press(SELECT_ALL); await p.keyboard.type('95');
+  await reps.nth(1).tap(); await p.waitForTimeout(400);
+  const edited = await sets(TRAINING_DATE, id);
+  t('editing one set leaves the other set weights alone',
+    JSON.stringify(edited.map(s => s.l)) === JSON.stringify(['100', '95', '90']), JSON.stringify(edited));
+
+  // Clearing an unperformed set removes only that record.
+  await weights.nth(2).tap(); await p.keyboard.press(SELECT_ALL); await p.keyboard.press('Backspace');
+  await reps.nth(2).tap(); await p.keyboard.press(SELECT_ALL); await p.keyboard.press('Backspace');
+  await weights.nth(1).tap(); await p.waitForTimeout(400);
+  const cut = await sets(TRAINING_DATE, id);
+  t('leaving an unperformed set blank removes only that set', cut.length === 2 && cut.every(s => s.n < 3), JSON.stringify(cut));
 
   // --- fuel on a past day must show that day, not today ---
   await fresh();

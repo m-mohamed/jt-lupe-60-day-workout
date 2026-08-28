@@ -9,24 +9,26 @@ const url='http://127.0.0.1:8911/';
   const errors=[]; p.on('pageerror', e=>errors.push(String(e)));
   const fresh = async () => { await p.goto(url); await p.evaluate(()=>localStorage.clear());
     await p.goto(url,{waitUntil:'domcontentloaded'}); await p.waitForTimeout(1200);
-    await p.evaluate(()=>{ state.date='2026-08-18'; state.profile='jt'; renderSession(); }); };
-  const stored = ex => p.evaluate(id=>setsFor('jt','2026-08-18',id).map(s=>({l:s.load,r:s.reps})), ex);
-  const exId = i => p.evaluate(n=>document.querySelectorAll('.in-load')[n].dataset.ex, i);
+    await p.evaluate(()=>{ state.date='2026-08-24'; state.profile='jt'; renderSession(); }); };
+  const stored = ex => p.evaluate(id=>setsFor('jt','2026-08-24',id).map(s=>({l:s.load,r:s.reps})), ex);
+  const card = i => p.locator('.exercise').nth(i);
+  const field = (i, selector) => card(i).locator(selector).first();
+  const exId = i => field(i, '.in-load').getAttribute('data-ex');
 
   // 1. real typing + tap the NEXT field
   await fresh();
   let id = await exId(1);
-  await p.locator('.in-load').nth(1).tap();
+  await field(1, '.in-load').tap();
   await p.keyboard.type('140');
-  await p.locator('.in-reps').nth(1).tap();
+  await field(1, '.in-reps').tap();
   await p.keyboard.type('10');
-  await p.locator('.in-load').nth(2).tap();          // move focus away for real
+  await field(2, '.in-load').tap();          // move focus away for real
   await p.waitForTimeout(500);
   t('type with a real keyboard, tap the next field', (await stored(id)).length>0, JSON.stringify(await stored(id)));
 
   // 2. type then SWITCH TABS without blurring
   await fresh(); id = await exId(1);
-  await p.locator('.in-load').nth(1).tap();
+  await field(1, '.in-load').tap();
   await p.keyboard.type('155');
   await p.locator('.tab[data-tab="fuel"]').tap();
   await p.waitForTimeout(600);
@@ -34,7 +36,7 @@ const url='http://127.0.0.1:8911/';
 
   // 3. type then step to another DAY without blurring
   await fresh(); id = await exId(1);
-  await p.locator('.in-load').nth(1).tap();
+  await field(1, '.in-load').tap();
   await p.keyboard.type('165');
   await p.locator('#prevDay').tap();
   await p.waitForTimeout(600);
@@ -42,7 +44,7 @@ const url='http://127.0.0.1:8911/';
 
   // 4. type then RELOAD without blurring
   await fresh(); id = await exId(1);
-  await p.locator('.in-load').nth(1).tap();
+  await field(1, '.in-load').tap();
   await p.keyboard.type('175');
   await p.reload({waitUntil:'domcontentloaded'});
   await p.waitForTimeout(1200);
@@ -50,33 +52,34 @@ const url='http://127.0.0.1:8911/';
 
   // 5. decimal weight
   await fresh(); id = await exId(1);
-  await p.locator('.in-load').nth(1).tap(); await p.keyboard.type('52.5');
-  await p.locator('.in-reps').nth(1).tap(); await p.keyboard.type('8');
-  await p.locator('.in-load').nth(2).tap(); await p.waitForTimeout(400);
+  await field(1, '.in-load').tap(); await p.keyboard.type('52.5');
+  await field(1, '.in-reps').tap(); await p.keyboard.type('8');
+  await field(2, '.in-load').tap(); await p.waitForTimeout(400);
   t('decimal weight 52.5 survives', JSON.stringify(await stored(id)).includes('52.5'), JSON.stringify(await stored(id)));
 
   // 6. comma decimal (European keyboards / some locales)
   await fresh(); id = await exId(1);
-  await p.locator('.in-load').nth(1).tap(); await p.keyboard.type('52,5');
-  await p.locator('.in-load').nth(2).tap(); await p.waitForTimeout(400);
+  await field(1, '.in-load').tap(); await p.keyboard.type('52,5');
+  await field(2, '.in-load').tap(); await p.waitForTimeout(400);
   const commaRead = await p.evaluate(()=>numericLoad('52,5'));
   t('comma decimal read as 52.5 not 525', commaRead === 52.5, String(commaRead));
 
   // 7. rapid double-tap on done
   await fresh(); id = await exId(1);
-  await p.locator('.in-load').nth(1).tap(); await p.keyboard.type('100');
-  await p.locator('.in-reps').nth(1).tap(); await p.keyboard.type('8');
+  await field(1, '.in-load').tap(); await p.keyboard.type('100');
+  await field(1, '.in-reps').tap(); await p.keyboard.type('8');
   await p.locator('.in-done').nth(1).tap();
   await p.locator('.in-done').nth(1).tap();
   await p.waitForTimeout(500);
   const after = await stored(id);
-  t('double-tapping done does not duplicate or orphan', after.length===0 || after.length===3, JSON.stringify(after));
+  t('double-tapping done does not duplicate or orphan',
+    after.length===1 && after[0].l==='100' && after[0].r===8, JSON.stringify(after));
 
   // 8. paste instead of typing
   await fresh(); id = await exId(1);
-  await p.locator('.in-load').nth(1).tap();
+  await field(1, '.in-load').tap();
   await p.evaluate(() => {
-    const i=document.querySelectorAll('.in-load')[1];
+    const i=document.querySelectorAll('.exercise')[1].querySelector('.in-load');
     i.value='185'; i.dispatchEvent(new Event('input',{bubbles:true}));
   });
   await p.locator('.tab[data-tab="progress"]').tap();

@@ -33,6 +33,7 @@ Then `node test/<file>` with `playwright-core` resolvable (`NODE_PATH=tools/node
 | --- | --- | --- |
 | `a11y.test.js` | 8911 | computed AA contrast, 40px targets, names, focus, one H1 — both themes |
 | `session-flow.test.js` | 8911 | a training night: log, correct, cut sets, backfill a day |
+| `supplements.test.js` | 8911 | quick and custom intake, dose/unit history, single-entry undo |
 | `stress.test.js` | 8777 | a full 60-day challenge: batching, two devices, flapping, Worker limits |
 | `signed-out.test.js` | 8777 | an expired Access session: recognised, survivable, recoverable |
 | `offline.test.js` | 8777 | service worker, offline reload, recovery — on the origin people use |

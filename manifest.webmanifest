@@ -1,13 +1,13 @@
 {
-  "name": "JT + Lupe Training Log",
+  "name": "JT + Lupe Training OS",
   "short_name": "JT + Lupe",
-  "description": "Private training, nutrition, and progression log for JT and Lupe.",
+  "description": "Private workout, weight, food, and supplement tracker for JT and Lupe.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0B0C0F",
-  "theme_color": "#0B0C0F",
+  "background_color": "#F8F9FB",
+  "theme_color": "#F8F9FB",
   "icons": [
     {
       "src": "./icon.svg",

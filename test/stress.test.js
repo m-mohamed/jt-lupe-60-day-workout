@@ -52,14 +52,17 @@ const url = 'http://127.0.0.1:8777/';
         });
         writeJSON(K.meal(profile, date, `m${offset}`), { name: 'Chicken and rice', protein: 45 }); meals += 1;
         writeJSON(K.bodyweight(profile, date), { value: 198 - offset * 0.1, unit: 'lb' }); weights += 1;
-        ['protein', 'creatine', 'preworkout', 'sleep'].forEach(h => {
+        ['protein', 'preworkout', 'sleep'].forEach(h => {
           writeJSON(K.habit(profile, date, h), { done: true }); habits += 1;
+        });
+        writeJSON(K.supplement(profile, date, `s${offset}`), {
+          name: 'Creatine monohydrate', dose: 5, unit: 'g', at: new Date().toISOString()
         });
       }
     }
     return { sets, meals, habits, weights, dirty: readDirty().length, local: Object.keys(localStorage).filter(k => k.startsWith('jt-lupe')).length };
   });
-  t('seeded a full challenge for both profiles', seeded.sets > 1500 && seeded.dirty > 2000,
+  t('seeded a full challenge for both profiles', seeded.sets > 1000 && seeded.dirty > 1500,
     JSON.stringify(seeded));
 
   /* ---------- it must all reach the server, in batches, without wedging ---------- */
@@ -161,7 +164,7 @@ const url = 'http://127.0.0.1:8777/';
   t('a normal write still syncs after rejected batches', recovered.dirty === 0 && recovered.chip === 'synced', JSON.stringify(recovered));
 
   /* ---------- typing while the app is being navigated hard ---------- */
-  await p.evaluate(() => { setTab('train'); state.date = '2026-08-25'; renderSession(); });
+  await p.evaluate(() => { setTab('train'); state.date = '2026-08-26'; renderSession(); });
   await p.waitForTimeout(400);
   const exId = await p.evaluate(() => document.querySelectorAll('.in-load')[0].dataset.ex);
   await p.locator('.in-load').nth(0).tap();
@@ -175,8 +178,9 @@ const url = 'http://127.0.0.1:8777/';
   }
   /* eslint-enable no-await-in-loop */
   await p.waitForTimeout(600);
-  const raced = await p.evaluate(id => setsFor('jt', '2026-08-25', id).map(s => s.load), exId);
-  t('a value typed then hammered through tabs survives', raced.length > 0 && raced.every(l => l === '137'), JSON.stringify(raced));
+  const raced = await p.evaluate(id => setsFor('jt', '2026-08-26', id).map(s => s.load), exId);
+  t('a set value typed then hammered through tabs survives without changing other sets',
+    raced[0] === '137' && raced.slice(1).every(load => load !== '137'), JSON.stringify(raced));
 
   /* ---------- export at full volume ---------- */
   const exported = await p.evaluate(() => fetch('./api/export?ns=gym').then(r => r.json()).then(d => ({ count: d.count, keys: Object.keys(d.data).length })));

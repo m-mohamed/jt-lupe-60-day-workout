@@ -26,14 +26,12 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
     const keys = Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-17:')).toSorted();
     return { keys, seated: keys.filter(k=>k.includes('seated-row')).length,
              pulldown: keys.filter(k=>k.includes('lat-pulldown')).length,
-             carry: localStorage.getItem('jt-lupe:jt:set:2026-08-17:farmer-carry:1'),
-             scap: localStorage.getItem('jt-lupe:jt:set:2026-08-17:scapular-pulls:1') };
+             core: localStorage.getItem('jt-lupe:jt:set:2026-08-17:hanging-knee-raise:1') };
   });
   t('Seated row stored as THREE sets', stored.seated === 3, String(stored.seated));
-  t('Pulldown stored as TWO sets', stored.pulldown === 2, String(stored.pulldown));
-  t('Farmer carry stored as seconds not reps', /"seconds":45/.test(stored.carry||'') && /"reps":null/.test(stored.carry||''), stored.carry);
-  t('bodyweight row keeps BW, no invented reps', /"load":"BW"/.test(stored.scap||'') && /"reps":null/.test(stored.scap||''), stored.scap);
-  t('total set records for Monday', stored.keys.length === 16, String(stored.keys.length));
+  t('Pulldown stored as THREE sets', stored.pulldown === 3, String(stored.pulldown));
+  t('bodyweight row keeps BW and its reps', /"load":"BW"/.test(stored.core||'') && /"reps":12/.test(stored.core||''), stored.core);
+  t('total set records for Monday', stored.keys.length === 20, String(stored.keys.length));
   t('no page errors', errors.length===0, errors.slice(0,2).join(' | '));
   console.log(JSON.stringify({results:R}, null, 1));
   await b.close();

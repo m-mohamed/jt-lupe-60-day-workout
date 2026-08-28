@@ -33,9 +33,11 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
 
   // XSS via load value rendered into an input
   r = await p.evaluate(() => {
+    state.date = '2026-08-26';
+    renderSession();
     writeSet(state.profile, state.date, dayForDate(state.date).exercises[1].id, 1, { load:'" onfocus="window.pwnedByLoad=1', unit:'lb', reps:5, seconds:null, rir:null });
     setTab('train'); renderSession();
-    return { pwned: !!window.pwnedByLoad, v: document.querySelectorAll('.in-load')[1].value };
+    return { pwned: !!window.pwnedByLoad, v: document.querySelectorAll('.exercise')[1].querySelector('.in-load').value };
   });
   t('quote injection in load escaped', !r.pwned, JSON.stringify(r));
 
@@ -83,14 +85,23 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   });
   t('profiles isolated', r.lupe===111 && r.jt===222, JSON.stringify(r));
 
-  // warmup + timed never told to add weight
+  // Bodyweight and timed work must not receive a machine-style weight jump.
   r = await p.evaluate(() => {
-    setTab('train'); state.date='2026-08-18'; renderSession();   // Tuesday has a warm-up
-    const cs=[...document.querySelectorAll('.coach')].map(c=>c.innerText);
-    return { warm: cs[0], timed: cs[cs.length-1] };
+    setTab('train'); state.date='2026-08-26'; renderSession();
+    const bodyweight = document.querySelectorAll('.coach')[1].innerText;
+    state.date='2026-08-28'; renderSession();
+    const timed = [...document.querySelectorAll('.coach')].at(-1).innerText;
+    return { bodyweight, timed };
   });
-  t('warm-up never told to add weight', /Warm-up/i.test(r.warm) && !/Go up|start at/i.test(r.warm), r.warm.slice(0,50));
+  t('bodyweight work uses a variation, not a numeric jump', !/Go up to \d|start at \d/i.test(r.bodyweight), r.bodyweight.slice(0,80));
   t('timed never told to add weight', /Timed/i.test(r.timed) && !/Go up/i.test(r.timed), r.timed.slice(0,50));
+
+  // Whole Foods Hot Bar must be reliable even when USDA has no matching menu rows.
+  r = await p.evaluate(() => fetch('./api/food?q=Whole%20Foods%20Hot%20Bar%20chicken').then(response => response.json()));
+  t('Whole Foods Hot Bar search returns built-in estimates',
+    r.estimated === true && r.foods.length > 0 && r.foods.every(food => /Whole Foods Hot Bar/i.test(food.name)), JSON.stringify(r));
+  t('Whole Foods Hot Bar results disclose that they are estimates',
+    r.foods.every(food => /estimate/i.test(`${food.name} ${food.brand} ${food.kind}`)), JSON.stringify(r.foods));
 
   // offline -> reconnect
   await ctx.setOffline(true);

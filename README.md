@@ -1,29 +1,40 @@
-# JT + Lupe 60-Day Workout
+# JT + Lupe Training OS
 
-A small, installable workout application for JT and Lupe. The challenge begins Monday, August 17, 2026 and runs through Thursday, October 15, 2026.
+An installable workout, weight, food, and supplement tracker for JT and Lupe. The
+60-day training block begins Monday, August 17, 2026 and runs through Thursday,
+October 15, 2026.
 
 Live app: <https://m-mohamed.github.io/jt-lupe-60-day-workout/>
 
 ## What it does
 
-Three tabs, one job each — see [design.md](design.md) for the standard it is built to.
+Four first-class trackers share the same local-first record system. See
+[design.md](design.md) for the Beautiful UI implementation contract.
 
-- **Train** — tonight's session, with a per-exercise coach line that reads your last
+- **Workout** — tonight's session, with a per-exercise coach line that reads your last
   performance and tells you to add weight, hold, or how to start. Double progression:
-  own the top of the rep range, then add the smallest jump. Working sets at 1–3 RIR.
-  Warm-ups and timed efforts are never told to add weight. **Paste from your notes**
+  own the top of the rep range, then add the smallest jump. Every set has its own
+  weight and rep fields. A set can also record a lighter or assisted finish, such as
+  `100 lb × 6 + 70 lb × 4`. Working sets stay at 1–3 RIR. Timed efforts are never
+  told to add weight. The plan is weight-first on Monday, Wednesday, and Friday.
+  **Paste from your notes**
   takes a session logged anywhere else — Notes, paper, a chat thread — matches each
   line to an exercise and logs it; unmatched lines are left alone. A session can also
-  be handed over as a link: `?log=<text>&day=<0-4>&week=<n>` opens the importer with
+  be handed over as a link: `?log=<text>&date=YYYY-MM-DD` opens the importer with
   the parse already previewed, so each person applies it inside their own account. It
   never writes on its own — the confirm step is the same as a manual paste.
-- **Fuel** — protein target derived from bodyweight, a running total, a meal log, and
-  the daily stack (protein, creatine, pre-workout, sleep). Food lookup searches USDA
+- **Food** — protein target derived from bodyweight, a running total, a meal log, and
+  daily fundamentals (protein, pre-workout meal, sleep). Food lookup searches USDA
   FoodData Central (public-domain, free) for chains and generic restaurant dishes, and
-  converts a chosen portion into grams of protein. Signed-in copy only, because the
-  request is proxied so the key never ships in the page.
-- **Progress** — strength per exercise (first → latest), bodyweight trend, stack
-  consistency, and CSV / JSON export.
+  converts a chosen portion into grams of protein. Whole Foods Hot Bar searches return
+  a built-in set of clearly labelled estimates because the USDA catalog does not have
+  a stable Hot Bar menu. Signed-in copy only, because the request is proxied so the key
+  never ships in the page.
+- **Supplements** — a dated intake log with a name, actual dose, and unit. Creatine
+  5 g is available as a quick-add, but custom supplements are not limited to a fixed
+  list. The history records intake; it does not prescribe a medical stack.
+- **Progress** — strength per exercise (first → latest), bodyweight trend, supplement
+  consistency, daily fundamentals, and CSV / JSON export.
 
 Each person only ever sees their own numbers. Any past day can be backfilled without
 pretending it happened today. Installs as a PWA and works fully offline.
@@ -40,27 +51,39 @@ The app is local-first in both places it runs. Every read and write hits
   follows you between devices. The chip shows who is signed in.
 
 The client detects which one it is by calling `./api/me` at startup; a 404 simply
-means local-only. Keys are prefixed `jt-lupe-`:
+means local-only. Current keys are:
 
 | Key shape | Holds | History |
 | --- | --- | --- |
-| `jt-lupe-load-w{week}-d{day}-e{index}-{profile}` | working load | one slot per week + weekday + exercise |
-| `jt-lupe-reps-w{week}-d{day}-e{index}-{profile}` | reps on the last set — what the coach reads | one slot per week + weekday + exercise |
-| `jt-lupe-done-w{week}-d{day}-e{index}-{profile}` | exercise ticked off | one slot per week + weekday + exercise |
-| `jt-lupe-meal-{profile}-{YYYY-MM-DD}-{id}` | `{"name","protein"}` for one meal | every meal kept |
-| `jt-lupe-habit-{profile}-{YYYY-MM-DD}-{habit}` | daily-stack check-in | every calendar day kept |
-| `jt-lupe-weightlog-{profile}-{YYYY-MM-DD}` | bodyweight as `value\|unit` | every calendar day kept |
+| `jt-lupe:{profile}:set:{date}:{exercise}:{n}` | one set: load, reps/time, optional drop/assist finish | every performed set kept |
+| `jt-lupe:{profile}:session:{date}` | the programme session used that day | every trained date kept |
+| `jt-lupe:{profile}:meal:{date}:{id}` | `{"name","protein"}` for one meal | every meal kept |
+| `jt-lupe:{profile}:habit:{date}:{habit}` | daily-fundamentals check-in | every calendar day kept |
+| `jt-lupe:{profile}:supplement:{date}:{id}` | one intake: name, dose, unit, time | every intake kept |
+| `jt-lupe:{profile}:bodyweight:{date}` | dated bodyweight and unit | every calendar day kept |
 | `jt-lupe-{profile}-weight`, `-unit` | current bodyweight for the protein calculator | latest only |
-| `jt-lupe-profile`, `-active-day`, `-week`, `-theme` | UI preferences | latest only |
+| `jt-lupe-profile`, `-active-date`, `-theme` | UI preferences | latest only |
 | `jt-lupe-schema-version` | storage schema number, used to run migrations | — |
 | `jt-lupe-sync-cursor`, `-device`, `-dirty` | sync bookkeeping | — |
 
 The last two groups are device-local and never leave the phone: which day you are
 looking at and your theme belong to the device, not the account.
 
-Loads are keyed by *training week*, not by date, so re-entering week 3 / Tuesday
-overwrites that slot rather than appending. Habits and bodyweight are keyed by
-calendar date and accumulate indefinitely.
+Sets are keyed by calendar date, stable exercise id, and set number. Changing the
+programme cannot silently point old numbers at a different exercise. Habits and
+bodyweight are also keyed by calendar date and accumulate indefinitely. Supplement
+records use unique ids, so two products or two doses on the same date never overwrite
+each other.
+
+## Interface system
+
+The application shell is rebuilt from [Beautiful UI](https://www.beautifului.dev/),
+an MIT-licensed collection of copy-paste primitives for AI-native interfaces.
+Beautiful UI is not an npm runtime package. Its official React/Tailwind source is
+ported to this zero-build PWA in `beautiful-ui.css` so the app keeps offline startup
+and does not add a frontend build step. The implementation uses its Sidebar Nav,
+Task Rows, Search, Recommendation Card, Filter Table, and Records Table patterns,
+plus its official surface, ink, status, radius, shadow, and motion tokens.
 
 Deploying a new version never touches this data: the service worker caches app files
 only, and the Cache API cannot reach `localStorage`. Key-shape changes go through the
@@ -98,6 +121,11 @@ rejected by the edge with a bare nginx 400 before the API sees them.
 Nutrients come back **per 100 g** for every dataType requested, so the grams of the
 chosen portion are what turn a row into a meal. Survey (FNDDS) rows carry real portions
 ("1 cup" = 244 g); rows without portions fall back to 100 g.
+
+Whole Foods Hot Bar recipes vary by store and day. The Worker intercepts searches for
+`Whole Foods Hot Bar` and returns common plate components in 4, 6, and 8 oz portions.
+Every result says `estimate`, and the filled protein number remains editable before it
+is added to the log.
 
 ## Deployment
 

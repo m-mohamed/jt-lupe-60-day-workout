@@ -25,6 +25,11 @@ const LOGIN = 'https://team.cloudflareaccess.example/cdn-cgi/access/login/app';
     console.error('Not signed in to the dev worker — this suite would test nothing. Got:', JSON.stringify(me));
     await b.close(); process.exit(2);
   }
+  await p.evaluate(() => {
+    state.date = '2026-08-28';
+    localStorage.setItem('jt-lupe-active-date', state.date);
+    renderSession();
+  });
 
   // Expire the session: every API call now answers exactly the way Access does.
   const expire = () => p.route('**/api/**', route => route.fulfill({

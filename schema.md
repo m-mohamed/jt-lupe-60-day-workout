@@ -41,22 +41,26 @@ per-user, so the profile prefix exists only for the signed-out local copy.
 
 | Key | Value | Notes |
 | --- | --- | --- |
-| `set:{date}:{exerciseId}:{n}` | `{load, unit, reps, rir, seconds, at}` | one working set, `n` is 1-based |
+| `set:{date}:{exerciseId}:{n}` | `{load, unit, reps, rir, seconds, drops, at}` | one planned set, `n` is 1-based |
 | `session:{date}` | `{templateId, startedAt, note}` | which session was trained that date |
 | `meal:{date}:{id}` | `{name, protein, kcal, fdcId, grams, at}` | `fdcId`/`grams` present when picked from the food database |
 | `bodyweight:{date}` | `{value, unit, at}` | one weigh-in per date, latest wins |
 | `habit:{date}:{habitId}` | `{done, at}` | |
+| `supplement:{date}:{id}` | `{name, dose, unit, at}` | one recorded intake; `id` prevents same-day collisions |
 | `programme` | `{version, days:[...]}` | the plan itself, versioned |
 
 `load` is a number **or** the string `BW`; `unit` is `lb`/`kg`/null. `reps` and `seconds`
 are both nullable, and exactly one is expected to be set for a given set. `rir` is
-nullable and never guessed.
+nullable and never guessed. `drops` is optional. It contains a lighter or assisted
+finish such as `[{"load":70,"unit":"lb","reps":4}]` after six reps at the working
+weight. Keeping it inside the planned set distinguishes `100×6 + 70×4` from two
+ordinary sets.
 
 ## Programme, separately from the log
 
 ```json
-{ "version": 1,
-  "days": [ { "id": "pull", "label": "Monday · Pull", "focus": "Back, biceps, grip",
+{ "version": 2,
+  "days": [ { "id": "v-taper-quads", "label": "Monday", "focus": "V-Taper + Quads",
               "exercises": [ { "id": "seated-row", "label": "Seated row",
                                "sets": 3, "repLow": 8, "repHigh": 12, "kind": "load" } ] } ] }
 ```
@@ -72,7 +76,9 @@ display because the id is carried on the record.
 
 Today it reads one load and one rep count. Under this model it reads the actual sets for
 an exercise on the most recent date they exist, which makes real double progression
-possible: all sets at the top of the range, not just the last one.
+possible: all sets at the top of the range, not just the last one. Drop or assisted
+reps remain visible but do not count as owning the top of the range at the working
+weight.
 
 ## Migration, honestly
 
@@ -93,12 +99,12 @@ Schema v4. Live keys are `jt-lupe:{profile}:{type}:{date}[:...]`. The migration 
 on load, writes the replacements, verifies them, and only then removes the originals.
 
 Verified: a v3 device migrates with sets, habits, bodyweight and meals carried and the old
-grid keys gone; "3 sets of 12 at 55" now stores three set records; a timed carry stores
-seconds rather than reps; bodyweight work keeps `BW` with no invented reps; 972 seeded
-records sync to the per-user database; the coach stays sane across 84 profile-days.
+grid keys gone; "3 sets of 12 at 55" now stores three set records; one set can keep a
+lighter finish; a timed carry stores seconds rather than reps; bodyweight work keeps
+`BW`; supplement doses keep their unit; a full challenge syncs to the per-user database.
 
-## Explicitly not decided here
+## Frontend independence
 
-Whether the client stays a single HTML file or moves to a framework. That question is
-independent of this one, and this model is the same either way. Getting the schema right
-first means a later port carries a correct model instead of porting a broken one twice.
+The client remains zero-build HTML, JavaScript, and the Beautiful UI stylesheet. This
+model does not depend on that choice. A later framework port must keep these keys and
+migration guarantees rather than rewriting history.

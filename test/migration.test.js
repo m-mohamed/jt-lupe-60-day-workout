@@ -47,29 +47,31 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
 
   // now log a fresh session with a real set count
   const fresh = await p.evaluate(() => {
-    state.date = '2026-08-18'; state.profile='lupe'; renderSession();
-    const card = document.querySelectorAll('.exercise')[1];   // Tuesday: leg press
-    card.querySelector('.in-load').value = '140';
-    card.querySelector('.in-reps').value = '10';
-    card.querySelector('.in-sets').value = '3';
-    card.querySelector('.in-sets').dispatchEvent(new Event('change'));
-    return Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-18:')).toSorted();
+    state.date = '2026-08-24'; state.profile='lupe'; renderSession();
+    const card = document.querySelectorAll('.exercise')[0];   // Monday: lat pulldown
+    card.querySelectorAll('.set-row').forEach(row => {
+      row.querySelector('.in-load').value = '140';
+      row.querySelector('.in-reps').value = '10';
+    });
+    card.querySelector('.in-reps').dispatchEvent(new Event('change'));
+    return Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-24:')).toSorted();
   });
   t('THREE sets stored for "3 sets of 10"', fresh.length === 3, JSON.stringify(fresh));
 
   const coach = await p.evaluate(() => {
     renderSession();
-    return document.querySelectorAll('.coach')[1].innerText;
+    return document.querySelectorAll('.coach')[0].innerText;
   });
-  t('coach reads all sets', /3 × 10 at 140/.test(coach), coach);
+  t('coach reads all sets', /140×10, 140×10, 140×10/.test(coach), coach);
 
   const nav = await p.evaluate(() => {
+    state.date = '2026-08-25'; renderSession();
     document.getElementById('prevDay').click();
     return { title: document.getElementById('sessionTitle').innerText,
              flag: document.getElementById('backfillFlag').innerText,
              day: document.getElementById('challengeLine').innerText };
   });
-  t('navigates by date', /Monday/.test(nav.title) && /DAY 1 OF 60/i.test(nav.day), JSON.stringify(nav));
+  t('navigates by date', /Monday/.test(nav.title) && /DAY 8 OF 60/i.test(nav.day), JSON.stringify(nav));
   // The flag has to name the day being logged and say it is not today. Asserting the
   // literal word "Yesterday" only held on the day this was written.
   t('backfill flag names the date and denies it is today',
@@ -79,7 +81,7 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
     return { sets: document.getElementById('statLifts').textContent,
              rows: [...document.querySelectorAll('#strengthBody tbody tr')].map(r=>r.innerText.replace(/\n/g,' | ')) }; });
   t('progress counts set records', Number(prog.sets) >= 5, prog.sets);
-  t('strength shows sets x reps at load', prog.rows.some(r=>/at 55/.test(r)), prog.rows[0]||'none');
+  t('strength keeps migrated exercises visible after the plan changes', prog.rows.some(r=>/55×12/.test(r)), prog.rows[0]||'none');
 
   t('no page errors', errors.length===0, errors.slice(0,2).join(' | '));
   console.log(JSON.stringify({results:R, pageErrors:errors}, null, 1));
