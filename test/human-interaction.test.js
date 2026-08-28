@@ -10,7 +10,7 @@ const url='http://127.0.0.1:8911/';
   const fresh = async () => { await p.goto(url); await p.evaluate(()=>localStorage.clear());
     await p.goto(url,{waitUntil:'domcontentloaded'}); await p.waitForTimeout(1200);
     await p.evaluate(()=>{ state.date='2026-08-24'; state.profile='jt'; renderSession(); }); };
-  const stored = ex => p.evaluate(id=>setsFor('jt','2026-08-24',id).map(s=>({l:s.load,r:s.reps})), ex);
+  const stored = (ex, date='2026-08-24') => p.evaluate(([id, key])=>setsFor('jt',key,id).map(s=>({l:s.load,r:s.reps})), [ex, date]);
   const card = i => p.locator('.exercise').nth(i);
   const field = (i, selector) => card(i).locator(selector).first();
   const exId = i => field(i, '.in-load').getAttribute('data-ex');
@@ -97,6 +97,34 @@ const url='http://127.0.0.1:8911/';
     return { mid, after: document.getElementById('timerDisplay').textContent };
   });
   t('rest timer keeps counting across tabs', timer.mid !== timer.after, JSON.stringify(timer));
+
+  // 10. establish the working set once, then fill only the blank planned sets
+  await fresh();
+  await p.evaluate(() => { state.date='2026-08-26'; renderSession(); });
+  id = await exId(0);
+  await field(0, '.in-load').tap(); await p.keyboard.type('135');
+  await field(0, '.in-reps').tap(); await p.keyboard.type('10');
+  await card(0).locator('.fill-sets').tap();
+  await p.waitForTimeout(500);
+  const filled = await stored(id, '2026-08-26');
+  t('fill blank sets from set one',
+    filled.length===4 && filled.every(set => set.l==='135' && set.r===10), JSON.stringify(filled));
+
+  // 11. filling blanks must not overwrite a set that was already changed
+  await fresh();
+  await p.evaluate(() => { state.date='2026-08-26'; renderSession(); });
+  id = await exId(0);
+  const changedSet = card(0).locator('.set-row').nth(2);
+  await changedSet.locator('.in-load').tap(); await p.keyboard.type('95');
+  await changedSet.locator('.in-reps').tap(); await p.keyboard.type('8');
+  await field(0, '.in-load').tap(); await p.keyboard.type('135');
+  await field(0, '.in-reps').tap(); await p.keyboard.type('10');
+  await card(0).locator('.fill-sets').tap();
+  await p.waitForTimeout(500);
+  const preserved = await stored(id, '2026-08-26');
+  t('fill blank sets keeps an adjusted set',
+    JSON.stringify(preserved.map(set => [set.l, set.r]))===JSON.stringify([['135',10],['135',10],['95',8],['135',10]]),
+    JSON.stringify(preserved));
 
   t('no page errors', errors.length===0, errors.slice(0,3).join(' | '));
   console.log(JSON.stringify({results:R}, null, 1));

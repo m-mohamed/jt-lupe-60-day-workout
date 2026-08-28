@@ -15,8 +15,9 @@ Four first-class trackers share the same local-first record system. See
   performance and tells you to add weight, hold, or how to start. Double progression:
   own the top of the rep range, then add the smallest jump. Every set has its own
   weight and rep fields. A set can also record a lighter or assisted finish, such as
-  `100 lb × 6 + 70 lb × 4`. Working sets stay at 1–3 RIR. Timed efforts are never
-  told to add weight. The plan is weight-first on Monday, Wednesday, and Friday.
+  `100 lb × 6 + 70 lb × 4`. Fill blank sets from set 1 to avoid repeat typing; any
+  set already adjusted stays unchanged. Working sets stay at 1–3 RIR. Timed efforts
+  are never told to add weight. The plan is weight-first on Monday, Wednesday, and Friday.
   **Paste from your notes**
   takes a session logged anywhere else — Notes, paper, a chat thread — matches each
   line to an exercise and logs it; unmatched lines are left alone. A session can also

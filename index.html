@@ -1150,6 +1150,10 @@
             </div>
             <p class="coach" data-kind="${coach.kind}">${esc(coach.text)}</p>
             <div class="set-list">${rows}</div>
+            ${count > 1 ? `<div class="set-tools">
+              <button class="btn small fill-sets" type="button" data-ex="${ex.id}">Fill blank sets from set 1</button>
+              <span>Copies weight and reps. Existing sets stay unchanged.</span>
+            </div>` : ''}
             <p class="set-help">Log each set as performed. Leave an unperformed set blank.</p>
           </article>`;
       }).join('');
@@ -1203,6 +1207,37 @@
         // Remember which exercise is mid-edit so it can be flushed on the way out.
         input.addEventListener('input', event => { renderSession.pending = event.target.dataset.ex; });
       });
+      document.querySelectorAll('.fill-sets').forEach(button => button.addEventListener('click', event => {
+        const id = event.currentTarget.dataset.ex;
+        const card = event.currentTarget.closest('.exercise');
+        const rows = [...card.querySelectorAll('.set-row')];
+        const sourceLoad = rows[0].querySelector('.in-load').value.trim();
+        const sourceAmount = rows[0].querySelector('.in-reps').value.trim();
+        if (!sourceLoad && !sourceAmount) {
+          flash('Log set 1 first.');
+          return;
+        }
+
+        let filled = 0;
+        rows.slice(1).forEach(row => {
+          const load = row.querySelector('.in-load');
+          const amount = row.querySelector('.in-reps');
+          const dropLoad = row.querySelector('.in-drop-load');
+          const dropAmount = row.querySelector('.in-drop-reps');
+          if (load.value.trim() || amount.value.trim() || dropLoad.value.trim() || dropAmount.value.trim()) return;
+          load.value = sourceLoad;
+          amount.value = sourceAmount;
+          filled += 1;
+        });
+
+        if (!filled) {
+          flash('No blank sets to fill.');
+          return;
+        }
+        commit(id);
+        if (renderSession.pending === id) renderSession.pending = null;
+        flash(`${filled} blank set${filled === 1 ? '' : 's'} filled.`);
+      }));
       document.querySelectorAll('.in-done').forEach(input => input.addEventListener('change', event => {
         const id = event.target.dataset.ex;
         if (event.target.checked) commit(id);

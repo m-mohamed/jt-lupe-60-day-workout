@@ -64,8 +64,10 @@ An exercise Recommendation Card always contains:
 2. A one-sentence recommendation based on real history.
 3. One Records Table row per planned set.
 4. Weight and reps/time for that set only.
-5. An optional native disclosure for lighter or assisted finish reps.
-6. A completed control in the card header.
+5. A secondary action that copies set 1 into blank rows without replacing any set
+   that already contains actual values.
+6. An optional native disclosure for lighter or assisted finish reps.
+7. A completed control in the card header.
 
 `100 × 6 + 70 × 4` is one planned set with two efforts. It is not stored as two
 ordinary sets. Blank planned rows mean not performed and are omitted.
