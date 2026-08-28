@@ -5,9 +5,8 @@
   "compatibility_date": "2026-08-12",
   "compatibility_flags": ["nodejs_compat"],
 
-  // GitHub Pages serves the source files at the repository root. `npm run assets`
-  // copies only those five public files here for Wrangler, keeping its watcher away
-  // from cloud/node_modules and the test tree.
+  // `npm run assets` copies only the five public PWA files from the repository root
+  // for Wrangler, keeping its watcher away from cloud/node_modules and the test tree.
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",

@@ -111,8 +111,8 @@ const PROFILE_BY_EMAIL = {
 ```
 
 With that set, the JT/Lupe toggle stops being a free choice and follows whoever
-signed in. Leave it empty and the toggle stays manual, which is what the GitHub
-Pages copy does.
+signed in. Leave it empty only for a local static preview where the toggle must stay
+manual.
 
 ## Local development
 
@@ -142,6 +142,21 @@ The agent reads a server-built, profile-scoped 60-day snapshot. Its set, meal,
 supplement, and bodyweight tools return proposals only. They do not write the record
 store. The browser presents a Beautiful UI Approval Card and writes only after a human
 confirms.
+
+Every Pi request has a 45-second timeout, one bounded retry, a 1,600-token response
+ceiling, and OpenRouter provider routing that denies data-collecting endpoints and
+requires requested parameters such as tools. Model choices are deployment settings:
+
+```jsonc
+"OPENROUTER_MODEL": "openrouter/free",
+"OPENROUTER_FALLBACK_MODEL": "nvidia/nemotron-3-ultra-550b-a55b:free"
+```
+
+Set `OPENROUTER_REQUIRE_ZDR` to `true` only when both selected models have an eligible
+zero-data-retention provider. Strict ZDR can leave the free router with no endpoint,
+so the default uses `data_collection: deny` while preserving free-model availability.
+Free models are best-effort and rate-limited; replace the model variables with stable
+paid model ids when reliable production capacity matters.
 
 ## Cost
 

@@ -296,6 +296,8 @@
               <div class="agent-context-row"><strong>Training history</strong><span>Last 60 days</span></div>
               <div class="agent-context-row"><strong>Available actions</strong><span>4 draft tools</span></div>
               <div class="agent-context-row"><strong>Write permission</strong><span>Ask every time</span></div>
+              <div class="agent-context-row"><strong>Model privacy</strong><span id="agentPrivacy">Checking…</span></div>
+              <div class="agent-context-row"><strong>Credential</strong><span id="agentCredential">Checking…</span></div>
             </section>
             <section class="agent-guardrail-card">
               <p class="eyebrow">Health data</p>
@@ -1906,11 +1908,23 @@
               ? 'Nemotron 3 Ultra · free fallback'
               : `${status.model} · OpenRouter`;
           setAgentStatus('connected', 'Connected', shortModel);
+          el('agentPrivacy').textContent = status.privacy?.zeroDataRetention
+            ? 'Zero data retention required'
+            : 'Data-collecting providers denied';
+          el('agentCredential').textContent = status.source === 'workspace'
+            ? 'Managed Cloudflare secret'
+            : 'Personal OpenRouter key';
+          el('agentDisconnect').hidden = status.source === 'workspace';
         } else {
           setAgentStatus('ready', 'Not connected', 'Pi agent ready · OpenRouter required');
+          el('agentPrivacy').textContent = 'Applies when connected';
+          el('agentCredential').textContent = 'Not connected';
+          el('agentDisconnect').hidden = false;
         }
       } catch {
         setAgentStatus('error', 'Cloud only', 'Open the private Worker app to use the coach');
+        el('agentPrivacy').textContent = 'Cloud unavailable';
+        el('agentCredential').textContent = 'Cloud unavailable';
       }
     }
 
@@ -2561,9 +2575,9 @@
 
     /* ================= sync =================
        The app stays a local-first PWA: every read and write hits localStorage, so it
-       works with no network at all. When it is served by the Worker (rather than
-       GitHub Pages), an identity is available and the same data also round-trips to
-       this person's own SQLite database in a Durable Object. */
+       works with no network at all. In production, Cloudflare Access supplies an
+       identity and the same data also round-trips to this person's own SQLite
+       database in a Durable Object. */
     const SYNC_NS = 'gym';
     const CURSOR_KEY = 'jt-lupe-sync-cursor';
     const DEVICE_KEY = 'jt-lupe-sync-device';
@@ -2723,7 +2737,7 @@
 
     /**
      * Who the backend says we are. Four outcomes, and they are not the same thing:
-     * signed in, no backend at all (the Pages copy), a backend that rejected us, and
+     * signed in, a local static preview with no API, a backend that rejected us, and
      * a backend we simply could not reach.
      */
     async function identify() {

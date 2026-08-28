@@ -113,6 +113,8 @@ const run = (label, command, args, options = {}) => {
 const results = [];
 results.push(run('lint', process.execPath, [resolve(here, 'lint.mjs')], { cwd: here }));
 results.push(run('access (jwt)', process.execPath, ['access.test.mjs'], { cwd: resolve(repo, 'cloud') }));
+results.push(run('agent data', process.execPath, ['agent-data.test.mjs'], { cwd: resolve(repo, 'cloud') }));
+results.push(run('agent policy', process.execPath, ['agent-policy.test.mjs'], { cwd: resolve(repo, 'cloud') }));
 for (const suite of SUITES) {
   results.push(run(suite.file.replace('.test.js', ''), process.execPath, [resolve(repo, 'test', suite.file)],
     { env: { ...process.env, NODE_PATH: playwright } }));

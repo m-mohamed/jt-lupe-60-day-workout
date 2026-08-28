@@ -2,11 +2,18 @@ import { Agent as CloudflareAgent } from 'agents';
 import { Agent as PiAgent } from '@earendil-works/pi-agent-core';
 import { Type, createModels } from '@earendil-works/pi-ai';
 import { openrouterProvider } from '@earendil-works/pi-ai/providers/openrouter';
+import {
+  applyOpenRouterPrivacy,
+  resolveAgentPolicy
+} from './agent-policy.js';
 
-export const PRIMARY_MODEL = 'openrouter/free';
-export const FALLBACK_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+export { FALLBACK_MODEL, PRIMARY_MODEL } from './agent-policy.js';
 const MAX_PROMPT = 2400;
 const HISTORY_ROWS = 12;
+const MODEL_TIMEOUT_MS = 45_000;
+const MODEL_RETRIES = 1;
+const MAX_RETRY_DELAY_MS = 5_000;
+const MAX_OUTPUT_TOKENS = 1600;
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -163,10 +170,17 @@ export class TrainingAgent extends CloudflareAgent {
     void this.sql`INSERT INTO training_credentials (provider, secret, updated)
       VALUES ('openrouter', ${result.key}, ${new Date().toISOString()})
       ON CONFLICT(provider) DO UPDATE SET secret = excluded.secret, updated = excluded.updated`;
-    return json({ connected: true, source: 'personal', model: PRIMARY_MODEL, fallback: FALLBACK_MODEL });
+    const policy = resolveAgentPolicy(this.env);
+    return json({
+      connected: true,
+      source: 'personal',
+      model: policy.primaryModel,
+      fallback: policy.fallbackModel,
+      privacy: { dataCollection: 'deny', zeroDataRetention: policy.requireZdr }
+    });
   }
 
-  async #runModel({ modelId, key, prompt, profile, snapshot, send }) {
+  async #runModel({ modelId, key, prompt, profile, snapshot, send, requireZdr }) {
     const models = createModels();
     models.setProvider(openrouterProvider());
     const model = models.getModel('openrouter', modelId);
@@ -183,6 +197,11 @@ export class TrainingAgent extends CloudflareAgent {
       streamFn: (activeModel, context, options = {}) => models.streamSimple(activeModel, context, {
         ...options,
         apiKey: key,
+        timeoutMs: MODEL_TIMEOUT_MS,
+        maxRetries: MODEL_RETRIES,
+        maxRetryDelayMs: MAX_RETRY_DELAY_MS,
+        maxTokens: MAX_OUTPUT_TOKENS,
+        onPayload: payload => applyOpenRouterPrivacy(payload, requireZdr),
         headers: {
           ...options.headers,
           'HTTP-Referer': 'https://jt-lupe-workout.jt-lupe-workout-cloud.workers.dev/',
@@ -214,6 +233,7 @@ export class TrainingAgent extends CloudflareAgent {
     const profile = body?.profile === 'jt' ? 'jt' : body?.profile === 'lupe' ? 'lupe' : null;
     const snapshot = body?.snapshot;
     const key = this.env.OPENROUTER_API_KEY || this.#storedKey();
+    const policy = resolveAgentPolicy(this.env);
     if (!key) return json({ error: 'openrouter_not_connected' }, 409);
     if (!prompt || prompt.length > MAX_PROMPT || !profile || snapshot?.profile !== profile) {
       return json({ error: 'invalid_agent_request' }, 400);
@@ -226,14 +246,41 @@ export class TrainingAgent extends CloudflareAgent {
 
     (async () => {
       try {
-        send('meta', { model: PRIMARY_MODEL, provider: 'OpenRouter', framework: 'Pi' });
+        send('meta', {
+          model: policy.primaryModel,
+          provider: 'OpenRouter',
+          framework: 'Pi',
+          privacy: { dataCollection: 'deny', zeroDataRetention: policy.requireZdr }
+        });
         let result;
+        let primaryEmitted = false;
+        const primarySend = (event, data) => {
+          primaryEmitted = true;
+          send(event, data);
+        };
         try {
-          result = await this.#runModel({ modelId: this.env.OPENROUTER_MODEL || PRIMARY_MODEL, key, prompt, profile, snapshot, send });
+          result = await this.#runModel({
+            modelId: policy.primaryModel,
+            key,
+            prompt,
+            profile,
+            snapshot,
+            send: primarySend,
+            requireZdr: policy.requireZdr
+          });
         } catch (primaryError) {
-          console.warn('OpenRouter free router failed; using fixed free fallback', String(primaryError));
-          send('status', { text: 'Free router unavailable. Switching to the fixed free fallback.' });
-          result = await this.#runModel({ modelId: FALLBACK_MODEL, key, prompt, profile, snapshot, send });
+          if (!policy.fallbackModel || primaryEmitted) throw primaryError;
+          console.warn('OpenRouter primary failed before output; using configured fallback', String(primaryError));
+          send('status', { text: 'Primary model unavailable. Switching to the fallback.' });
+          result = await this.#runModel({
+            modelId: policy.fallbackModel,
+            key,
+            prompt,
+            profile,
+            snapshot,
+            send,
+            requireZdr: policy.requireZdr
+          });
         }
         this.#remember('user', prompt);
         this.#remember('assistant', result.answer);
@@ -258,8 +305,15 @@ export class TrainingAgent extends CloudflareAgent {
   async onRequest(request) {
     const url = new URL(request.url);
     if (url.pathname === '/status' && request.method === 'GET') {
+      const policy = resolveAgentPolicy(this.env);
       const source = this.env.OPENROUTER_API_KEY ? 'workspace' : this.#storedKey() ? 'personal' : null;
-      return json({ connected: Boolean(source), source, model: this.env.OPENROUTER_MODEL || PRIMARY_MODEL, fallback: FALLBACK_MODEL });
+      return json({
+        connected: Boolean(source),
+        source,
+        model: policy.primaryModel,
+        fallback: policy.fallbackModel,
+        privacy: { dataCollection: 'deny', zeroDataRetention: policy.requireZdr }
+      });
     }
     if (url.pathname === '/connect' && request.method === 'POST') {
       return this.#connect(await request.json().catch(() => null));

@@ -4,7 +4,7 @@ An installable workout, weight, food, and supplement tracker for JT and Lupe. Th
 60-day training block begins Monday, August 17, 2026 and runs through Thursday,
 October 15, 2026.
 
-Live app: <https://m-mohamed.github.io/jt-lupe-60-day-workout/>
+Private app: <https://jt-lupe-workout.jt-lupe-workout-cloud.workers.dev/>
 
 ## What it does
 
@@ -45,17 +45,13 @@ pretending it happened today. Installs as a PWA and works fully offline.
 
 ## Where the data lives
 
-The app is local-first in both places it runs. Every read and write hits
-`localStorage`, so it works with no network at all.
+Cloudflare is the only production surface. Every read and write first hits
+`localStorage`, so the installed app remains usable when gym connectivity drops. The
+same records round-trip to a per-person SQLite Durable Object whenever the connection
+returns, so they survive a lost phone and follow each person between devices. See
+[cloud/README.md](cloud/README.md) for the backend and identity model.
 
-- **On GitHub Pages** there is no backend. Data stays on that one device, and the
-  header chip reads *Local*.
-- **On the Cloudflare Worker** (see [cloud/README.md](cloud/README.md)) the same data
-  also round-trips to a per-person SQLite database, so it survives a lost phone and
-  follows you between devices. The chip shows who is signed in.
-
-The client detects which one it is by calling `./api/me` at startup; a 404 simply
-means local-only. Current keys are:
+Current keys are:
 
 | Key shape | Holds | History |
 | --- | --- | --- |
@@ -110,14 +106,10 @@ only, and the Cache API cannot reach `localStorage`. Key-shape changes go throug
 versioned migration in `migrateStorage()`, which copies old keys forward before
 removing them.
 
-On the GitHub Pages copy the data is device-local, so it is lost if the browser's site data is cleared, if
-the browser evicts storage under pressure (iOS Safari does this for sites that have not
-been visited in about a week unless the app is added to the home screen), or if a
-private window is used. The app calls `navigator.storage.persist()` to opt out of
-routine eviction where the browser honours it. Use **Backup** before clearing browser
-data or changing devices, and **Export CSV** to pull the log into a spreadsheet.
-Signing in to the Worker copy removes most of this risk, because the device stops
-being the only copy.
+Local browser storage can still be cleared or evicted. The app calls
+`navigator.storage.persist()` where supported, and Cloudflare sync prevents that
+device from being the only copy. Use **Backup** before intentionally clearing browser
+data, and **Export CSV** to pull the log into a spreadsheet.
 
 ## Food lookup key
 
@@ -149,11 +141,10 @@ is added to the log.
 
 ## Deployment
 
-- **GitHub Pages** publishes from the root of `main`; `.nojekyll` disables Jekyll.
-  This is the local-only copy.
-- **Cloudflare Worker** serves the same files plus the sync API. See
-  [cloud/README.md](cloud/README.md). `.assetsignore` keeps `cloud/` and the docs out
-  of the uploaded asset bundle.
+The **Cloudflare Worker** is the only deployment. It serves the PWA, private sync API,
+food lookup, and Pi agent behind Cloudflare Access. See
+[cloud/README.md](cloud/README.md). `.assetsignore` keeps `cloud/` and the docs out of
+the uploaded asset bundle. GitHub remains source control and CI only.
 
 ## Development
 

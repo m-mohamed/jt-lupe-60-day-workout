@@ -32,6 +32,9 @@ const url = 'http://127.0.0.1:8777/';
   test('private agent status route responds', status.status === 200 && status.body.connected === false, JSON.stringify(status));
   test('best free primary and router fallback are explicit',
     status.body.model === 'openrouter/free' && status.body.fallback === 'nvidia/nemotron-3-ultra-550b-a55b:free', JSON.stringify(status.body));
+  test('OpenRouter privacy routing is explicit',
+    status.body.privacy?.dataCollection === 'deny' && status.body.privacy?.zeroDataRetention === false,
+    JSON.stringify(status.body.privacy));
 
   const chat = await page.evaluate(async () => {
     const response = await fetch('./api/agent/chat?ns=gym', {
