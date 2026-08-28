@@ -91,7 +91,13 @@ const url = 'http://127.0.0.1:8777/';
       sets: document.getElementById('statLifts').textContent };
   });
   t('progress tab renders under 1s with 60 days logged', render.progress < 1000, JSON.stringify(render));
-  t('progress counts the whole challenge', Number(render.sets.replace(/\D/g, '')) > 700, JSON.stringify({ sessions: render.sessions, sets: render.sets }));
+  // `seeded.sets` covers both profiles while Progress intentionally shows the active
+  // profile only. A persistent local dev database can contain more, but a fresh CI
+  // database should show exactly half of the seed rather than an obsolete 5-day-plan
+  // threshold.
+  t('progress counts the active profile’s whole challenge',
+    Number(render.sets.replace(/\D/g, '')) >= Math.floor(seeded.sets / 2),
+    JSON.stringify({ sessions: render.sessions, sets: render.sets, seeded: seeded.sets }));
 
   /* ---------- a second device must converge on the same data ---------- */
   const p2 = await ctx.newPage();
