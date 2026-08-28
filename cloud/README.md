@@ -2,8 +2,9 @@
 
 The backend for this app, and deliberately not *only* for this app. It is about
 250 lines: Cloudflare Access supplies a verified identity, the Worker turns that
-identity into one Durable Object per person, and that object owns an embedded
-SQLite database exposed as a namespaced key/value store with a version counter.
+identity into one Durable Object per person. One embedded SQLite actor owns the synced
+records, and a separate private Agent Durable Object owns the Pi conversation and the
+user's OpenRouter credential.
 
 Nothing in `src/store.js` knows what a workout is. A second small tool can use the
 same deployment by passing a different `?ns=`.
@@ -47,6 +48,11 @@ of the response, so a device never re-applies its own writes.
 | `GET /api/food` | USDA lookup plus clearly labelled Whole Foods Hot Bar estimates |
 | `GET /api/export` | full namespace dump for backup |
 | `GET /api/stats` | record count, version, database size |
+| `GET /api/agent/status` | Pi agent connection and selected model |
+| `POST /api/agent/connect` | exchange a user-authorized OpenRouter OAuth code |
+| `POST /api/agent/chat` | stream Pi text, tool activity, and typed proposals |
+| `POST /api/agent/reset` | clear the private conversation |
+| `POST /api/agent/disconnect` | remove the OpenRouter credential |
 
 All routes take `?ns=` and are denied without a valid Access JWT.
 
@@ -55,11 +61,12 @@ All routes take `?ns=` and are denied without a valid Access JWT.
 You need a Cloudflare account. Everything below is inside the free tier.
 
 ```bash
-npx wrangler@4 login
+npm ci
+npx wrangler login
 ```
 
 ```bash
-cd cloud && npx wrangler@4 deploy
+cd cloud && npm run deploy
 ```
 
 That prints a `https://jt-lupe-workout.<your-subdomain>.workers.dev` URL. At this
@@ -116,12 +123,25 @@ cd cloud && npx wrangler@4 dev --persist-to ../../.wrangler-state --var DEV_EMAI
 `DEV_EMAIL` fakes an identity and is ignored the moment `ACCESS_TEAM_DOMAIN` is
 set, so it cannot become an auth bypass in production.
 
-Two things to know:
+The asset build copies only the five public PWA files into `cloud/public`, so Wrangler
+never watches `cloud/node_modules` or the test tree. Keep local Durable Object state
+outside the repository with `--persist-to`, as the package script does.
 
-- **Do not `npm install` inside `cloud/`.** The static assets directory is the
-  repository root, so an in-tree `node_modules` makes `wrangler dev` watch its own
-  install and reload in a loop. Use `npx`.
-- **Keep local state outside the repo** (`--persist-to`), for the same reason.
+## Pi + OpenRouter agent
+
+`TrainingAgent` uses `@earendil-works/pi-agent-core` and `@earendil-works/pi-ai` inside
+Cloudflare's Agent runtime. `openrouter/free` is the primary model router because it
+can choose a currently available free tool-capable model; the fixed fallback is
+`nvidia/nemotron-3-ultra-550b-a55b:free`.
+Production can use a shared Cloudflare secret, configured with
+`npx wrangler secret put OPENROUTER_API_KEY`, or user-controlled OpenRouter OAuth PKCE.
+The shared key never enters the browser or repository. An OAuth credential stays in
+that person's private Agent SQLite database.
+
+The agent reads a server-built, profile-scoped 60-day snapshot. Its set, meal,
+supplement, and bodyweight tools return proposals only. They do not write the record
+store. The browser presents a Beautiful UI Approval Card and writes only after a human
+confirms.
 
 ## Cost
 

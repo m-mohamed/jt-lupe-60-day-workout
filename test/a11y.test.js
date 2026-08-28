@@ -141,7 +141,7 @@ const AUDIT = () => {
     // the pairs that failed.
     await p.evaluate(() => document.querySelectorAll('details').forEach(d => { d.open = true; }));
 
-    for (const tab of ['train', 'fuel', 'supplements', 'progress']) {
+    for (const tab of ['train', 'fuel', 'supplements', 'agent', 'progress']) {
       await p.evaluate(name => setTab(name), tab);
       if (tab === 'train') {
         await p.evaluate(() => {
@@ -166,7 +166,7 @@ const AUDIT = () => {
     }
     const first = findings.find(f => f.scheme === scheme);
     t(`${scheme}: exactly one H1`, first.h1 === 1, String(first.h1));
-    t(`${scheme}: tabs and panels wired`, first.tabsWired && first.panels === 4,
+    t(`${scheme}: tabs and panels wired`, first.tabsWired && first.panels === 5,
       JSON.stringify({ wired: first.tabsWired, panels: first.panels }));
     t(`${scheme}: no page errors`, errors.length === 0, errors.join(' | '));
     await ctx.close();

@@ -30,6 +30,10 @@ jobs:
         working-directory: tools
         run: npm ci --no-audit --no-fund
 
+      - name: Install cloud agent
+        working-directory: cloud
+        run: npm ci --no-audit --no-fund
+
       - name: Lint and test
         working-directory: tools
         run: npm test

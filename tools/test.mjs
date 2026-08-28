@@ -5,7 +5,8 @@
 // flags and a NODE_PATH — and a suite run against the wrong server passes while
 // testing nothing, which this project has been caught by twice.
 import { spawn, execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,17 +15,20 @@ const repo = resolve(here, '..');
 
 const STATIC_PORT = 8911;
 const WORKER_PORT = 8777;
+const TEST_STATE = mkdtempSync(resolve(tmpdir(), 'jt-lupe-test-'));
 
 // Suites are declared with the server they need, because that is the thing that goes
 // wrong silently.
 const SUITES = [
   { file: 'a11y.test.js', port: STATIC_PORT },
+  { file: 'catalog.test.js', port: STATIC_PORT },
   { file: 'human-interaction.test.js', port: STATIC_PORT },
   { file: 'session-flow.test.js', port: STATIC_PORT },
   { file: 'supplements.test.js', port: STATIC_PORT },
   { file: 'import.test.js', port: STATIC_PORT },
   { file: 'migration.test.js', port: STATIC_PORT },
   { file: 'edge-cases.test.js', port: WORKER_PORT },
+  { file: 'agent.test.js', port: WORKER_PORT },
   { file: 'signed-out.test.js', port: WORKER_PORT },
   { file: 'offline.test.js', port: WORKER_PORT },
   { file: 'upgrade.test.js', port: WORKER_PORT },
@@ -32,7 +36,10 @@ const SUITES = [
 ];
 
 const children = [];
-const stop = () => { for (const child of children) { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* already gone */ } } };
+const stop = () => {
+  for (const child of children) { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* already gone */ } }
+  rmSync(TEST_STATE, { recursive: true, force: true });
+};
 process.on('exit', stop);
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { stop(); process.exit(130); });
 
@@ -65,21 +72,24 @@ if (!existsSync(resolve(playwright, 'playwright-core'))) {
 }
 
 console.log('starting servers…');
-start('static server', 'python3', ['-m', 'http.server', String(STATIC_PORT), '--bind', '127.0.0.1'], repo);
+execFileSync(process.execPath, [resolve(repo, 'cloud', 'build-assets.mjs')], { cwd: resolve(repo, 'cloud'), stdio: 'inherit' });
+const staticServer = start('static server', 'python3', ['-m', 'http.server', String(STATIC_PORT), '--bind', '127.0.0.1'], repo);
 // The dev-auth flags are not optional: wrangler dev otherwise reads the production
 // Access config, 401s everything, and the worker-backed suites test local-only mode.
-start('wrangler dev', 'npx', ['wrangler@4', 'dev', '--port', String(WORKER_PORT),
-  '--persist-to', resolve(repo, '..', '.wrangler-state'),
+const workerServer = start('wrangler dev', 'npx', ['wrangler@4', 'dev', '--port', String(WORKER_PORT),
+  '--persist-to', TEST_STATE,
   '--var', 'ACCESS_TEAM_DOMAIN:', '--var', 'ACCESS_AUD:', '--var', 'DEV_EMAIL:dev@local'], resolve(repo, 'cloud'));
 
-if (!await waitFor(`http://127.0.0.1:${STATIC_PORT}/index.html`, 30)) { console.error('static server never came up'); process.exit(1); }
-if (!await waitFor(`http://127.0.0.1:${WORKER_PORT}/api/me?ns=gym`, 90)) { console.error('wrangler dev never came up'); process.exit(1); }
+if (!await waitFor(`http://127.0.0.1:${STATIC_PORT}/index.html`, 30) || staticServer.exitCode !== null) { console.error('static server never came up'); process.exit(1); }
+if (!await waitFor(`http://127.0.0.1:${WORKER_PORT}/api/me?ns=gym`, 90) || workerServer.exitCode !== null) { console.error('wrangler dev never came up'); process.exit(1); }
+const workerIdentity = await fetch(`http://127.0.0.1:${WORKER_PORT}/api/me?ns=gym`).then(response => response.json()).catch(() => null);
+if (workerIdentity?.email !== 'dev@local') { console.error('wrangler dev identity mismatch'); process.exit(1); }
 console.log('servers up\n');
 
 const run = (label, command, args, options = {}) => {
   const started = Date.now();
   try {
-    const output = execFileSync(command, args, { encoding: 'utf8', ...options });
+    const output = execFileSync(command, args, { encoding: 'utf8', timeout: 120_000, ...options });
     const passes = (output.match(/"PASS/g) || []).length || (output.match(/^PASS/gm) || []).length;
     // Do not trust the exit code alone. Four suites once exited 0 with FAIL lines in
     // their output, so a real failure read as green for as long as nobody looked.

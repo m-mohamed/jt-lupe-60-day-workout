@@ -5,13 +5,14 @@ Direction: Beautiful UI first, gym-floor fast, local-first
 
 ## Product boundary
 
-This is one tracking application with four first-class jobs:
+This is one tracking application with five first-class jobs:
 
 | Surface | Job |
 | --- | --- |
 | **Workout** | Record every set, weight, rep, and lighter finish. |
 | **Food** | Record meals and protein, including editable Hot Bar estimates. |
 | **Supplements** | Record the product, actual dose, unit, and date taken. |
+| **Coach** | Read private history and prepare set, meal, supplement, or bodyweight drafts for approval. |
 | **Progress** | Read strength, bodyweight, intake consistency, and exports. |
 
 The training plan is weight-first. Machines, cables, dumbbells, and kettlebells are
@@ -20,54 +21,62 @@ upper chest, legs, and core. It does not turn the plan into a calisthenics progr
 
 ## Beautiful UI is the source system
 
-[Beautiful UI](https://www.beautifului.dev/) is an MIT-licensed collection of
-copy-paste React/Tailwind primitives, not a runtime package. This repository ports the
-official patterns into `beautiful-ui.css` because the deployed app must remain a
-zero-build offline PWA.
+[Beautiful UI](https://www.beautifului.dev/) is the catalog contract. It is a public
+collection of copy-paste AI-interface patterns rather than a runtime dependency in
+this zero-build PWA. The document uses the catalog's named structures directly and
+`beautiful-ui.css` provides their responsive vanilla-CSS implementation.
 
 Every primary surface starts from a Beautiful UI primitive:
 
 - **Sidebar Nav** becomes the desktop navigation and the same controls become a
   thumb-reachable bottom bar on phones.
-- **Recommendation Card** becomes each exercise card and its progression decision.
-- **Records Table** becomes set entry, strength history, bodyweight history, and
-  supplement history.
+- **Filter Table** owns the workout date and session state.
+- **Task Rows** own exercises, daily fundamentals, and completed supplement intake.
+- **Records Table** owns meal, strength, bodyweight, and supplement history.
 - **Search** becomes the food lookup surface.
-- **Task Rows** become daily fundamentals and completed supplement intake.
-- **Filter Table** supplies status chips and date-level organization.
-- **Insight Cards** supply the compact progress statistics.
+- **Fine-tune Card** owns bodyweight and supplement entry.
+- **Insight Cards** own the protein, intake, and progress summaries.
+- **Prompt Bar** is the system-wide handoff into the agent and the chat composer.
+- **Chat**, **Streaming Text**, **Thinking**, **Loading State**, and **Tool Chips**
+  expose the live agent run.
+- **Recommendation Card** provides focused agent starters.
+- **Approval Card** is the only agent-to-record write gate.
+- **Context Cards** disclose retrieved scope and health boundaries.
+- **Diff Table** compares current and proposed values before an agent write.
+- **Flowchart** exposes the agent's context, reasoning, review, and record path.
+- **Code Block** reveals the exact structured draft behind an approval.
+- **Selection Actions** own export, backup, restore, theme, and conversation controls.
 
 Do not add a parallel design language. A new surface must use the tokens and one of
 these component grammars before it adds product-specific behavior.
 
-## Tokens
+All twenty catalog primitives have a product job. None is included as decoration:
+review components make agent writes inspectable, while tracking components keep the
+daily workflow fast.
 
-The light and dark surface ladder, ink ladder, accent/status colors, shadows, radii,
-and strong easing curve come from Beautiful UI:
+## Interface rules
 
-- Surfaces: `--page`, `--canvas`, `--surface`, `--inset`, `--hover`, `--field`.
-- Text: `--ink`, `--ink-2`, `--ink-3`.
-- Meaning: `--accent`, `--green`, `--orange`, `--red` and their tints.
-- Elevation: `--shadow-hairline`, `--shadow-btn`, `--shadow-card`,
-  `--shadow-raised`.
-- Geometry: 6px chip, 8px control, 10px card, 14px window.
-- Motion: `cubic-bezier(.23, 1, .32, 1)` with reduced-motion fallback.
-
-The blue accent means selected, active, or recommended. Green means completed.
-Orange means backfill, offline, or attention. Red is destructive only.
+- Do not introduce a generic card, chip, badge, or pill primitive.
+- Use space and table rules before adding another container.
+- Use one primary action in each task context.
+- Preserve catalog names in `data-bui` attributes so the component audit is visible
+  in the document.
+- Use neutral surfaces, blue for selected or active, green for completed, amber for
+  attention, and red only for destructive actions.
+- Keep all controls at least 40px high and honor reduced motion.
 
 ## Workout contract
 
-An exercise Recommendation Card always contains:
+An exercise Task Row always contains:
 
 1. Exercise and prescribed range.
 2. A one-sentence recommendation based on real history.
-3. One Records Table row per planned set.
+3. One set-entry row per planned set.
 4. Weight and reps/time for that set only.
 5. A secondary action that copies set 1 into blank rows without replacing any set
    that already contains actual values.
 6. An optional native disclosure for lighter or assisted finish reps.
-7. A completed control in the card header.
+7. A completed control in the Task Row header.
 
 `100 × 6 + 70 × 4` is one planned set with two efforts. It is not stored as two
 ordinary sets. Blank planned rows mean not performed and are omitted.
@@ -97,7 +106,7 @@ Copy directs the person to the label or clinician for dosing.
 
 ## Mobile and desktop
 
-The phone is the primary device. The first workout card is reachable without a long
+The phone is the primary device. The first workout row is reachable without a long
 dashboard preamble. Controls are at least 40px high, fields are 42px, safe-area insets
 are respected, and the rest timer clears the navigation.
 
@@ -119,7 +128,7 @@ dashboard.
 ## Definition of done
 
 - No legacy visual system is active or shipped in the document.
-- Workout, food, supplements, and progress all use Beautiful UI components.
+- Workout, food, supplements, Coach, and progress all use Beautiful UI components.
 - Per-set and in-set drop values survive editing, sync, history, backup, and CSV.
 - Food estimates identify uncertainty.
 - Supplement history keeps dose and unit.

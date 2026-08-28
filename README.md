@@ -8,7 +8,7 @@ Live app: <https://m-mohamed.github.io/jt-lupe-60-day-workout/>
 
 ## What it does
 
-Four first-class trackers share the same local-first record system. See
+Four trackers and one agent workspace share the same local-first record system. See
 [design.md](design.md) for the Beautiful UI implementation contract.
 
 - **Workout** — tonight's session, with a per-exercise coach line that reads your last
@@ -36,6 +36,9 @@ Four first-class trackers share the same local-first record system. See
   list. The history records intake; it does not prescribe a medical stack.
 - **Progress** — strength per exercise (first → latest), bodyweight trend, supplement
   consistency, daily fundamentals, and CSV / JSON export.
+- **Coach** — a Pi agent powered through OpenRouter. The system-wide Prompt Bar carries
+  the active screen into the conversation. It reads a private 60-day snapshot and
+  drafts set, meal, supplement, and bodyweight records for human approval.
 
 Each person only ever sees their own numbers. Any past day can be backfilled without
 pretending it happened today. Installs as a PWA and works fully offline.
@@ -62,6 +65,7 @@ means local-only. Current keys are:
 | `jt-lupe:{profile}:habit:{date}:{habit}` | daily-fundamentals check-in | every calendar day kept |
 | `jt-lupe:{profile}:supplement:{date}:{id}` | one intake: name, dose, unit, time | every intake kept |
 | `jt-lupe:{profile}:bodyweight:{date}` | dated bodyweight and unit | every calendar day kept |
+| `jt-lupe:{profile}:activity:{id}` | receipt for an agent-approved write | every approved action kept |
 | `jt-lupe-{profile}-weight`, `-unit` | current bodyweight for the protein calculator | latest only |
 | `jt-lupe-profile`, `-active-date`, `-theme` | UI preferences | latest only |
 | `jt-lupe-schema-version` | storage schema number, used to run migrations | — |
@@ -80,11 +84,26 @@ each other.
 
 The application shell is rebuilt from [Beautiful UI](https://www.beautifului.dev/),
 an MIT-licensed collection of copy-paste primitives for AI-native interfaces.
-Beautiful UI is not an npm runtime package. Its official React/Tailwind source is
-ported to this zero-build PWA in `beautiful-ui.css` so the app keeps offline startup
-and does not add a frontend build step. The implementation uses its Sidebar Nav,
-Task Rows, Search, Recommendation Card, Filter Table, and Records Table patterns,
-plus its official surface, ink, status, radius, shadow, and motion tokens.
+Beautiful UI is not a runtime dependency in this zero-build PWA. Its catalog contracts
+are implemented directly in the document and `beautiful-ui.css`, preserving offline
+startup without a frontend build step. The implementation uses Sidebar Nav, Context
+Cards, Recommendation Card, Task Rows, Search, Filter Table, Records Table, Prompt Bar,
+Chat, Streaming Text, Thinking, Loading State, Tool Chips, Approval Card, Insight Cards,
+Fine-tune Card, and Selection Actions. No generic card, chip, badge, pill, or second UI
+system is layered on top.
+
+## AI-native architecture
+
+The agent is a control layer, not an automatic writer. A system-wide Prompt Bar hands
+off from Workout, Food, Supplements, or Progress into the same conversation. The
+Cloudflare Agent uses Pi for the agent loop and OpenRouter for inference. It receives
+only the signed-in profile's server-built 60-day snapshot. Read tools inspect that
+snapshot; write tools return typed proposals. The browser performs the final write only
+after a human applies a Beautiful UI Approval Card, then stores an append-only receipt.
+The current shared OpenRouter credential is a Cloudflare secret and never enters the
+browser or repository. The optional OAuth path stores a user credential in that
+person's private Agent Durable Object. No Apple Health, wearable, medical record, or
+health MCP is connected.
 
 Deploying a new version never touches this data: the service worker caches app files
 only, and the Cache API cannot reach `localStorage`. Key-shape changes go through the

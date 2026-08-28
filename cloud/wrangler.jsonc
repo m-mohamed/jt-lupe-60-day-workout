@@ -3,12 +3,13 @@
   "name": "jt-lupe-workout",
   "main": "src/index.js",
   "compatibility_date": "2026-08-12",
+  "compatibility_flags": ["nodejs_compat"],
 
-  // The static app lives at the repository root so GitHub Pages keeps serving it
-  // as a local-only fallback. `.assetsignore` there keeps this folder out of the
-  // upload.
+  // GitHub Pages serves the source files at the repository root. `npm run assets`
+  // copies only those five public files here for Wrangler, keeping its watcher away
+  // from cloud/node_modules and the test tree.
   "assets": {
-    "directory": "../",
+    "directory": "./public",
     "binding": "ASSETS",
     "run_worker_first": ["/api/*"]
   },
@@ -16,10 +17,14 @@
   // One SQLite-backed Durable Object per person. `new_sqlite_classes` is what
   // selects the SQLite storage backend rather than the older key/value one.
   "durable_objects": {
-    "bindings": [{ "name": "USER_STORE", "class_name": "UserStore" }]
+    "bindings": [
+      { "name": "USER_STORE", "class_name": "UserStore" },
+      { "name": "TRAINING_AGENT", "class_name": "TrainingAgent" }
+    ]
   },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["UserStore"] }
+    { "tag": "v1", "new_sqlite_classes": ["UserStore"] },
+    { "tag": "v2", "new_sqlite_classes": ["TrainingAgent"] }
   ],
 
   "observability": { "enabled": true },

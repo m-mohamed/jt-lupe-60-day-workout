@@ -20,34 +20,50 @@
   </script>
 </head>
 <body>
-  <div class="app">
-    <header class="topbar">
-      <h1 class="brand">JT <span>+</span> LUPE · TRAINING OS</h1>
-      <div class="topbar-spacer"></div>
-      <button class="chip who" id="whoChip" type="button" title="Switch profile">JT</button>
-      <button class="chip sync-chip" id="syncChip" type="button" data-state="local" title="Local only">
-        <span class="sync-dot" aria-hidden="true"></span><span id="syncText">Local</span>
-      </button>
+  <div class="app-shell">
+    <!-- Beautiful UI: Sidebar Nav -->
+    <header class="workspace-header" data-bui="Sidebar Nav">
+      <div class="workspace-name">
+        <h1>Training OS</h1>
+        <span>JT + Lupe</span>
+      </div>
+      <div class="header-actions">
+        <button class="nav-action" id="coachChip" type="button">Ask coach</button>
+        <button class="nav-action" id="whoChip" type="button" title="Switch profile">JT</button>
+        <button class="nav-action sync-action" id="syncChip" type="button" data-state="local" title="Local only">
+          <span class="sync-dot" aria-hidden="true"></span><span id="syncText">Local</span>
+        </button>
+      </div>
     </header>
 
-    <nav class="tabbar" role="tablist" aria-label="Sections">
+    <nav class="sidebar-nav" role="tablist" aria-label="Sections" data-bui="Sidebar Nav">
       <button class="tab" type="button" role="tab" data-tab="train" aria-selected="true">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg>
         Workout
       </button>
       <button class="tab" type="button" role="tab" data-tab="fuel" aria-selected="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v7a3 3 0 0 0 6 0V3M9 10v11M18 3c-1.5 2-2 4-2 6.5S17 14 18 14v7"/></svg>
         Food
       </button>
-      <button class="tab" type="button" role="tab" data-tab="supplements" aria-selected="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5 19.5 15.5a4 4 0 0 1-5.7 5.7L2.8 10.2a4 4 0 0 1 5.7-5.7ZM6.5 14.5l8-8"/></svg>
-        Supplements
+      <button class="tab" type="button" role="tab" data-tab="supplements" aria-selected="false" aria-label="Supplements">
+        Supps
+      </button>
+      <button class="tab" type="button" role="tab" data-tab="agent" aria-selected="false">
+        Coach
       </button>
       <button class="tab" type="button" role="tab" data-tab="progress" aria-selected="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M8 16V11M12.5 16V7.5M17 16v-3.5"/></svg>
         Progress
       </button>
     </nav>
+
+    <main class="workspace">
+      <!-- Beautiful UI: Prompt Bar -->
+      <form class="bui-prompt-bar global-prompt" id="globalAgentForm" data-bui="Prompt Bar">
+        <label for="globalAgentPrompt">Ask Training OS</label>
+        <span id="globalAgentContext">Your current screen and recent records become context.</span>
+        <div class="prompt-input-row">
+          <input id="globalAgentPrompt" type="text" maxlength="800" autocomplete="off" placeholder="Log my last set, review today, or plan my next session…" aria-label="Ask Training OS">
+          <button class="action primary" type="submit">Ask</button>
+        </div>
+      </form>
 
     <!-- ============ TRAIN ============ -->
     <section class="panel" id="panel-train" role="tabpanel" aria-label="Train">
@@ -56,39 +72,49 @@
         <h2>Today’s training</h2>
         <p>Every working set, every weight, and every lighter finish.</p>
       </div>
-      <div class="card">
-        <p class="eyebrow" id="challengeLine">Day 1 of 60</p>
+      <!-- Beautiful UI: Filter Table -->
+      <section class="bui-filter-table session-filter" data-bui="Filter Table" aria-label="Workout day">
+        <p class="component-label" id="challengeLine">Day 1 of 60</p>
         <div class="session-nav">
-          <button class="btn" id="prevDay" type="button" aria-label="Previous day">‹</button>
+          <button class="action" id="prevDay" type="button" aria-label="Previous day">Previous</button>
           <div class="session-now">
             <strong id="sessionTitle">Wednesday · Push</strong>
             <span id="sessionSub">Chest, shoulders, triceps</span>
           </div>
-          <button class="btn" id="nextDay" type="button" aria-label="Next day">›</button>
+          <button class="action" id="nextDay" type="button" aria-label="Next day">Next</button>
         </div>
         <div class="meter" aria-hidden="true"><span id="sessionMeter"></span></div>
-        <p class="muted" id="sessionCount" style="margin:8px 0 0;font-size:.82rem"></p>
+        <p class="component-note" id="sessionCount"></p>
         <p class="backfill-flag" id="backfillFlag" hidden></p>
+      </section>
+
+      <!-- Beautiful UI: Tool Chips -->
+      <div class="bui-tool-chip timer-tool" id="timerFab" data-running="false" data-bui="Tool Chips">
+        <span id="timerDisplay">1:30</span>
+        <button class="action compact" id="timerToggle" type="button">Start</button>
+        <button class="action compact" id="timerReset" type="button">Reset</button>
       </div>
 
-      <div id="exerciseList"></div>
+      <!-- Beautiful UI: Task Rows -->
+      <div class="bui-task-rows" id="exerciseList" data-bui="Task Rows"></div>
 
-      <details class="explain" id="importBlock">
+      <!-- Beautiful UI: Context Cards -->
+      <details class="bui-context-card" id="importBlock" data-bui="Context Cards">
         <summary>Paste from your notes</summary>
         <div class="body">
           <p>Logged this session somewhere else? Paste it here - one exercise per line,
           in whatever shape you wrote it. <code>Seated row 100 x 10</code>,
           <code>lat pulldown 90x8</code>, <code>Pull-ups BW 6</code> all read fine.</p>
           <textarea id="importText" rows="6" aria-label="Paste a session logged elsewhere" placeholder="Seated row 100 x 10&#10;Lat pulldown 90 x 8&#10;Hammer curl 30x12"></textarea>
-          <div class="btn-row" style="margin-top:10px">
-            <button class="btn" id="importPreview" type="button">Read it</button>
-            <button class="btn primary" id="importApply" type="button" hidden>Log these</button>
+          <div class="selection-actions">
+            <button class="action" id="importPreview" type="button">Read it</button>
+            <button class="action primary" id="importApply" type="button" hidden>Log these</button>
           </div>
           <div id="importResult"></div>
         </div>
       </details>
 
-      <details class="explain">
+      <details class="bui-context-card" data-bui="Context Cards">
         <summary>How to pick your weight</summary>
         <div class="body" id="rulesBody"></div>
       </details>
@@ -101,54 +127,57 @@
         <h2>Nutrition</h2>
         <p>Log protein quickly, search the food database, and keep estimates editable.</p>
       </div>
-      <div class="card">
-        <div class="card-head">
+      <!-- Beautiful UI: Insight Cards -->
+      <section class="bui-insight-card" data-bui="Insight Cards">
+        <div class="component-header">
           <h2>Daily protein</h2>
-          <input type="date" id="fuelDate" style="width:auto" aria-label="Log date">
+          <input type="date" id="fuelDate" aria-label="Log date">
         </div>
         <p class="backfill-flag" id="fuelBackfill" hidden></p>
-        <div class="stat-row">
-          <div class="stat"><strong id="proteinSoFar">0 g</strong><span>logged today</span></div>
-          <div class="stat"><strong id="proteinTarget">—</strong><span>daily target</span></div>
+        <div class="insight-summary">
+          <div><strong id="proteinSoFar">0 g</strong><span>logged today</span></div>
+          <div><strong id="proteinTarget">—</strong><span>daily target</span></div>
         </div>
         <div class="meter" aria-hidden="true"><span id="proteinMeter"></span></div>
-        <p class="muted" id="proteinHint" style="margin:9px 0 0;font-size:.82rem"></p>
-      </div>
+        <p class="component-note" id="proteinHint"></p>
+      </section>
 
-      <div class="card">
-        <div class="card-head"><h3>Meals</h3><span class="muted" style="font-size:.8rem">protein in grams</span></div>
+      <!-- Beautiful UI: Records Table + Search -->
+      <section class="bui-records-table" data-bui="Records Table">
+        <div class="component-header"><h3>Meals</h3><span>Protein in grams</span></div>
         <ul class="meal-list" id="mealList"></ul>
-        <div class="food-search" id="foodSearch" hidden>
+        <div class="bui-search food-search" id="foodSearch" data-bui="Search" hidden>
           <input type="text" id="foodQuery" maxlength="80" placeholder="Search food — taco bell bean burrito" aria-label="Search food database">
-          <button class="btn" id="foodGo" type="button">Look up</button>
+          <button class="action" id="foodGo" type="button">Look up</button>
         </div>
         <div id="foodResults"></div>
         <div class="meal-add">
           <input type="text" id="mealName" maxlength="80" placeholder="Chicken and rice" aria-label="Meal">
           <input type="number" id="mealProtein" min="0" max="400" step="1" inputmode="numeric" placeholder="g" aria-label="Protein grams">
-          <button class="btn primary" id="addMeal" type="button">Add</button>
+          <button class="action primary" id="addMeal" type="button">Add meal</button>
         </div>
-      </div>
+      </section>
 
-      <div class="card">
-        <div class="card-head"><h3>Daily fundamentals</h3><span class="muted" style="font-size:.8rem">task rows</span></div>
+      <section class="bui-task-rows" data-bui="Task Rows">
+        <div class="component-header"><h3>Daily fundamentals</h3><span>Three daily checks</span></div>
         <ul class="habits" id="habitList">
           <li><input class="habit" type="checkbox" data-habit="protein" id="h-protein"><label for="h-protein"><strong>Hit protein target</strong><span>Total for the day beats perfect timing</span></label></li>
           <li><input class="habit" type="checkbox" data-habit="preworkout" id="h-pre"><label for="h-pre"><strong>Pre-workout meal</strong><span>Protein plus easy carbs</span></label></li>
           <li><input class="habit" type="checkbox" data-habit="sleep" id="h-sleep"><label for="h-sleep"><strong>Protect sleep</strong><span>Recovery is where the muscle is built</span></label></li>
         </ul>
-      </div>
+      </section>
 
-      <div class="card">
-        <div class="card-head"><h3>Bodyweight</h3><span class="muted" id="bwWho" style="font-size:.8rem"></span></div>
-        <div class="entry" style="grid-template-columns:1fr 92px">
+      <!-- Beautiful UI: Fine-tune Card -->
+      <section class="bui-fine-tune-card" data-bui="Fine-tune Card">
+        <div class="component-header"><h3>Bodyweight</h3><span id="bwWho"></span></div>
+        <div class="entry bodyweight-entry">
           <label>Weight <input type="number" id="bwValue" min="1" step="0.1" inputmode="decimal" placeholder="Bodyweight"></label>
           <label>Unit
             <select id="bwUnit"><option value="lb">lb</option><option value="kg">kg</option></select>
           </label>
         </div>
-        <p class="muted" style="margin:9px 0 0;font-size:.82rem">Logged against today. Weigh in at the same time of day; the weekly trend matters, not one morning.</p>
-      </div>
+        <p class="component-note">Logged against today. Weigh in at the same time of day; the weekly trend matters, not one morning.</p>
+      </section>
     </section>
 
     <!-- ============ SUPPLEMENTS ============ -->
@@ -159,42 +188,131 @@
         <p>Record what you actually took. The tracker does not prescribe a stack.</p>
       </div>
 
-      <div class="card">
-        <div class="card-head">
+      <section class="bui-insight-card" data-bui="Insight Cards">
+        <div class="component-header">
           <h3>Log date</h3>
-          <input type="date" id="supplementDate" style="width:auto" aria-label="Supplement log date">
+          <input type="date" id="supplementDate" aria-label="Supplement log date">
         </div>
         <p class="backfill-flag" id="supplementBackfill" hidden></p>
-        <div class="stat-row">
-          <div class="stat"><strong id="supplementToday">0</strong><span>taken this day</span></div>
-          <div class="stat"><strong id="supplementDays">0</strong><span>days recorded</span></div>
+        <div class="insight-summary">
+          <div><strong id="supplementToday">0</strong><span>taken this day</span></div>
+          <div><strong id="supplementDays">0</strong><span>days recorded</span></div>
         </div>
-      </div>
+      </section>
 
-      <div class="card">
-        <div class="card-head"><h3>Taken</h3><span class="muted" style="font-size:.8rem">completed task rows</span></div>
+      <section class="bui-task-rows" data-bui="Task Rows">
+        <div class="component-header"><h3>Taken</h3><span>Recorded intake</span></div>
         <div class="supplement-list" id="supplementList"></div>
-      </div>
+      </section>
 
-      <div class="card">
-        <div class="card-head"><h3>Log a supplement</h3><span class="muted" style="font-size:.8rem">name + dose</span></div>
+      <section class="bui-fine-tune-card" data-bui="Fine-tune Card">
+        <div class="component-header"><h3>Log a supplement</h3><span>Name and dose</span></div>
         <div class="supplement-add">
           <input type="text" id="supplementName" maxlength="80" list="supplementNames" placeholder="Supplement name" aria-label="Supplement name">
           <datalist id="supplementNames"><option value="Creatine monohydrate"><option value="Protein powder"></datalist>
           <input type="number" id="supplementDose" min="0" max="10000" step="0.1" inputmode="decimal" placeholder="Dose" aria-label="Supplement dose">
           <select id="supplementUnit" aria-label="Supplement unit"><option value="g">g</option><option value="mg">mg</option><option value="mcg">mcg</option><option value="capsule">capsule</option><option value="serving">serving</option></select>
-          <button class="btn primary" id="addSupplement" type="button">Log taken</button>
+          <button class="action primary" id="addSupplement" type="button">Log taken</button>
         </div>
         <div class="preset-row">
           <span class="preset-label">Quick add</span>
-          <button class="btn" type="button" data-supplement-preset="creatine">Creatine · 5 g</button>
+          <button class="action" type="button" data-supplement-preset="creatine">Creatine · 5 g</button>
         </div>
         <p class="food-note">Use the label or your clinician’s instructions for dose. This screen records intake; it does not recommend medical treatment.</p>
+      </section>
+
+      <section class="bui-records-table" data-bui="Records Table">
+        <div class="component-header"><h3>Recent history</h3><span>Last 14 days</span></div>
+        <div id="supplementHistory"></div>
+      </section>
+    </section>
+
+    <!-- ============ AGENT ============ -->
+    <section class="panel" id="panel-agent" role="tabpanel" aria-label="AI coach" hidden>
+      <div class="page-heading">
+        <p class="eyebrow">Pi agent · OpenRouter</p>
+        <h2>Training OS Coach</h2>
+        <p>Ask about your recent logs or draft a workout, meal, supplement, or weigh-in.</p>
       </div>
 
-      <div class="card">
-        <div class="card-head"><h3>Recent history</h3><span class="muted" style="font-size:.8rem">last 14 days</span></div>
-        <div id="supplementHistory"></div>
+      <section class="bui-task-rows agent-identity" data-bui="Task Rows">
+        <div class="agent-identity-copy">
+          <strong>Your private training agent</strong>
+          <span id="agentModel">Checking connection…</span>
+        </div>
+        <span class="agent-state" id="agentConnection" data-state="checking">Checking</span>
+      </section>
+
+      <!-- Beautiful UI: Approval Card -->
+      <section class="bui-approval-card agent-connect" id="agentConnectCard" data-bui="Approval Card">
+        <div class="component-header"><h3>Connect OpenRouter</h3><span>Your key, private storage</span></div>
+        <p>Sign in to OpenRouter to create a user-controlled key. Training OS stores it inside your private Cloudflare Agent and never puts it in this page or your synced workout data.</p>
+        <button class="action primary" id="agentConnect" type="button">Connect OpenRouter</button>
+        <p class="food-note">The selected model is free, but OpenRouter applies account limits. No Apple Health, wearable, or health MCP is connected.</p>
+      </section>
+
+      <div id="agentWorkspace" hidden>
+        <div class="agent-layout">
+          <div class="agent-main">
+            <!-- Beautiful UI: Search + Recommendation Card -->
+            <div class="bui-search agent-suggestions" aria-label="Suggested questions" data-bui="Search">
+              <button class="bui-recommendation-card" type="button" data-bui="Recommendation Card" data-agent-prompt="Review my last workouts. What should I focus on in my next session?"><strong>Review my training</strong><span>Use recent sets to plan the next session</span></button>
+              <button class="bui-recommendation-card" type="button" data-bui="Recommendation Card" data-agent-prompt="Help me log the sets I just completed, including any lighter drop reps. Ask me for what you need."><strong>Log my sets</strong><span>Capture different loads and drop reps</span></button>
+              <button class="bui-recommendation-card" type="button" data-bui="Recommendation Card" data-agent-prompt="Summarize my protein and supplement consistency over the last two weeks."><strong>Check consistency</strong><span>Review food and supplement patterns</span></button>
+            </div>
+
+            <!-- Beautiful UI: Chat + Streaming Text -->
+            <div class="bui-chat agent-thread" id="agentThread" aria-label="Coach conversation" data-bui="Chat">
+              <div class="agent-message assistant">
+                <div><strong>Training OS Coach</strong><p>I can review your last 60 days and prepare logs for you to approve. I cannot diagnose injuries or see health data outside this app.</p></div>
+              </div>
+            </div>
+
+            <!-- Beautiful UI: Prompt Bar -->
+            <form class="bui-prompt-bar agent-composer" id="agentForm" data-bui="Prompt Bar">
+              <label for="agentPrompt">Message your coach</label>
+              <textarea id="agentPrompt" rows="3" maxlength="2400" placeholder="I got 6 reps at 135, then finished 4 reps at 95…"></textarea>
+              <div class="agent-compose-row">
+                <div class="agent-prompt-meta" aria-label="Agent context">60-day context · Pi · Free model</div>
+                <span id="agentLiveStatus" role="status"></span>
+                <button class="action primary" id="agentSend" type="submit">Send</button>
+              </div>
+              <span class="agent-key-hint">Enter to send · Shift + Enter for a new line</span>
+            </form>
+          </div>
+
+          <aside class="agent-rail bui-context-cards" aria-label="Agent context and controls" data-bui="Context Cards">
+            <section class="bui-flowchart" data-bui="Flowchart">
+              <div class="component-header"><h3>Agent run</h3><span>Control path</span></div>
+              <ol class="agent-flow">
+                <li><strong>Context</strong><span>Read the last 60 days</span></li>
+                <li><strong>Reason</strong><span>Pi runs an OpenRouter model</span></li>
+                <li><strong>Review</strong><span>You approve every write</span></li>
+                <li><strong>Record</strong><span>Save to Training OS</span></li>
+              </ol>
+            </section>
+            <section class="agent-context-card">
+              <div class="component-header"><h3>Active context</h3><span class="agent-state" data-state="connected">Private</span></div>
+              <div class="agent-context-row"><strong>Training history</strong><span>Last 60 days</span></div>
+              <div class="agent-context-row"><strong>Available actions</strong><span>4 draft tools</span></div>
+              <div class="agent-context-row"><strong>Write permission</strong><span>Ask every time</span></div>
+            </section>
+            <section class="agent-guardrail-card">
+              <p class="eyebrow">Health data</p>
+              <strong>Training OS only</strong>
+              <p>No Apple Health, wearable, medical record, or health MCP is connected.</p>
+            </section>
+            <!-- Beautiful UI: Selection Actions -->
+            <section class="agent-controls-card" data-bui="Selection Actions">
+              <div class="component-header"><h3>Conversation</h3></div>
+              <div class="agent-controls">
+                <button class="action" id="agentReset" type="button">New conversation</button>
+                <button class="action" id="agentDisconnect" type="button">Disconnect</button>
+              </div>
+              <p class="food-note">General fitness education only. For urgent symptoms or an injury, stop training and seek appropriate medical care.</p>
+            </section>
+          </aside>
+        </div>
       </div>
     </section>
 
@@ -205,57 +323,53 @@
         <h2>Progress</h2>
         <p>Strength records, bodyweight history, and consistency in one view.</p>
       </div>
-      <div class="card">
-        <div class="card-head"><h2>Progress</h2><span class="muted" id="progressWho" style="font-size:.8rem"></span></div>
-        <div class="stat-row">
-          <div class="stat"><strong id="statSessions">0</strong><span>sessions logged</span></div>
-          <div class="stat"><strong id="statLifts">0</strong><span>sets recorded</span></div>
-          <div class="stat"><strong id="statStack">0</strong><span>supplement days</span></div>
-          <div class="stat"><strong id="statBw">—</strong><span>bodyweight change</span></div>
+      <section class="bui-insight-card" data-bui="Insight Cards">
+        <div class="component-header"><h2>Progress</h2><span id="progressWho"></span></div>
+        <div class="insight-summary progress-summary">
+          <div><strong id="statSessions">0</strong><span>sessions logged</span></div>
+          <div><strong id="statLifts">0</strong><span>sets recorded</span></div>
+          <div><strong id="statStack">0</strong><span>supplement days</span></div>
+          <div><strong id="statBw">—</strong><span>bodyweight change</span></div>
         </div>
-      </div>
+      </section>
 
-      <div class="card">
-        <div class="card-head"><h3>Strength</h3><span class="muted" style="font-size:.8rem">first → latest</span></div>
+      <section class="bui-records-table" data-bui="Records Table">
+        <div class="component-header"><h3>Strength</h3><span>First to latest</span></div>
         <div id="strengthBody"></div>
-      </div>
+      </section>
 
-      <div class="card">
-        <div class="card-head"><h3>Bodyweight</h3></div>
+      <section class="bui-records-table" data-bui="Records Table">
+        <div class="component-header"><h3>Bodyweight</h3></div>
         <div id="bodyweightBody"></div>
-      </div>
+      </section>
 
-      <div class="card">
-        <div class="card-head"><h3>Daily fundamentals</h3></div>
+      <section class="bui-records-table" data-bui="Records Table">
+        <div class="component-header"><h3>Daily fundamentals</h3></div>
         <div id="stackBody"></div>
-      </div>
+      </section>
 
-      <div class="card">
-        <div class="card-head"><h3>Your data</h3></div>
-        <p class="muted" style="margin:0 0 10px;font-size:.85rem" id="dataNote"></p>
-        <div class="btn-row">
-          <button class="btn" id="exportCsv" type="button">Export CSV</button>
-          <button class="btn" id="backupButton" type="button">Backup</button>
+      <section class="bui-selection-actions" data-bui="Selection Actions">
+        <div class="component-header"><h3>Your data</h3></div>
+        <p class="component-note" id="dataNote"></p>
+        <div class="selection-actions">
+          <button class="action" id="exportCsv" type="button">Export CSV</button>
+          <button class="action" id="backupButton" type="button">Backup</button>
           <label class="visually-hidden" for="restoreInput">Restore backup</label>
           <input class="visually-hidden" id="restoreInput" type="file" accept="application/json">
-          <button class="btn" id="restoreButton" type="button">Restore</button>
-          <button class="btn" id="themeButton" type="button">Theme</button>
-          <button class="btn" id="installButton" type="button" hidden>Install app</button>
+          <button class="action" id="restoreButton" type="button">Restore</button>
+          <button class="action" id="themeButton" type="button">Theme</button>
+          <button class="action" id="installButton" type="button" hidden>Install app</button>
         </div>
-      </div>
+      </section>
 
-      <details class="explain">
+      <details class="bui-context-card" data-bui="Context Cards">
         <summary>Why the plan looks like this</summary>
         <div class="body" id="evidenceBody"></div>
       </details>
     </section>
+    </main>
   </div>
 
-  <div class="timer-fab" id="timerFab" data-running="false">
-    <span id="timerDisplay">1:30</span>
-    <button class="btn small" id="timerToggle" type="button">Start</button>
-    <button class="btn small" id="timerReset" type="button">↺</button>
-  </div>
   <script>
     /* ================= constants ================= */
     const SCHEMA_KEY = 'jt-lupe-schema-version';
@@ -299,7 +413,8 @@
       habit: (p, date, id) => `jt-lupe:${p}:habit:${date}:${id}`,
       habitPrefix: p => `jt-lupe:${p}:habit:`,
       supplement: (p, date, id) => `jt-lupe:${p}:supplement:${date}:${id}`,
-      supplementPrefix: (p, date = '') => `jt-lupe:${p}:supplement:${date}`
+      supplementPrefix: (p, date = '') => `jt-lupe:${p}:supplement:${date}`,
+      activity: (p, id) => `jt-lupe:${p}:activity:${id}`
     };
 
     const readJSON = key => {
@@ -366,6 +481,12 @@
 
     function writeSet(profile, date, exerciseId, n, entry) {
       writeJSON(K.set(profile, date, exerciseId, n), { at: new Date().toISOString(), ...entry });
+    }
+    function recordActivity(profile, action, entity, summary) {
+      const at = new Date().toISOString();
+      writeJSON(K.activity(profile, `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`), {
+        at, action, entity, summary: String(summary).slice(0, 240)
+      });
     }
     function clearSets(profile, date, exerciseId) {
       const prefix = K.setPrefix(profile, date, exerciseId);
@@ -1039,18 +1160,45 @@
     }));
 
     /* ================= tabs ================= */
+    const TAB_CONTEXT = {
+      train: 'Today’s workout, set history, and progression become context.',
+      fuel: 'Meals, protein, bodyweight, and today’s fundamentals become context.',
+      supplements: 'Supplement intake and recent adherence become context.',
+      agent: 'Your last 60 days and any pending drafts become context.',
+      progress: 'Strength, bodyweight, and consistency trends become context.'
+    };
+
     function setTab(name) {
       flushPending();
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       state.tab = name;
       document.querySelectorAll('.tab').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.tab === name)));
-      ['train', 'fuel', 'supplements', 'progress'].forEach(id => { el(`panel-${id}`).hidden = id !== name; });
+      ['train', 'fuel', 'supplements', 'agent', 'progress'].forEach(id => { el(`panel-${id}`).hidden = id !== name; });
       paintTimerVisibility();
       if (name === 'fuel') renderFuel();
       if (name === 'supplements') renderSupplements();
+      if (name === 'agent') refreshAgentStatus();
       if (name === 'progress') renderProgress();
+      el('globalAgentContext').textContent = TAB_CONTEXT[name] || TAB_CONTEXT.agent;
+      el('globalAgentForm').hidden = name === 'agent';
       window.scrollTo(0, 0);
     }
     document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => setTab(tab.dataset.tab)));
+    el('coachChip').addEventListener('click', () => setTab('agent'));
+    el('globalAgentForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const prompt = el('globalAgentPrompt').value.trim();
+      if (!prompt) { el('globalAgentPrompt').focus(); return; }
+      el('agentPrompt').value = prompt;
+      el('globalAgentPrompt').value = '';
+      setTab('agent');
+      await refreshAgentStatus();
+      if (agentConnected) sendAgentMessage(prompt);
+      else {
+        el('agentLiveStatus').textContent = 'Connect OpenRouter to send this message.';
+        el('agentConnect').focus();
+      }
+    });
 
     /* ================= profile ================= */
     function setProfile(profile, { rerender = true } = {}) {
@@ -1151,7 +1299,7 @@
             <p class="coach" data-kind="${coach.kind}">${esc(coach.text)}</p>
             <div class="set-list">${rows}</div>
             ${count > 1 ? `<div class="set-tools">
-              <button class="btn small fill-sets" type="button" data-ex="${ex.id}">Fill blank sets from set 1</button>
+              <button class="action compact fill-sets" type="button" data-ex="${ex.id}">Fill blank sets from set 1</button>
               <span>Copies weight and reps. Existing sets stay unchanged.</span>
             </div>` : ''}
             <p class="set-help">Log each set as performed. Leave an unperformed set blank.</p>
@@ -1330,11 +1478,11 @@
       const box = el('importResult');
       if (!rows.length) { box.innerHTML = '<p class="empty">Nothing to read yet.</p>'; el('importApply').hidden = true; return; }
       const usable = rows.filter(r => r.match && r.load);
-      box.innerHTML = `<div style="margin-top:12px">${rows.map(row => row.match && row.load
+      box.innerHTML = `<div class="import-preview">${rows.map(row => row.match && row.load
         ? `<div class="import-row"><span class="hit">${esc(row.match.name)}</span><span class="val">${esc(row.load)}${row.reps ? ` \u00d7 ${esc(row.reps)}` : ''}</span></div>`
         : `<div class="import-row"><span class="miss">${esc(row.raw)}</span><span class="val">skipped</span></div>`
       ).join('')}</div>
-      <p class="muted" style="margin:10px 0 0;font-size:.82rem">${usable.length} of ${rows.length} lines matched an exercise in ${esc(dayForDate(state.date).label)} \u00b7 ${esc(dayForDate(state.date).focus)}. Skipped lines are left alone.</p>`;
+      <p class="component-note">${usable.length} of ${rows.length} lines matched an exercise in ${esc(dayForDate(state.date).label)} \u00b7 ${esc(dayForDate(state.date).focus)}. Skipped lines are left alone.</p>`;
       el('importApply').hidden = usable.length === 0;
       renderImport.usable = usable;
     }
@@ -1359,7 +1507,7 @@
         if (localStorage.getItem(session) === null) writeJSON(session, { templateId: dayForDate(state.date).id });
       });
       el('importText').value = '';
-      el('importResult').innerHTML = `<p class="muted" style="margin:10px 0 0">Logged ${rows.length} exercise${rows.length === 1 ? '' : 's'} to ${esc(labelForDate(state.date))}.</p>`;
+      el('importResult').innerHTML = `<p class="component-note">Logged ${rows.length} exercise${rows.length === 1 ? '' : 's'} to ${esc(labelForDate(state.date))}.</p>`;
       el('importApply').hidden = true;
       renderSession();
     });
@@ -1478,7 +1626,7 @@
         ? meals.map(meal => `<li>
             <span class="meal-name">${esc(meal.name)}</span>
             <span class="meal-protein">${meal.protein ? `${meal.protein} g` : '—'}</span>
-            <button class="icon-btn" type="button" data-meal="${esc(meal.key)}" aria-label="Remove ${esc(meal.name)}">Remove</button>
+            <button class="row-action" type="button" data-meal="${esc(meal.key)}" aria-label="Remove ${esc(meal.name)}">Remove</button>
           </li>`).join('')
         : '<li><span class="muted">Nothing logged yet.</span></li>';
 
@@ -1519,7 +1667,7 @@
       box.innerHTML = `${info ? `<p class="food-note">${esc(info)}</p>` : ''}${foods.slice(0, 6).map((food, index) => {
         const options = (food.portions && food.portions.length ? food.portions : [{ label: `${gramsFor(food)} g`, grams: gramsFor(food) }])
           .slice(0, 4)
-          .map(portion => `<button class="btn" type="button" data-food="${index}" data-grams="${portion.grams}">${esc(portion.label)} · ${proteinFor(food, portion.grams)} g</button>`)
+          .map(portion => `<button class="action compact" type="button" data-food="${index}" data-grams="${portion.grams}">${esc(portion.label)} · ${proteinFor(food, portion.grams)} g</button>`)
           .join('');
         return `<div class="food-hit">
           <div class="food-hit-name">${esc(food.name)}</div>
@@ -1666,9 +1814,9 @@
       el('supplementDays').textContent = history.length;
       el('supplementList').innerHTML = entries.length
         ? entries.map(item => `<div class="supplement-row">
-            <span class="supplement-check" aria-hidden="true">✓</span>
+            <span class="supplement-check">Taken</span>
             <div><div class="supplement-name">${esc(item.name)}</div><div class="supplement-dose">${esc(item.dose)} ${esc(item.unit)} · taken</div></div>
-            <button class="icon-btn" type="button" data-supplement-key="${esc(item.key)}" aria-label="Remove ${esc(item.name)}">Undo</button>
+            <button class="row-action" type="button" data-supplement-key="${esc(item.key)}" aria-label="Remove ${esc(item.name)}">Undo</button>
           </div>`).join('')
         : '<p class="empty">No supplements recorded for this day.</p>';
 
@@ -1722,6 +1870,406 @@
         logSupplement();
       }
     }));
+
+    /* ================= Pi training agent =================
+       The model can read a server-filtered snapshot and draft structured records.
+       Only applyAgentProposal writes to localStorage, and it runs only from a human
+       click on an approval card. OpenRouter credentials never enter localStorage. */
+    const AGENT_VERIFIER_KEY = 'jt-lupe-openrouter-verifier';
+    const agentProposals = new Map();
+    const agentProposalSignatures = new Set();
+    let agentConnected = false;
+    let agentBusy = false;
+
+    const base64Url = bytes => btoa(String.fromCharCode(...bytes))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+    function setAgentStatus(stateName, label, model = '') {
+      agentConnected = stateName === 'connected';
+      el('agentConnection').dataset.state = stateName;
+      el('agentConnection').textContent = label;
+      el('agentModel').textContent = model || (stateName === 'error' ? 'Cloud agent unavailable' : 'Checking connection…');
+      el('agentConnectCard').hidden = agentConnected;
+      el('agentWorkspace').hidden = !agentConnected;
+    }
+
+    async function refreshAgentStatus() {
+      if (agentBusy) return;
+      try {
+        const response = await apiFetch(`./api/agent/status?ns=${SYNC_NS}`, { headers: { Accept: 'application/json' } });
+        if (!response.ok || isSignedOut(response)) throw new Error('unavailable');
+        const status = await response.json();
+        if (status.connected) {
+          const shortModel = status.model === 'openrouter/free'
+            ? 'Free model router · OpenRouter'
+            : status.model === 'nvidia/nemotron-3-ultra-550b-a55b:free'
+              ? 'Nemotron 3 Ultra · free fallback'
+              : `${status.model} · OpenRouter`;
+          setAgentStatus('connected', 'Connected', shortModel);
+        } else {
+          setAgentStatus('ready', 'Not connected', 'Pi agent ready · OpenRouter required');
+        }
+      } catch {
+        setAgentStatus('error', 'Cloud only', 'Open the private Worker app to use the coach');
+      }
+    }
+
+    async function beginOpenRouterConnection() {
+      if (!syncState.enabled) {
+        el('agentLiveStatus').textContent = 'Open the signed-in cloud app first.';
+        return;
+      }
+      const bytes = crypto.getRandomValues(new Uint8Array(64));
+      const verifier = base64Url(bytes);
+      const challenge = base64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
+      sessionStorage.setItem(AGENT_VERIFIER_KEY, verifier);
+      const callbackUrl = `${location.origin}${location.pathname}`;
+      const auth = new URL('https://openrouter.ai/auth');
+      auth.searchParams.set('callback_url', callbackUrl);
+      auth.searchParams.set('code_challenge', challenge);
+      auth.searchParams.set('code_challenge_method', 'S256');
+      location.assign(auth);
+    }
+
+    async function finishOpenRouterConnection() {
+      const params = new URLSearchParams(location.search);
+      const code = params.get('code');
+      if (!code) return;
+      const verifier = sessionStorage.getItem(AGENT_VERIFIER_KEY);
+      sessionStorage.removeItem(AGENT_VERIFIER_KEY);
+      history.replaceState(null, '', location.pathname);
+      setTab('agent');
+      if (!verifier) {
+        setAgentStatus('error', 'Try again', 'The secure connection session expired');
+        return;
+      }
+      agentBusy = true;
+      el('agentLiveStatus').textContent = 'Finishing the secure OpenRouter connection…';
+      try {
+        const response = await apiFetch(`./api/agent/connect?ns=${SYNC_NS}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, verifier })
+        });
+        if (!response.ok) throw new Error('connect failed');
+        el('agentLiveStatus').textContent = 'OpenRouter connected.';
+      } catch {
+        setAgentStatus('error', 'Connection failed', 'OpenRouter did not complete the connection');
+      } finally {
+        agentBusy = false;
+        await refreshAgentStatus();
+      }
+    }
+
+    function appendAgentMessage(role, text = '') {
+      const row = document.createElement('div');
+      row.className = `agent-message ${role}`;
+      row.dataset.bui = role === 'assistant' ? 'Streaming Text' : 'Chat';
+      const bubble = document.createElement('div');
+      const label = document.createElement('strong');
+      label.textContent = role === 'assistant' ? 'Training OS Coach' : 'You';
+      const copy = document.createElement('p');
+      copy.textContent = text;
+      bubble.append(label, copy);
+      row.append(bubble);
+      el('agentThread').append(row);
+      row.scrollIntoView({ block: 'nearest' });
+      return copy;
+    }
+
+    function appendAgentLoading() {
+      const row = document.createElement('details');
+      row.className = 'bui-thinking agent-loading';
+      row.dataset.bui = 'Thinking';
+      row.open = true;
+      const summary = document.createElement('summary');
+      const pixels = document.createElement('span');
+      pixels.className = 'agent-loader-grid';
+      pixels.dataset.bui = 'Loading State';
+      for (let index = 0; index < 9; index += 1) pixels.append(document.createElement('span'));
+      const label = document.createElement('span');
+      const started = performance.now();
+      label.textContent = 'Thinking · 0.0s';
+      summary.append(pixels, label);
+      const note = document.createElement('p');
+      note.textContent = 'Planning a safe response. Tool activity will appear in the conversation.';
+      row.append(summary, note);
+      el('agentThread').append(row);
+      const timer = setInterval(() => { label.textContent = `Thinking · ${((performance.now() - started) / 1000).toFixed(1)}s`; }, 100);
+      row.scrollIntoView({ block: 'nearest' });
+      return { row, timer };
+    }
+
+    function finishAgentLoading(loading) {
+      if (!loading) return;
+      clearInterval(loading.timer);
+      loading.row.remove();
+    }
+
+    function appendAgentTool(name) {
+      const chip = document.createElement('div');
+      chip.className = 'agent-tool';
+      chip.dataset.bui = 'Tool Chips';
+      chip.textContent = name === 'get_training_snapshot' ? 'Reading 60-day training context' : 'Preparing approval card';
+      el('agentThread').append(chip);
+      chip.scrollIntoView({ block: 'nearest' });
+      return chip;
+    }
+
+    function proposalSummary(proposal) {
+      if (proposal.kind === 'set') {
+        const drops = Array.isArray(proposal.drops) && proposal.drops.length
+          ? ` · then ${proposal.drops.map(drop => `${drop.reps} @ ${drop.load}`).join(', ')}` : '';
+        return `${proposal.date} · ${proposal.exerciseName} · set ${proposal.setNumber}: ${proposal.reps} reps @ ${proposal.load}${drops}`;
+      }
+      if (proposal.kind === 'meal') return `${proposal.date} · ${proposal.name} · ${proposal.protein} g protein${proposal.kcal ? ` · ${proposal.kcal} kcal` : ''}${proposal.estimate ? ' · estimate' : ''}`;
+      if (proposal.kind === 'supplement') return `${proposal.date} · ${proposal.name} · ${proposal.dose} ${proposal.unit}`;
+      if (proposal.kind === 'bodyweight') return `${proposal.date} · ${proposal.value} ${proposal.unit}`;
+      return 'Review this draft before saving.';
+    }
+
+    function proposalSignature(proposal) {
+      if (proposal.kind === 'set') return JSON.stringify(['set', proposal.date, proposal.exerciseId, proposal.setNumber, proposal.load, proposal.reps, proposal.drops || []]);
+      if (proposal.kind === 'meal') return JSON.stringify(['meal', proposal.date, proposal.name, proposal.protein, proposal.kcal || 0, proposal.estimate === true]);
+      if (proposal.kind === 'supplement') return JSON.stringify(['supplement', proposal.date, proposal.name, proposal.dose, proposal.unit]);
+      if (proposal.kind === 'bodyweight') return JSON.stringify(['bodyweight', proposal.date, proposal.value, proposal.unit]);
+      return JSON.stringify(proposal);
+    }
+
+    const formatDropEfforts = drops => Array.isArray(drops) && drops.length
+      ? drops.map(drop => `${drop.reps} @ ${drop.load}`).join(', ') : 'None';
+
+    function proposalDiffRows(proposal) {
+      const empty = 'Not logged';
+      if (proposal.kind === 'set') {
+        const current = readJSON(K.set(state.profile, proposal.date, proposal.exerciseId, Number(proposal.setNumber))) || {};
+        return [
+          ['Load', current.load ?? empty, proposal.load],
+          ['Reps', current.reps ?? empty, proposal.reps],
+          ['Lighter finish', current.load === undefined ? empty : formatDropEfforts(current.drops), formatDropEfforts(proposal.drops)]
+        ];
+      }
+      if (proposal.kind === 'bodyweight') {
+        const current = readJSON(K.bodyweight(state.profile, proposal.date));
+        return [['Bodyweight', current ? `${current.value} ${current.unit}` : empty, `${proposal.value} ${proposal.unit}`]];
+      }
+      if (proposal.kind === 'meal') {
+        return [
+          ['Meal', empty, proposal.name],
+          ['Protein', empty, `${proposal.protein} g`],
+          ['Calories', empty, proposal.kcal ? `${proposal.kcal} kcal` : 'Not provided']
+        ];
+      }
+      if (proposal.kind === 'supplement') {
+        return [
+          ['Supplement', empty, proposal.name],
+          ['Dose', empty, `${proposal.dose} ${proposal.unit}`]
+        ];
+      }
+      return [['Record', empty, proposalSummary(proposal)]];
+    }
+
+    function proposalData(proposal) {
+      const allowed = ['kind', 'date', 'exerciseId', 'exerciseName', 'setNumber', 'load', 'reps', 'drops', 'name', 'protein', 'kcal', 'estimate', 'dose', 'unit', 'value'];
+      return Object.fromEntries(allowed.filter(key => proposal[key] !== undefined).map(key => [key, proposal[key]]));
+    }
+
+    function appendAgentProposal(proposal) {
+      const signature = proposalSignature(proposal);
+      if (agentProposalSignatures.has(signature)) return;
+      agentProposalSignatures.add(signature);
+      const id = crypto.randomUUID();
+      agentProposals.set(id, proposal);
+      const card = document.createElement('div');
+      card.className = 'bui-approval-card agent-proposal';
+      card.dataset.bui = 'Approval Card';
+      const head = document.createElement('div');
+      head.className = 'component-header agent-proposal-head';
+      const title = document.createElement('strong');
+      title.textContent = `Draft ${proposal.kind || 'record'}`;
+      const badge = document.createElement('span');
+      badge.className = 'component-label';
+      badge.textContent = 'Needs approval';
+      head.append(title, badge);
+      const summary = document.createElement('p');
+      summary.textContent = proposalSummary(proposal);
+      const diff = document.createElement('table');
+      diff.className = 'bui-diff-table';
+      diff.dataset.bui = 'Diff Table';
+      diff.innerHTML = '<caption class="visually-hidden">Current and proposed values</caption><thead><tr><th scope="col">Field</th><th scope="col">Current</th><th scope="col">Proposed</th></tr></thead>';
+      const diffBody = document.createElement('tbody');
+      for (const [field, current, proposed] of proposalDiffRows(proposal)) {
+        const row = document.createElement('tr');
+        for (const [index, value] of [field, current, proposed].entries()) {
+          const cell = document.createElement(index === 0 ? 'th' : 'td');
+          if (index === 0) cell.scope = 'row';
+          cell.textContent = value;
+          row.append(cell);
+        }
+        diffBody.append(row);
+      }
+      diff.append(diffBody);
+      const structured = document.createElement('details');
+      structured.className = 'bui-code-block';
+      structured.dataset.bui = 'Code Block';
+      const structuredLabel = document.createElement('summary');
+      structuredLabel.textContent = 'Structured draft';
+      const pre = document.createElement('pre');
+      const code = document.createElement('code');
+      code.textContent = JSON.stringify(proposalData(proposal), null, 2);
+      pre.append(code);
+      structured.append(structuredLabel, pre);
+      const button = document.createElement('button');
+      button.className = 'action primary';
+      button.type = 'button';
+      button.textContent = 'Apply to my log';
+      button.addEventListener('click', () => applyAgentProposal(id, card, button, badge));
+      const skip = document.createElement('button');
+      skip.className = 'action';
+      skip.type = 'button';
+      skip.textContent = 'Skip';
+      skip.addEventListener('click', () => {
+        agentProposals.delete(id);
+        card.remove();
+        el('agentLiveStatus').textContent = 'Draft skipped. Nothing changed.';
+      });
+      const actions = document.createElement('div');
+      actions.className = 'agent-proposal-actions';
+      actions.append(skip, button);
+      card.append(head, summary, diff, structured, actions);
+      el('agentThread').append(card);
+      card.scrollIntoView({ block: 'nearest' });
+    }
+
+    function applyAgentProposal(id, card, button, badge) {
+      const proposal = agentProposals.get(id);
+      if (!proposal || card.dataset.applied === 'true') return;
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(proposal.date || '') && proposal.date <= dateKey() ? proposal.date : dateKey();
+      if (proposal.kind === 'set') {
+        writeSet(state.profile, date, String(proposal.exerciseId).slice(0, 80), Number(proposal.setNumber), {
+          load: proposal.load, reps: Math.max(0, Number(proposal.reps) || 0),
+          drops: Array.isArray(proposal.drops) ? proposal.drops.slice(0, 6).map(drop => ({ load: drop.load, reps: Math.max(1, Number(drop.reps) || 1) })) : [],
+          createdBy: 'agent-approved'
+        });
+      } else if (proposal.kind === 'meal') {
+        const key = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
+        writeJSON(K.meal(state.profile, date, key), { name: String(proposal.name).slice(0, 120), protein: Math.max(0, Number(proposal.protein) || 0), kcal: Math.max(0, Number(proposal.kcal) || 0), estimate: proposal.estimate === true, createdBy: 'agent-approved' });
+      } else if (proposal.kind === 'supplement') {
+        const key = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
+        writeJSON(K.supplement(state.profile, date, key), { name: String(proposal.name).slice(0, 100), dose: Number(proposal.dose), unit: String(proposal.unit).slice(0, 20), at: new Date().toISOString(), createdBy: 'agent-approved' });
+      } else if (proposal.kind === 'bodyweight') {
+        const unit = proposal.unit === 'kg' ? 'kg' : 'lb';
+        const value = Number(proposal.value);
+        if (!value) return;
+        writeJSON(K.bodyweight(state.profile, date), { value, unit, createdBy: 'agent-approved' });
+        if (date === dateKey()) {
+          saveData(`jt-lupe-${state.profile}-weight`, value);
+          saveData(`jt-lupe-${state.profile}-unit`, unit);
+        }
+      } else return;
+      recordActivity(state.profile, 'approved', proposal.kind, proposalSummary({ ...proposal, date }));
+      card.dataset.applied = 'true';
+      button.textContent = 'Applied';
+      button.disabled = true;
+      badge.textContent = 'Saved locally';
+      agentProposals.delete(id);
+      renderAll();
+    }
+
+    function consumeAgentEvent(event, data, responseState) {
+      if (event === 'delta') {
+        finishAgentLoading(responseState.loading);
+        responseState.loading = null;
+        if (!responseState.copy) responseState.copy = appendAgentMessage('assistant');
+        responseState.copy.textContent += data.text || '';
+        responseState.copy.closest('.agent-message').scrollIntoView({ block: 'nearest' });
+      } else if (event === 'tool') {
+        finishAgentLoading(responseState.loading);
+        responseState.loading = null;
+        responseState.tools.push(appendAgentTool(data.name));
+      } else if (event === 'proposal') {
+        finishAgentLoading(responseState.loading);
+        responseState.loading = null;
+        appendAgentProposal(data);
+      }
+      else if (event === 'status') el('agentLiveStatus').textContent = data.text || '';
+      else if (event === 'done') {
+        finishAgentLoading(responseState.loading);
+        responseState.loading = null;
+        if (responseState.copy) responseState.copy.textContent = responseState.copy.textContent.replace(/\*\*|`/g, '');
+        responseState.tools.forEach(tool => { tool.dataset.state = 'done'; });
+        el('agentLiveStatus').textContent = `Answered with ${data.model || 'OpenRouter'}.`;
+      }
+      else if (event === 'error') throw new Error(data.message || 'The coach could not answer.');
+    }
+
+    async function sendAgentMessage(prompt) {
+      if (agentBusy || !agentConnected) return;
+      const text = String(prompt || '').trim();
+      if (!text) { el('agentPrompt').focus(); return; }
+      agentBusy = true;
+      el('agentSend').disabled = true;
+      el('agentLiveStatus').textContent = 'Coach is thinking…';
+      appendAgentMessage('user', text);
+      const loading = appendAgentLoading();
+      el('agentPrompt').value = '';
+      try {
+        const response = await apiFetch(`./api/agent/chat?ns=${SYNC_NS}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+          body: JSON.stringify({ prompt: text, profile: state.profile })
+        });
+        if (response.status === 409) { await refreshAgentStatus(); throw new Error('Connect OpenRouter to continue.'); }
+        if (!response.ok || !response.body) throw new Error('The coach is unavailable right now.');
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        const responseState = { copy: null, loading, tools: [] };
+        while (true) {
+          // eslint-disable-next-line no-await-in-loop
+          const { done, value } = await reader.read();
+          buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+          const frames = buffer.split('\n\n');
+          buffer = frames.pop() || '';
+          for (const frame of frames) {
+            let event = 'message', data = null;
+            frame.split('\n').forEach(line => {
+              if (line.startsWith('event:')) event = line.slice(6).trim();
+              if (line.startsWith('data:')) { try { data = JSON.parse(line.slice(5).trim()); } catch { data = null; } }
+            });
+            if (data) consumeAgentEvent(event, data, responseState);
+          }
+          if (done) break;
+        }
+      } catch (error) {
+        finishAgentLoading(loading);
+        appendAgentMessage('assistant', String(error.message || error));
+        el('agentLiveStatus').textContent = 'Nothing was changed.';
+      } finally {
+        agentBusy = false;
+        el('agentSend').disabled = false;
+        el('agentPrompt').focus();
+      }
+    }
+
+    el('agentConnect').addEventListener('click', beginOpenRouterConnection);
+    el('agentForm').addEventListener('submit', event => { event.preventDefault(); sendAgentMessage(el('agentPrompt').value); });
+    el('agentPrompt').addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        el('agentForm').requestSubmit();
+      }
+    });
+    document.querySelectorAll('[data-agent-prompt]').forEach(button => button.addEventListener('click', () => sendAgentMessage(button.dataset.agentPrompt)));
+    el('agentReset').addEventListener('click', async () => {
+      await apiFetch(`./api/agent/reset?ns=${SYNC_NS}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+      el('agentThread').innerHTML = '<div class="agent-message assistant"><div><strong>Training OS Coach</strong><p>New conversation. What are we working on?</p></div></div>';
+      agentProposals.clear();
+      agentProposalSignatures.clear();
+      el('agentLiveStatus').textContent = 'Conversation reset.';
+    });
+    el('agentDisconnect').addEventListener('click', async () => {
+      await apiFetch(`./api/agent/disconnect?ns=${SYNC_NS}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+      await refreshAgentStatus();
+    });
 
     /* ================= progress ================= */
     function readWeightHistory(profile) {
@@ -1840,7 +2388,7 @@
           <thead><tr><th class="grow">Date</th>${HABITS.map(([, label, short]) => `<th><abbr title="${label}">${short}</abbr></th>`).join('')}<th>Hit</th></tr></thead>
           <tbody>${habits.map(row => {
             const hits = HABITS.filter(([id]) => row.marks[id]).length;
-            return `<tr><td class="grow">${row.date}</td>${HABITS.map(([id]) => `<td class="${row.marks[id] ? 'up' : 'flat'}">${row.marks[id] ? '✓' : '·'}</td>`).join('')}<td>${hits}/${HABITS.length}</td></tr>`;
+            return `<tr><td class="grow">${row.date}</td>${HABITS.map(([id]) => `<td class="${row.marks[id] ? 'up' : 'flat'}">${row.marks[id] ? 'Yes' : 'No'}</td>`).join('')}<td>${hits}/${HABITS.length}</td></tr>`;
           }).join('')}</tbody>
         </table></div>`
         : '<p class="empty">No daily fundamentals history yet.</p>';
@@ -2234,6 +2782,7 @@
 
     async function initSync() {
       await connectSync();
+      await finishOpenRouterConnection();
 
       // Attached whatever happened above. A page that started with no signal has to be
       // able to recover on its own — nobody reloads a PWA on the way out of the gym.

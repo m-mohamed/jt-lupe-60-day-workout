@@ -4,16 +4,21 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "assets": "node build-assets.mjs",
+    "predev": "npm run assets",
     "dev": "wrangler dev --persist-to ../../.wrangler-state",
+    "predeploy": "npm run assets",
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
-    "test": "node access.test.mjs",
+    "test": "node access.test.mjs && node agent-data.test.mjs",
     "stats": "wrangler d1 --help"
   },
-  "//": [
-    "Deliberately no dependencies. Run these through npx (`npx wrangler@4 deploy`)",
-    "or a global install. An in-tree node_modules sits inside the static-assets",
-    "directory, which makes `wrangler dev` watch its own install and reload forever.",
-    "The same reason the dev script parks local state outside the repository."
-  ]
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "0.84.3",
+    "@earendil-works/pi-ai": "0.84.3",
+    "agents": "0.22.0"
+  },
+  "devDependencies": {
+    "wrangler": "4.127.0"
+  }
 }

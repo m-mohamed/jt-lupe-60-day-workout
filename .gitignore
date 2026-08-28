@@ -3,3 +3,4 @@ node_modules/
 .wrangler-state/
 .dev.vars
 tools/node_modules/
+cloud/public/

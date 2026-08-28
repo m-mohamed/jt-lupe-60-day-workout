@@ -1,6 +1,8 @@
 import { identify } from './access.js';
+import { buildTrainingSnapshot } from './agent-data.js';
 
 export { UserStore } from './store.js';
+export { TrainingAgent } from './training-agent.js';
 
 /**
  * A cloud for small software, in about a hundred lines.
@@ -73,6 +75,11 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
  * getByName is the documented deterministic-routing helper: same email, same object.
  */
 const storeFor = (env, email) => env.USER_STORE.getByName(`user:${email}`);
+const agentFor = (env, email) => env.TRAINING_AGENT.getByName(`user:${email}`);
+const PROFILE_BY_EMAIL = {
+  'mohamed@mnfstlabs.com': 'lupe',
+  'abdullah@mnfstlabs.com': 'jt'
+};
 
 /**
  * Parse an untrusted sync batch into records the store can hold, or say why it
@@ -135,6 +142,32 @@ export default {
           changes: parsed.changes
         });
         return json(result);
+      }
+
+      // The browser never chooses an Agent instance. Access identity selects one
+      // private Agent, exactly like it selects the user's data store. The Worker also
+      // strips the other profile and records older than 60 days before OpenRouter sees
+      // any context.
+      if (url.pathname.startsWith('/api/agent/')) {
+        const action = url.pathname.slice('/api/agent'.length);
+        if (!['/status', '/connect', '/disconnect', '/reset', '/chat'].includes(action)) {
+          return json({ error: 'not_found' }, 404);
+        }
+        const agent = agentFor(env, identity.email);
+        let body;
+        if (request.method !== 'GET') body = await request.json().catch(() => null);
+        if (action === '/chat') {
+          const requested = body?.profile === 'jt' || body?.profile === 'lupe' ? body.profile : null;
+          const profile = PROFILE_BY_EMAIL[identity.email] || requested;
+          if (!profile) return json({ error: 'profile_required' }, 400);
+          const dump = await store.exportAll(ns);
+          body = { prompt: body?.prompt, profile, snapshot: buildTrainingSnapshot(dump, profile) };
+        }
+        return agent.fetch(new Request(`https://training-agent.internal${action}`, {
+          method: request.method,
+          headers: { 'Content-Type': 'application/json' },
+          body: request.method === 'GET' ? undefined : JSON.stringify(body || {})
+        }));
       }
 
       // Food lookup. USDA FoodData Central is public-domain government data and free;
