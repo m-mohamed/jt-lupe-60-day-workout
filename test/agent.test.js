@@ -53,6 +53,16 @@ const url = 'http://127.0.0.1:8777/';
     return { status: response.status, body: await response.json() };
   });
   test('malformed OAuth response is rejected before exchange', invalidOAuth.status === 400 && invalidOAuth.body.error === 'invalid_oauth_response', JSON.stringify(invalidOAuth));
+
+  const oversized = await page.evaluate(async () => {
+    const response = await fetch('./api/agent/chat?ns=gym', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile: 'lupe', prompt: 'x'.repeat(128 * 1024) })
+    });
+    return { status: response.status, body: await response.json() };
+  });
+  test('oversized agent body is rejected before parsing', oversized.status === 413 && oversized.body.error === 'payload_too_large',
+    JSON.stringify(oversized));
   test('Coach surface has no page errors', errors.length === 0, errors.join(' | '));
 
   console.log(JSON.stringify({ results: R }, null, 1));

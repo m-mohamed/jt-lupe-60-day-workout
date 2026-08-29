@@ -164,7 +164,7 @@ export class TrainingAgent extends CloudflareAgent {
     });
     const result = await response.json().catch(() => null);
     if (!response.ok || !result?.key) {
-      console.warn('openrouter oauth exchange failed', response.status);
+      console.warn({ event: 'openrouter_oauth_exchange_failed', status: response.status });
       return json({ error: 'openrouter_connect_failed' }, 502);
     }
     void this.sql`INSERT INTO training_credentials (provider, secret, updated)
@@ -244,7 +244,7 @@ export class TrainingAgent extends CloudflareAgent {
     const stream = new ReadableStream({ start(value) { controller = value; } });
     const send = (event, data) => controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
 
-    (async () => {
+    const completion = (async () => {
       try {
         send('meta', {
           model: policy.primaryModel,
@@ -270,7 +270,8 @@ export class TrainingAgent extends CloudflareAgent {
           });
         } catch (primaryError) {
           if (!policy.fallbackModel || primaryEmitted) throw primaryError;
-          console.warn('OpenRouter primary failed before output; using configured fallback', String(primaryError));
+          console.warn({ event: 'openrouter_primary_failed', fallback: policy.fallbackModel,
+            error: primaryError instanceof Error ? { name: primaryError.name, message: primaryError.message } : String(primaryError) });
           send('status', { text: 'Primary model unavailable. Switching to the fallback.' });
           result = await this.#runModel({
             modelId: policy.fallbackModel,
@@ -286,12 +287,14 @@ export class TrainingAgent extends CloudflareAgent {
         this.#remember('assistant', result.answer);
         send('done', result);
       } catch (error) {
-        console.error('training agent chat failed', error);
+        console.error({ event: 'training_agent_chat_failed',
+          error: error instanceof Error ? { name: error.name, message: error.message } : String(error) });
         send('error', { error: 'agent_failed', message: 'The coach could not answer right now. Your logs were not changed.' });
       } finally {
         controller.close();
       }
     })();
+    this.ctx.waitUntil(completion);
 
     return new Response(stream, {
       headers: {

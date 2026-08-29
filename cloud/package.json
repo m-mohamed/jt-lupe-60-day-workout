@@ -14,11 +14,11 @@
     "stats": "wrangler d1 --help"
   },
   "dependencies": {
-    "@earendil-works/pi-agent-core": "0.84.3",
-    "@earendil-works/pi-ai": "0.84.3",
+    "@earendil-works/pi-agent-core": "0.84.4",
+    "@earendil-works/pi-ai": "0.84.4",
     "agents": "0.22.0"
   },
   "devDependencies": {
-    "wrangler": "4.127.0"
+    "wrangler": "4.127.1"
   }
 }

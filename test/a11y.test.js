@@ -97,11 +97,21 @@ const AUDIT = () => {
   }
 
   const unnamed = [];
+  const unidentifiedFields = [];
+  const smallInputText = [];
   for (const node of document.querySelectorAll('button, input, select, textarea, [role="tab"]')) {
     if (!shown(node) || node.classList.contains('visually-hidden')) continue;
     const name = node.getAttribute('aria-label') || node.getAttribute('title') || node.textContent.trim()
       || (node.labels && node.labels.length ? [...node.labels].map(l => l.textContent.trim()).join(' ') : '');
     if (!name) unnamed.push({ tag: node.tagName.toLowerCase(), id: node.id || node.className.toString().slice(0, 24) });
+    if (node.matches('input, select, textarea') && !node.id && !node.getAttribute('name')) {
+      unidentifiedFields.push({ tag: node.tagName.toLowerCase(), className: node.className.toString().slice(0, 24) });
+    }
+    if (node.matches('input:not([type="checkbox"]):not([type="radio"]), select, textarea')
+        && parseFloat(getComputedStyle(node).fontSize) < 16) {
+      smallInputText.push({ tag: node.tagName.toLowerCase(), id: node.id || node.className.toString().slice(0, 24),
+        fontSize: getComputedStyle(node).fontSize });
+    }
   }
 
   const unfocusable = [];
@@ -116,7 +126,7 @@ const AUDIT = () => {
   }
 
   return {
-    contrastFailures, smallTargets, unnamed, unfocusable,
+    contrastFailures, smallTargets, unnamed, unidentifiedFields, smallInputText, unfocusable,
     h1: document.querySelectorAll('h1').length,
     tabsWired: [...document.querySelectorAll('[role="tab"]')].every(tab => tab.hasAttribute('aria-selected')),
     panels: document.querySelectorAll('[role="tabpanel"]').length,
@@ -159,11 +169,26 @@ const AUDIT = () => {
         JSON.stringify(audit.smallTargets.slice(0, 4)));
       t(`${scheme}/${tab}: every control has a name`, audit.unnamed.length === 0,
         JSON.stringify(audit.unnamed.slice(0, 4)));
+      t(`${scheme}/${tab}: every form field has a stable identity`, audit.unidentifiedFields.length === 0,
+        JSON.stringify(audit.unidentifiedFields.slice(0, 4)));
+      t(`${scheme}/${tab}: text inputs avoid iOS focus zoom`, audit.smallInputText.length === 0,
+        JSON.stringify(audit.smallInputText.slice(0, 4)));
       t(`${scheme}/${tab}: every button shows focus`, audit.unfocusable.length === 0,
         JSON.stringify(audit.unfocusable.slice(0, 4)));
       t(`${scheme}/${tab}: no horizontal overflow`, !audit.overflows,
         `${audit.scrollWidth}/${audit.viewportWidth}`);
     }
+    await p.evaluate(() => setTab('train'));
+    const longNameOverflows = await p.evaluate(() => {
+      const name = document.querySelector('.exercise-name');
+      const textNode = [...name.childNodes].find(node => node.nodeType === Node.TEXT_NODE);
+      const original = textNode.textContent;
+      textNode.textContent = 'W'.repeat(160);
+      const overflow = document.documentElement.scrollWidth > window.innerWidth + 1;
+      textNode.textContent = original;
+      return overflow;
+    });
+    t(`${scheme}: long exercise names wrap without widening the page`, !longNameOverflows);
     const first = findings.find(f => f.scheme === scheme);
     t(`${scheme}: exactly one H1`, first.h1 === 1, String(first.h1));
     t(`${scheme}: tabs and panels wired`, first.tabsWired && first.panels === 5,

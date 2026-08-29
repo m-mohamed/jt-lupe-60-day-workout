@@ -100,7 +100,8 @@ const url = 'http://127.0.0.1:8777/';
     JSON.stringify({ sessions: render.sessions, sets: render.sets, seeded: seeded.sets }));
 
   /* ---------- a second device must converge on the same data ---------- */
-  const p2 = await ctx.newPage();
+  const ctx2 = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const p2 = await ctx2.newPage();
   const errors2 = []; p2.on('pageerror', e => errors2.push(String(e)));
   await p2.goto(url); await settle(p2);
   await p2.waitForFunction(() => Object.keys(localStorage).filter(k => k.startsWith('jt-lupe:')).length > 1500,
@@ -145,18 +146,23 @@ const url = 'http://127.0.0.1:8777/';
     return {
       tooMany: await post({ changes: Array.from({ length: 2001 }, (_, i) => ({ key: `k${i}`, value: 'x' })) }),
       hugeValue: await post({ changes: [{ key: 'big', value: 'x'.repeat(70000) }] }),
+      multibyteValue: await post({ changes: [{ key: 'multibyte', value: 'é'.repeat(40000) }] }),
       longKey: await post({ changes: ['k'.repeat(300)].map(k => ({ key: k, value: 'x' })) }),
       noKey: await post({ changes: [{ value: 'x' }] }),
       notArray: await post({ changes: 'nope' }),
+      oversizedBody: await post({ changes: [], padding: 'x'.repeat(2 * 1024 * 1024) }),
       badNs: await fetch('./api/sync?ns=../evil', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"changes":[]}' }).then(r => r.status),
       badJson: await fetch('./api/sync?ns=gym', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'not json' }).then(r => r.status)
     };
   });
   t('over-large batch rejected', limits.tooMany.status === 400 && /too many/.test(limits.tooMany.body.detail || ''), JSON.stringify(limits.tooMany.body));
   t('oversized value rejected', limits.hugeValue.status === 400, JSON.stringify(limits.hugeValue.body));
+  t('value limit measures UTF-8 bytes', limits.multibyteValue.status === 400, JSON.stringify(limits.multibyteValue.body));
   t('over-long key rejected', limits.longKey.status === 400, JSON.stringify(limits.longKey.body));
   t('keyless change rejected', limits.noKey.status === 400, JSON.stringify(limits.noKey.body));
   t('non-array changes rejected', limits.notArray.status === 400, JSON.stringify(limits.notArray.body));
+  t('oversized sync body rejected before parsing', limits.oversizedBody.status === 413 && limits.oversizedBody.body.error === 'payload_too_large',
+    JSON.stringify(limits.oversizedBody));
   t('path-traversal namespace rejected', limits.badNs === 400, String(limits.badNs));
   t('malformed JSON rejected', limits.badJson === 400, String(limits.badJson));
 
@@ -195,6 +201,7 @@ const url = 'http://127.0.0.1:8777/';
   t('no page errors on either device', errors.length === 0 && errors2.length === 0, [...errors, ...errors2].join(' | '));
 
   console.log(JSON.stringify({ results: R }, null, 1));
+  await ctx2.close();
   await b.close();
   process.exit(R.some(x => x.startsWith('FAIL')) ? 1 : 0);
 })();

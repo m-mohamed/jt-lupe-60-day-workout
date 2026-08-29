@@ -118,7 +118,8 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   t('queue flushes on reconnect', on.has && on.dirty===0, JSON.stringify(on));
 
   // second device converges
-  const p2 = await ctx.newPage();
+  const ctx2 = await b.newContext({viewport:{width:390,height:844}});
+  const p2 = await ctx2.newPage();
   await p2.goto('http://127.0.0.1:8777/'); await settle(p2); await p2.waitForTimeout(2500);
   r = await p2.evaluate(()=>{ const s=setsFor(state.profile,'2026-09-02','leg-press'); return s.length?s[0].load:null; });
   t('second device sees the write', r===999, String(r));
@@ -134,6 +135,7 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
 
   t('no page errors', errors.length===0, errors.slice(0,2).join(' | '));
   console.log(JSON.stringify({results:R}, null, 1));
+  await ctx2.close();
   await b.close();
   // Non-zero on a failed check, not just on an exception. Without this the suite
   // exited 0 with FAIL lines in its output and the runner called it green.

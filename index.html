@@ -1270,20 +1270,20 @@
             <legend class="set-number">Set ${n}</legend>
             <div class="set-main">
               <label class="set-field">Weight
-                <input type="text" class="in-load" data-ex="${ex.id}" data-set="${n}" value="${esc(set.load ?? '')}" inputmode="decimal" placeholder="BW or weight" aria-label="Set ${n} weight for ${esc(ex.label)}">
+                <input type="text" class="in-load" name="set-${esc(ex.id)}-${n}-load" data-ex="${ex.id}" data-set="${n}" value="${esc(set.load ?? '')}" inputmode="decimal" placeholder="BW or weight" aria-label="Set ${n} weight for ${esc(ex.label)}">
               </label>
               <label class="set-field">${amountLabel}
-                <input type="number" class="in-reps" data-ex="${ex.id}" data-set="${n}" value="${esc(amount)}" min="0" max="999" inputmode="numeric" placeholder="—" aria-label="Set ${n} ${amountLabel.toLowerCase()} for ${esc(ex.label)}">
+                <input type="number" class="in-reps" name="set-${esc(ex.id)}-${n}-${amountLabel.toLowerCase()}" data-ex="${ex.id}" data-set="${n}" value="${esc(amount)}" min="0" max="999" inputmode="numeric" placeholder="—" aria-label="Set ${n} ${amountLabel.toLowerCase()} for ${esc(ex.label)}">
               </label>
             </div>
             <details class="set-adjustment" ${hasDrop ? 'open' : ''}>
               <summary>Drop / assisted reps</summary>
               <div class="drop-grid">
                 <label class="set-field">Finish weight
-                  <input type="text" class="in-drop-load" data-ex="${ex.id}" data-set="${n}" value="${esc(drop.load ?? '')}" inputmode="decimal" placeholder="Lower or assisted" aria-label="Set ${n} finish weight for ${esc(ex.label)}">
+                  <input type="text" class="in-drop-load" name="set-${esc(ex.id)}-${n}-finish-load" data-ex="${ex.id}" data-set="${n}" value="${esc(drop.load ?? '')}" inputmode="decimal" placeholder="Lower or assisted" aria-label="Set ${n} finish weight for ${esc(ex.label)}">
                 </label>
                 <label class="set-field">Finish ${amountLabel}
-                  <input type="number" class="in-drop-reps" data-ex="${ex.id}" data-set="${n}" value="${esc(dropAmount)}" min="0" max="999" inputmode="numeric" placeholder="—" aria-label="Set ${n} finish ${amountLabel.toLowerCase()} for ${esc(ex.label)}">
+                  <input type="number" class="in-drop-reps" name="set-${esc(ex.id)}-${n}-finish-${amountLabel.toLowerCase()}" data-ex="${ex.id}" data-set="${n}" value="${esc(dropAmount)}" min="0" max="999" inputmode="numeric" placeholder="—" aria-label="Set ${n} finish ${amountLabel.toLowerCase()} for ${esc(ex.label)}">
                 </label>
               </div>
               <p>Example: 6 reps at the working weight, then 4 lighter or assisted reps.</p>
@@ -1295,7 +1295,7 @@
             <div class="exercise-top">
               <div class="exercise-name">${esc(ex.label)}<p class="target">${target}</p></div>
               <label class="tick" title="Done">
-                <input type="checkbox" class="in-done" data-ex="${ex.id}" ${sets.length ? 'checked' : ''} aria-label="Mark ${esc(ex.label)} done">
+                <input type="checkbox" class="in-done" name="exercise-${esc(ex.id)}-done" data-ex="${ex.id}" ${sets.length ? 'checked' : ''} aria-label="Mark ${esc(ex.label)} done">
               </label>
             </div>
             <p class="coach" data-kind="${coach.kind}">${esc(coach.text)}</p>

@@ -16,7 +16,10 @@ export { TrainingAgent } from './training-agent.js';
 const MAX_CHANGES = 2000;
 const MAX_KEY = 256;
 const MAX_VALUE = 64 * 1024;
+const MAX_SYNC_BODY = 2 * 1024 * 1024;
+const MAX_AGENT_BODY = 128 * 1024;
 const NS_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/;
+const UTF8 = new TextEncoder();
 
 // FoodData Central has branded Whole Foods products, but it does not have a stable
 // "Whole Foods Hot Bar" menu. Searching that phrase currently returns unrelated
@@ -70,6 +73,48 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
   }
 });
 
+async function readJson(request, maxBytes) {
+  const declared = request.headers.get('Content-Length');
+  const declaredBytes = declared === null ? null : Number(declared);
+  if (declaredBytes !== null && Number.isFinite(declaredBytes) && declaredBytes > maxBytes) {
+    return { error: 'payload_too_large', status: 413 };
+  }
+  if (!request.body) return { error: 'bad_json', status: 400 };
+
+  const reader = request.body.getReader();
+  const chunks = [];
+  let bytes = 0;
+  try {
+    // A request body is one ordered byte stream. Read it sequentially so the byte
+    // ceiling can stop the stream before the next chunk is retained.
+    /* eslint-disable no-await-in-loop */
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maxBytes) {
+        await reader.cancel();
+        return { error: 'payload_too_large', status: 413 };
+      }
+      chunks.push(value);
+    }
+    /* eslint-enable no-await-in-loop */
+    const joined = new Uint8Array(bytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      joined.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    const body = JSON.parse(new TextDecoder().decode(joined));
+    if (body === null || Array.isArray(body) || Object.prototype.toString.call(body) !== '[object Object]') {
+      return { error: 'bad_json', status: 400 };
+    }
+    return { body };
+  } catch {
+    return { error: 'bad_json', status: 400 };
+  }
+}
+
 /**
  * Per-user object derived from the verified email, so identity picks the database.
  * getByName is the documented deterministic-routing helper: same email, same object.
@@ -98,7 +143,7 @@ function parseChanges(raw) {
 
     const deleted = Boolean(entry.deleted);
     const value = deleted ? null : String(entry.value ?? '');
-    if (value !== null && value.length > MAX_VALUE) {
+    if (value !== null && UTF8.encode(value).byteLength > MAX_VALUE) {
       return { error: `value too large for "${key}" (max ${MAX_VALUE} bytes)` };
     }
     changes.push({ key, value, deleted });
@@ -129,9 +174,9 @@ export default {
       }
 
       if (url.pathname === '/api/sync' && request.method === 'POST') {
-        const body = await request.json().catch(() => null);
-        if (!body) return json({ error: 'bad_json' }, 400);
-
+        const parsedBody = await readJson(request, MAX_SYNC_BODY);
+        if (parsedBody.error) return json({ error: parsedBody.error }, parsedBody.status);
+        const body = parsedBody.body;
         const parsed = parseChanges(body.changes || []);
         if (parsed.error) return json({ error: 'bad_changes', detail: parsed.error }, 400);
 
@@ -155,7 +200,11 @@ export default {
         }
         const agent = agentFor(env, identity.email);
         let body;
-        if (request.method !== 'GET') body = await request.json().catch(() => null);
+        if (request.method !== 'GET') {
+          const parsedBody = await readJson(request, MAX_AGENT_BODY);
+          if (parsedBody.error) return json({ error: parsedBody.error }, parsedBody.status);
+          body = parsedBody.body;
+        }
         if (action === '/chat') {
           const requested = body?.profile === 'jt' || body?.profile === 'lupe' ? body.profile : null;
           const profile = PROFILE_BY_EMAIL[identity.email] || requested;
@@ -252,7 +301,8 @@ export default {
 
       return json({ error: 'not_found' }, 404);
     } catch (error) {
-      console.error('api error', url.pathname, error);
+      console.error({ event: 'api_error', path: url.pathname,
+        error: error instanceof Error ? { name: error.name, message: error.message } : String(error) });
       return json({ error: 'server_error' }, 500);
     }
   }

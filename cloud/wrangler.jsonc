@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "jt-lupe-workout",
   "main": "src/index.js",
-  "compatibility_date": "2026-08-12",
+  "compatibility_date": "2026-08-28",
   "compatibility_flags": ["nodejs_compat"],
 
   // `npm run assets` copies only the five public PWA files from the repository root
@@ -26,7 +26,11 @@
     { "tag": "v2", "new_sqlite_classes": ["TrainingAgent"] }
   ],
 
-  "observability": { "enabled": true },
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": true, "persist": true },
+    "traces": { "enabled": true, "head_sampling_rate": 0.1, "persist": true }
+  },
 
   "vars": {
     // Filled in after Access is enabled — see cloud/README.md.

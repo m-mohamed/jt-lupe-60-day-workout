@@ -98,7 +98,8 @@ export async function identify(request, env) {
     // reaches the Worker has authenticated once — the value here is turning a silent
     // "No account" into something diagnosable from `wrangler tail`.
     const reject = reason => {
-      console.warn('access rejected:', reason, '| iss:', claims.issuer, '| aud count:', claims.audience.length);
+      console.warn({ event: 'access_rejected', reason, issuer: claims.issuer,
+        audienceCount: claims.audience.length });
       return null;
     };
 
@@ -112,7 +113,8 @@ export async function identify(request, env) {
 
     return { email: claims.email };
   } catch (error) {
-    console.warn('access verification threw:', String(error));
+    console.warn({ event: 'access_verification_failed',
+      error: error instanceof Error ? { name: error.name, message: error.message } : String(error) });
     return null;
   }
 }

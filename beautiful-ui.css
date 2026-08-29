@@ -249,7 +249,7 @@ textarea { resize: vertical; }
 .exercise:last-child { border-bottom: 0; }
 .exercise[data-done="true"] .exercise-name::after { color: var(--success); content: "Recorded"; float: right; font-size: 10px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
 .exercise-top { display: flex; align-items: flex-start; gap: 14px; }
-.exercise-name { flex: 1; min-width: 0; font-size: 16px; font-weight: 690; }
+.exercise-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 16px; font-weight: 690; }
 .target { margin: 4px 0 0; color: var(--text-faint); font: 540 11px/1.4 ui-monospace, "SFMono-Regular", Consolas, monospace; }
 .coach { margin: 12px 0 0; padding: 0 0 0 11px; border-left: 2px solid var(--accent); color: var(--text-soft); font-size: 12px; }
 .coach[data-kind="hold"] { border-left-color: var(--line-strong); }
