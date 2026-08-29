@@ -33,3 +33,30 @@ export function applyOpenRouterPrivacy(payload, requireZdr = false) {
     provider
   };
 }
+
+/** Preserve useful OpenRouter failure semantics without exposing provider internals. */
+export function classifyAgentFailure(error) {
+  const message = String(error instanceof Error ? error.message : error || '').toLowerCase();
+  if (/\b429\b|rate.?limit|too many requests/.test(message)) {
+    return {
+      error: 'rate_limited',
+      message: 'The free-model limit is busy or exhausted. Try again in a few minutes. Your logs were not changed.'
+    };
+  }
+  if (/timed? out|timeout|deadline|aborted?/.test(message)) {
+    return {
+      error: 'model_timeout',
+      message: 'The coach took too long to answer. Try again. Your logs were not changed.'
+    };
+  }
+  if (/no eligible|model.+unavailable|model.+not found|no provider|\b404\b/.test(message)) {
+    return {
+      error: 'model_unavailable',
+      message: 'No compatible free model is available right now. Try again later. Your logs were not changed.'
+    };
+  }
+  return {
+    error: 'agent_failed',
+    message: 'The coach could not answer right now. Your logs were not changed.'
+  };
+}

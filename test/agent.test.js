@@ -19,19 +19,35 @@ const url = 'http://127.0.0.1:8777/';
     panels: document.querySelectorAll('[role="tabpanel"]').length,
     selected: document.querySelector('[data-tab="agent"]').getAttribute('aria-selected'),
     status: document.querySelector('#agentConnection').textContent,
-    connectVisible: !document.querySelector('#agentConnectCard').hidden,
-    workspaceHidden: document.querySelector('#agentWorkspace').hidden
+    connectControlPresent: Boolean(document.querySelector('#agentConnectCard, #agentConnect')),
+    workspaceHidden: document.querySelector('#agentWorkspace').hidden,
+    sendDisabled: document.querySelector('#agentSend').disabled,
+    suggestionButtons: document.querySelectorAll('[data-agent-prompt]').length
   }));
   test('Coach is a wired fifth panel', surface.panels === 5 && surface.selected === 'true', JSON.stringify(surface));
-  test('disconnected Coach shows OAuth setup', surface.status === 'Not connected' && surface.connectVisible && surface.workspaceHidden, JSON.stringify(surface));
+  test('Coach never asks either user to connect a model account',
+    surface.status === 'Unavailable' && !surface.connectControlPresent && !surface.workspaceHidden
+      && surface.sendDisabled && surface.suggestionButtons === 0,
+    JSON.stringify(surface));
 
   const status = await page.evaluate(async () => {
     const response = await fetch('./api/agent/status?ns=gym');
     return { status: response.status, body: await response.json() };
   });
-  test('private agent status route responds', status.status === 200 && status.body.connected === false, JSON.stringify(status));
+  test('private agent status route reports workspace configuration without a user connection step',
+    status.status === 200 && status.body.connected === false && status.body.requiresUserConnection === false,
+    JSON.stringify(status));
   test('free router delegates selection without forcing a fixed model',
     status.body.model === 'openrouter/free' && status.body.fallback === null, JSON.stringify(status.body));
+  test('status advertises every approval-only record action',
+    JSON.stringify(status.body.capabilities?.proposalTypes) === JSON.stringify(['set', 'meal', 'supplement', 'bodyweight', 'habit', 'removal']),
+    JSON.stringify(status.body.capabilities));
+  test('status advertises safe UI-driving actions separately from record writes',
+    JSON.stringify(status.body.capabilities?.uiActionTypes) === JSON.stringify(['navigate', 'interface']),
+    JSON.stringify(status.body.capabilities));
+  test('status advertises the same food catalog available in the direct UI',
+    status.body.capabilities?.readTools?.includes('food_catalog') === true,
+    JSON.stringify(status.body.capabilities));
   test('OpenRouter privacy routing is explicit',
     status.body.privacy?.dataCollection === 'deny' && status.body.privacy?.zeroDataRetention === false,
     JSON.stringify(status.body.privacy));
@@ -43,16 +59,18 @@ const url = 'http://127.0.0.1:8777/';
     });
     return { status: response.status, body: await response.json() };
   });
-  test('chat stays closed until OpenRouter is connected', chat.status === 409 && chat.body.error === 'openrouter_not_connected', JSON.stringify(chat));
+  test('missing workspace configuration is an unavailable service, not an account prompt',
+    chat.status === 503 && chat.body.error === 'coach_unavailable', JSON.stringify(chat));
 
-  const invalidOAuth = await page.evaluate(async () => {
+  const removedOAuth = await page.evaluate(async () => {
     const response = await fetch('./api/agent/connect?ns=gym', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: 'x', verifier: 'short' })
     });
     return { status: response.status, body: await response.json() };
   });
-  test('malformed OAuth response is rejected before exchange', invalidOAuth.status === 400 && invalidOAuth.body.error === 'invalid_oauth_response', JSON.stringify(invalidOAuth));
+  test('legacy personal OpenRouter connection endpoint is removed',
+    removedOAuth.status === 404 && removedOAuth.body.error === 'not_found', JSON.stringify(removedOAuth));
 
   const oversized = await page.evaluate(async () => {
     const response = await fetch('./api/agent/chat?ns=gym', {

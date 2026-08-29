@@ -47,14 +47,14 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
 
   // now log a fresh session with a real set count
   const fresh = await p.evaluate(() => {
-    state.date = '2026-08-24'; state.profile='lupe'; renderSession();
+    state.date = '2026-08-31'; state.profile='lupe'; renderSession();
     const card = document.querySelectorAll('.exercise')[0];   // Monday: lat pulldown
     card.querySelectorAll('.set-row').forEach(row => {
       row.querySelector('.in-load').value = '140';
       row.querySelector('.in-reps').value = '10';
     });
     card.querySelector('.in-reps').dispatchEvent(new Event('change'));
-    return Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-24:')).toSorted();
+    return Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-31:')).toSorted();
   });
   t('THREE sets stored for "3 sets of 10"', fresh.length === 3, JSON.stringify(fresh));
 
@@ -65,17 +65,19 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   t('coach reads all sets', /140×10, 140×10, 140×10/.test(coach), coach);
 
   const nav = await p.evaluate(() => {
-    state.date = '2026-08-25'; renderSession();
+    state.date = '2026-09-01'; renderSession();
     document.getElementById('prevDay').click();
     return { title: document.getElementById('sessionTitle').innerText,
              flag: document.getElementById('backfillFlag').innerText,
-             day: document.getElementById('challengeLine').innerText };
+             day: document.getElementById('challengeLine').innerText,
+             today: dateKey() };
   });
-  t('navigates by date', /Monday/.test(nav.title) && /DAY 8 OF 60/i.test(nav.day), JSON.stringify(nav));
-  // The flag has to name the day being logged and say it is not today. Asserting the
-  // literal word "Yesterday" only held on the day this was written.
-  t('backfill flag names the date and denies it is today',
-    /Catching up/i.test(nav.flag) && /Monday/i.test(nav.flag) && /Not today/i.test(nav.flag), nav.flag);
+  t('navigates to the official Day 1', /Monday/.test(nav.title) && /DAY 1 OF 60/i.test(nav.day), JSON.stringify(nav));
+  const dayOneIsFuture = '2026-08-31' > nav.today;
+  t('Day 1 is labelled planned before launch and backfilled after launch',
+    /Monday/i.test(nav.flag) && (dayOneIsFuture
+      ? /Planned for/i.test(nav.flag) && !/Catching up|Not today/i.test(nav.flag)
+      : /Catching up|Not today/i.test(nav.flag)), nav.flag);
 
   const prog = await p.evaluate(() => { setTab('progress'); renderProgress();
     return { sets: document.getElementById('statLifts').textContent,

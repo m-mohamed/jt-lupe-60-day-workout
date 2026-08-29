@@ -10,7 +10,7 @@
     "predeploy": "npm run assets",
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
-    "test": "node access.test.mjs && node agent-data.test.mjs && node agent-policy.test.mjs",
+    "test": "node access.test.mjs && node agent-store-query.test.mjs && node agent-data.test.mjs && node agent-policy.test.mjs && node food-catalog.test.mjs && node agent-tools.test.mjs && node agent-routing.test.mjs && node agent-runtime.test.mjs && node agent-migration.test.mjs",
     "stats": "wrangler d1 --help"
   },
   "dependencies": {

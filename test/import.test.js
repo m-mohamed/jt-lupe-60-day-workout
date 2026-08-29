@@ -23,10 +23,10 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
 
   const stored = await p.evaluate(()=>{
     document.getElementById('importApply').click();
-    const keys = Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-17:')).toSorted();
+    const keys = Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-31:')).toSorted();
     return { keys, seated: keys.filter(k=>k.includes('seated-row')).length,
              pulldown: keys.filter(k=>k.includes('lat-pulldown')).length,
-             core: localStorage.getItem('jt-lupe:jt:set:2026-08-17:hanging-knee-raise:1') };
+             core: localStorage.getItem('jt-lupe:jt:set:2026-08-31:hanging-knee-raise:1') };
   });
   t('Seated row stored as THREE sets', stored.seated === 3, String(stored.seated));
   t('Pulldown stored as THREE sets', stored.pulldown === 3, String(stored.pulldown));

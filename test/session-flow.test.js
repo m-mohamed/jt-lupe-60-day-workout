@@ -13,6 +13,8 @@ const key = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')
 const now = new Date();
 const TODAY = key(now);
 const YESTERDAY = key(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+const OFFICIAL_START = '2026-08-31';
+const EXPECTED_OPEN_DATE = TODAY < OFFICIAL_START ? OFFICIAL_START : TODAY;
 
 (async () => {
   const b = await chromium.launch(launchOptions());
@@ -33,16 +35,46 @@ const YESTERDAY = key(new Date(now.getFullYear(), now.getMonth(), now.getDate() 
     date: state.date,
     title: document.getElementById('sessionTitle').textContent,
     day: document.getElementById('challengeLine').textContent,
-    flagged: !document.getElementById('backfillFlag').hidden
+    flagged: !document.getElementById('backfillFlag').hidden,
+    flag: document.getElementById('backfillFlag').textContent
   }));
-  // The invariant is that it opens on the real calendar date and does not claim to be
-  // catching up. Monday, Wednesday and Friday are sessions; other dates say recovery.
-  t('opens on today, not flagged as catching up',
-    r.date === TODAY && Boolean(r.title.trim()) && !r.flagged, JSON.stringify(r));
-  t('the day counter names a day of the challenge', /day \d+ of 60|starts in|complete/i.test(r.day), r.day);
+  // Before launch, Workout previews planned Day 1. From launch onward it resumes the
+  // real/saved training date. Food and Supplements remain independently dated today.
+  t('Workout opens on planned Day 1 before launch, then the active calendar date',
+    r.date === EXPECTED_OPEN_DATE && Boolean(r.title.trim())
+      && (TODAY < OFFICIAL_START ? r.flagged && /Planned for Monday/i.test(r.flag) : !r.flagged),
+    JSON.stringify(r));
+  t('the day counter names the official challenge state', /day \d+ of 60|starts Monday|complete/i.test(r.day), r.day);
+
+  const officialDates = await p.evaluate(() => {
+    state.date = shiftDate(dateKey(), 1); renderSession();
+    return {
+      start: challengeDay('2026-08-31'),
+      end: challengeDay('2026-10-29'),
+      before: challengeDay('2026-08-30'),
+      openingWeek: ['2026-08-31', '2026-09-02', '2026-09-04'].map(date => dayForDate(date).label),
+      futureFlag: document.getElementById('backfillFlag').textContent
+    };
+  });
+  t('August 31 is Day 1 and October 29 is Day 60',
+    officialDates.start === 1 && officialDates.end === 60 && officialDates.before === 0
+      && officialDates.openingWeek.join(',') === 'Monday,Wednesday,Friday',
+    JSON.stringify(officialDates));
+  t('a future workout is labelled planned, never backfilled',
+    officialDates.futureFlag.startsWith('Planned for ') && !/Catching up|Not today/.test(officialDates.futureFlag),
+    officialDates.futureFlag);
+
+  // A first-use recommendation must tell the person exactly what "2 reps in
+  // reserve" means. The old "First time: pick a weight you could manage about…"
+  // sentence was vague and repeated internal coach logic verbatim.
+  await p.evaluate(() => { state.date = '2026-08-31'; renderSession(); });
+  const firstUseCopy = await p.locator('.coach').first().innerText();
+  t('first-use weight guidance is direct and actionable',
+    firstUseCopy.startsWith('No history yet.') && /clean reps/.test(firstUseCopy) && /2 reps in reserve/.test(firstUseCopy)
+      && !/First time|manage about/i.test(firstUseCopy), firstUseCopy);
 
   // --- log each set at the weight actually used, including one in-set drop ---
-  const TRAINING_DATE = '2026-08-24'; // Monday
+  const TRAINING_DATE = '2026-08-31'; // official Day 1, Monday
   await p.evaluate(date => { state.date = date; renderSession(); }, TRAINING_DATE);
   const card = p.locator('.exercise').first();
   const id = await card.locator('.in-load').first().getAttribute('data-ex');

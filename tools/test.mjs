@@ -21,7 +21,9 @@ const TEST_STATE = mkdtempSync(resolve(tmpdir(), 'jt-lupe-test-'));
 // wrong silently.
 const SUITES = [
   { file: 'a11y.test.js', port: STATIC_PORT },
+  { file: 'responsive.test.js', port: STATIC_PORT },
   { file: 'catalog.test.js', port: STATIC_PORT },
+  { file: 'agent-parity.test.js', port: STATIC_PORT },
   { file: 'human-interaction.test.js', port: STATIC_PORT },
   { file: 'session-flow.test.js', port: STATIC_PORT },
   { file: 'supplements.test.js', port: STATIC_PORT },
@@ -113,8 +115,14 @@ const run = (label, command, args, options = {}) => {
 const results = [];
 results.push(run('lint', process.execPath, [resolve(here, 'lint.mjs')], { cwd: here }));
 results.push(run('access (jwt)', process.execPath, ['access.test.mjs'], { cwd: resolve(repo, 'cloud') }));
+results.push(run('agent storage query', process.execPath, ['agent-store-query.test.mjs'], { cwd: resolve(repo, 'cloud') }));
 results.push(run('agent data', process.execPath, ['agent-data.test.mjs'], { cwd: resolve(repo, 'cloud') }));
 results.push(run('agent policy', process.execPath, ['agent-policy.test.mjs'], { cwd: resolve(repo, 'cloud') }));
+results.push(run('food catalog', process.execPath, ['food-catalog.test.mjs'], { cwd: resolve(repo, 'cloud') }));
+results.push(run('agent tools', process.execPath, ['agent-tools.test.mjs'], { cwd: resolve(repo, 'cloud') }));
+results.push(run('agent routing', process.execPath, ['agent-routing.test.mjs'], { cwd: resolve(repo, 'cloud') }));
+results.push(run('agent runtime', process.execPath, ['agent-runtime.test.mjs'], { cwd: resolve(repo, 'cloud') }));
+results.push(run('agent migration', process.execPath, ['agent-migration.test.mjs'], { cwd: resolve(repo, 'cloud') }));
 for (const suite of SUITES) {
   results.push(run(suite.file.replace('.test.js', ''), process.execPath, [resolve(repo, 'test', suite.file)],
     { env: { ...process.env, NODE_PATH: playwright } }));

@@ -116,7 +116,7 @@ const AUDIT = () => {
 
   const unfocusable = [];
   for (const node of document.querySelectorAll('button, [role="tab"]')) {
-    if (!shown(node)) continue;
+    if (!shown(node) || node.disabled) continue;
     node.focus();
     const style = getComputedStyle(node);
     const ring = style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0;
@@ -177,6 +177,25 @@ const AUDIT = () => {
         JSON.stringify(audit.unfocusable.slice(0, 4)));
       t(`${scheme}/${tab}: no horizontal overflow`, !audit.overflows,
         `${audit.scrollWidth}/${audit.viewportWidth}`);
+      const criticalCopy = await p.evaluate(() => [...document.querySelectorAll(
+        '.session-now strong, .session-now span, .set-number, .insight-summary strong'
+      )].filter(node => {
+        const box = node.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && (node.scrollWidth > node.clientWidth || node.scrollHeight > node.clientHeight);
+      }).map(node => ({ text: node.textContent.trim().slice(0, 60), client: [node.clientWidth, node.clientHeight], scroll: [node.scrollWidth, node.scrollHeight] })));
+      t(`${scheme}/${tab}: essential copy is not clipped or truncated`, criticalCopy.length === 0,
+        JSON.stringify(criticalCopy.slice(0, 4)));
+      if (tab === 'train') {
+        const setLabels = await p.evaluate(() => [...document.querySelectorAll('.set-number')].map(label => ({
+          text: label.textContent.trim(),
+          clientHeight: label.clientHeight,
+          scrollHeight: label.scrollHeight,
+          lineHeight: getComputedStyle(label).lineHeight
+        })));
+        t(`${scheme}/${tab}: set labels are not vertically clipped`,
+          setLabels.length > 0 && setLabels.every(label => label.scrollHeight <= label.clientHeight),
+          JSON.stringify(setLabels.slice(0, 3)));
+      }
     }
     await p.evaluate(() => setTab('train'));
     const longNameOverflows = await p.evaluate(() => {

@@ -84,7 +84,7 @@ weight.
 
 Existing keys carry `(week, day, exerciseIndex) -> load, lastSetReps, done`. Each maps to:
 
-- date: `CHALLENGE_START + (week-1)*7 + weekdayOffset(day)`
+- date: `LEGACY_CHALLENGE_START + (week-1)*7 + weekdayOffset(day)`
 - exerciseId: the slug at that index in programme v1, frozen at migration time
 - one `set:` record with `n = 1` and `migrated: true`
 
@@ -92,6 +92,8 @@ The set count is genuinely unknown for historical rows and is left absent rather
 invented. `migrated: true` marks rows whose set count is unknown rather than one.
 
 Nothing is deleted until the new records are written and verified.
+`LEGACY_CHALLENGE_START` remains August 17, 2026 even though the live programme now
+starts August 31; changing the live start must never move historical records.
 
 ## Implemented
 

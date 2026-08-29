@@ -1,17 +1,19 @@
 // The interface contract is the Beautiful UI catalog. This test renders both the
-// static application and the agent's runtime-only states, then proves that all
-// twenty catalog primitives are present and legacy generic UI primitives are not.
+// static application and the agent's runtime-only states, then proves that every
+// mounted primitive belongs to the catalog and every product-needed primitive is
+// present. Catalog demos with no user job are intentionally not mounted.
 const { chromium } = require('playwright-core');
 const { launchOptions } = require('./browser.js');
 
 const results = [];
 const test = (name, ok, detail = '') => results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  -> ${detail}` : ''}`);
-const expected = [
+const catalog = [
   'Loading State', 'Thinking', 'Streaming Text', 'Approval Card', 'Tool Chips',
   'Task Rows', 'Chat', 'Prompt Bar', 'Recommendation Card', 'Context Cards',
   'Diff Table', 'Records Table', 'Filter Table', 'Sidebar Nav', 'Search',
   'Flowchart', 'Insight Cards', 'Code Block', 'Fine-tune Card', 'Selection Actions'
 ];
+const required = catalog.filter(name => !['Recommendation Card', 'Flowchart'].includes(name));
 
 (async () => {
   const browser = await chromium.launch(launchOptions());
@@ -19,10 +21,20 @@ const expected = [
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto('http://127.0.0.1:8911/');
-  await page.evaluate(() => {
+  const productSurface = await page.evaluate(() => {
     setTab('agent');
-    document.querySelector('#agentConnectCard').hidden = true;
-    document.querySelector('#agentWorkspace').hidden = false;
+    return {
+      text: document.querySelector('#panel-agent').innerText,
+      suggestions: document.querySelectorAll('[data-agent-prompt]').length,
+      resetHidden: document.querySelector('#agentReset').hidden
+    };
+  });
+  test('Coach surface contains no implementation or catalog-showcase copy',
+    !/Pi agent|OpenRouter|Agent run|Active context|Control path|Health MCP/i.test(productSurface.text),
+    productSurface.text);
+  test('empty Coach surface has no redundant starter or reset buttons',
+    productSurface.suggestions === 0 && productSurface.resetHidden === true, JSON.stringify(productSurface));
+  await page.evaluate(() => {
     appendAgentMessage('assistant', 'Catalog audit');
     appendAgentLoading();
     appendAgentTool('get_training_snapshot');
@@ -40,8 +52,10 @@ const expected = [
       timerPosition: getComputedStyle(document.querySelector('#timerFab')).position
     };
   });
-  const missing = expected.filter(name => !audit.names.includes(name));
-  test('all 20 Beautiful UI catalog primitives are mounted', missing.length === 0, JSON.stringify(missing));
+  const missing = required.filter(name => !audit.names.includes(name));
+  const unknown = audit.names.filter(name => !catalog.includes(name));
+  test('every product-needed Beautiful UI primitive is mounted', missing.length === 0, JSON.stringify(missing));
+  test('every mounted interface primitive belongs to the Beautiful UI catalog', unknown.length === 0, JSON.stringify(unknown));
   test('legacy generic component classes are absent', audit.legacy.length === 0, JSON.stringify(audit.legacy));
   test('workout Tool Chip stays in document flow', audit.timerPosition !== 'fixed', audit.timerPosition);
   test('catalog runtime states have no page errors', errors.length === 0, errors.join(' | '));
@@ -54,6 +68,14 @@ const expected = [
   });
   test('desktop Prompt Bar follows Chat without overlap', layout.composerTop >= layout.chatBottom,
     JSON.stringify(layout));
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const motion = await page.locator('.agent-loader-grid span').first().evaluate(node => ({
+    duration: getComputedStyle(node).animationDuration,
+    iterations: getComputedStyle(node).animationIterationCount
+  }));
+  test('catalog motion respects the device reduced-motion setting',
+    Number.parseFloat(motion.duration) <= 0.001 && motion.iterations === '1', JSON.stringify(motion));
 
   console.log(JSON.stringify({ results }, null, 1));
   await browser.close();

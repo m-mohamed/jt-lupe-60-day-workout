@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   PRIMARY_MODEL,
   applyOpenRouterPrivacy,
+  classifyAgentFailure,
   resolveAgentPolicy
 } from './src/agent-policy.js';
 
@@ -41,5 +42,12 @@ assert.deepEqual(original.provider, { sort: 'latency' }, 'do not mutate Pi paylo
 
 const zeroRetentionPayload = applyOpenRouterPrivacy(original, true);
 assert.equal(zeroRetentionPayload.provider.zdr, true);
+
+assert.deepEqual(classifyAgentFailure(new Error('OpenRouter HTTP 429: rate limit exceeded')), {
+  error: 'rate_limited',
+  message: 'The free-model limit is busy or exhausted. Try again in a few minutes. Your logs were not changed.'
+});
+assert.equal(classifyAgentFailure(new Error('request timed out')).error, 'model_timeout');
+assert.equal(classifyAgentFailure(new Error('No eligible providers')).error, 'model_unavailable');
 
 console.log('PASS  OpenRouter model and privacy policy');

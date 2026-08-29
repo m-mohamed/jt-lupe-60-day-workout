@@ -90,6 +90,25 @@ const url = 'http://127.0.0.1:8777/';
   // find its account again on its own.
   t('a page that booted offline reconnects without a reload', back.enabled && back.mode === 'signed-in', JSON.stringify(back));
 
+  // A failed sync while the browser still reports "online" must describe what is
+  // true. "Retrying" claimed active work even though the next retry was minutes away.
+  await p.route('**/api/sync?**', route => route.abort());
+  await p.evaluate(async () => {
+    writeJSON(K.habit(state.profile, state.date, 'sleep'), { done: true });
+    await runSync();
+  });
+  const interrupted = await p.evaluate(() => ({
+    text: document.getElementById('syncText').textContent,
+    title: document.getElementById('syncChip').title,
+    dirty: readDirty().length
+  }));
+  t('an interrupted sync says the log is saved offline and will retry',
+    interrupted.text === 'Saved offline' && /saved on this device/i.test(interrupted.title) && interrupted.dirty > 0,
+    JSON.stringify(interrupted));
+  await p.unroute('**/api/sync?**');
+  await p.evaluate(() => runSync());
+  await p.waitForFunction(() => readDirty().length === 0, null, { timeout: 30000 }).catch(() => {});
+
   t('no page errors', errors.length === 0, errors.join(' | '));
   console.log(JSON.stringify({ results: R }, null, 1));
   await b.close();

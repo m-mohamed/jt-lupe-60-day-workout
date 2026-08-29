@@ -25,13 +25,11 @@
     <header class="workspace-header" data-bui="Sidebar Nav">
       <div class="workspace-name">
         <h1>Training OS</h1>
-        <span>JT + Lupe</span>
       </div>
       <div class="header-actions">
-        <button class="nav-action" id="coachChip" type="button">Ask coach</button>
         <button class="nav-action" id="whoChip" type="button" title="Switch profile">JT</button>
-        <button class="nav-action sync-action" id="syncChip" type="button" data-state="local" title="Local only">
-          <span class="sync-dot" aria-hidden="true"></span><span id="syncText">Local</span>
+        <button class="nav-action sync-action" id="syncChip" type="button" data-state="local" title="Local only" aria-label="Local only">
+          <span class="sync-dot" aria-hidden="true"></span><span class="visually-hidden" id="syncText">Local</span>
         </button>
       </div>
     </header>
@@ -57,10 +55,9 @@
     <main class="workspace">
       <!-- Beautiful UI: Prompt Bar -->
       <form class="bui-prompt-bar global-prompt" id="globalAgentForm" data-bui="Prompt Bar">
-        <label for="globalAgentPrompt">Ask Training OS</label>
-        <span id="globalAgentContext">Your current screen and recent records become context.</span>
+        <label class="visually-hidden" for="globalAgentPrompt">Ask Training OS</label>
         <div class="prompt-input-row">
-          <input id="globalAgentPrompt" type="text" maxlength="800" autocomplete="off" placeholder="Log my last set, review today, or plan my next session…" aria-label="Ask Training OS">
+          <input id="globalAgentPrompt" type="text" maxlength="800" autocomplete="off" placeholder="Ask or log anything…" aria-label="Ask Training OS">
           <button class="action primary" type="submit">Ask</button>
         </div>
       </form>
@@ -68,9 +65,7 @@
     <!-- ============ TRAIN ============ -->
     <section class="panel" id="panel-train" role="tabpanel" aria-label="Train">
       <div class="page-heading">
-        <p class="eyebrow">Workout tracker</p>
-        <h2>Today’s training</h2>
-        <p>Every working set, every weight, and every lighter finish.</p>
+        <h2>Workout</h2>
       </div>
       <!-- Beautiful UI: Filter Table -->
       <section class="bui-filter-table session-filter" data-bui="Filter Table" aria-label="Workout day">
@@ -102,9 +97,7 @@
       <details class="bui-context-card" id="importBlock" data-bui="Context Cards">
         <summary>Paste from your notes</summary>
         <div class="body">
-          <p>Logged this session somewhere else? Paste it here - one exercise per line,
-          in whatever shape you wrote it. <code>Seated row 100 x 10</code>,
-          <code>lat pulldown 90x8</code>, <code>Pull-ups BW 6</code> all read fine.</p>
+          <p>One exercise per line, such as <code>Seated row 100 x 10</code>.</p>
           <textarea id="importText" rows="6" aria-label="Paste a session logged elsewhere" placeholder="Seated row 100 x 10&#10;Lat pulldown 90 x 8&#10;Hammer curl 30x12"></textarea>
           <div class="selection-actions">
             <button class="action" id="importPreview" type="button">Read it</button>
@@ -115,7 +108,7 @@
       </details>
 
       <details class="bui-context-card" data-bui="Context Cards">
-        <summary>How to pick your weight</summary>
+        <summary>How to progress</summary>
         <div class="body" id="rulesBody"></div>
       </details>
     </section>
@@ -123,9 +116,7 @@
     <!-- ============ FUEL ============ -->
     <section class="panel" id="panel-fuel" role="tabpanel" aria-label="Food" hidden>
       <div class="page-heading">
-        <p class="eyebrow">Food tracker</p>
-        <h2>Nutrition</h2>
-        <p>Log protein quickly, search the food database, and keep estimates editable.</p>
+        <h2>Food</h2>
       </div>
       <!-- Beautiful UI: Insight Cards -->
       <section class="bui-insight-card" data-bui="Insight Cards">
@@ -144,7 +135,7 @@
 
       <!-- Beautiful UI: Records Table + Search -->
       <section class="bui-records-table" data-bui="Records Table">
-        <div class="component-header"><h3>Meals</h3><span>Protein in grams</span></div>
+        <div class="component-header"><h3>Meals</h3></div>
         <ul class="meal-list" id="mealList"></ul>
         <div class="bui-search food-search" id="foodSearch" data-bui="Search" hidden>
           <input type="text" id="foodQuery" maxlength="80" placeholder="Search food — taco bell bean burrito" aria-label="Search food database">
@@ -159,33 +150,30 @@
       </section>
 
       <section class="bui-task-rows" data-bui="Task Rows">
-        <div class="component-header"><h3>Daily fundamentals</h3><span>Three daily checks</span></div>
+        <div class="component-header"><h3>Daily fundamentals</h3></div>
         <ul class="habits" id="habitList">
-          <li><input class="habit" type="checkbox" data-habit="protein" id="h-protein"><label for="h-protein"><strong>Hit protein target</strong><span>Total for the day beats perfect timing</span></label></li>
-          <li><input class="habit" type="checkbox" data-habit="preworkout" id="h-pre"><label for="h-pre"><strong>Pre-workout meal</strong><span>Protein plus easy carbs</span></label></li>
-          <li><input class="habit" type="checkbox" data-habit="sleep" id="h-sleep"><label for="h-sleep"><strong>Protect sleep</strong><span>Recovery is where the muscle is built</span></label></li>
+          <li><input class="habit" type="checkbox" data-habit="protein" id="h-protein"><label for="h-protein"><strong>Hit protein target</strong></label></li>
+          <li><input class="habit" type="checkbox" data-habit="preworkout" id="h-pre"><label for="h-pre"><strong>Pre-workout meal</strong></label></li>
+          <li><input class="habit" type="checkbox" data-habit="sleep" id="h-sleep"><label for="h-sleep"><strong>Protect sleep</strong></label></li>
         </ul>
       </section>
 
       <!-- Beautiful UI: Fine-tune Card -->
       <section class="bui-fine-tune-card" data-bui="Fine-tune Card">
-        <div class="component-header"><h3>Bodyweight</h3><span id="bwWho"></span></div>
+        <div class="component-header"><h3>Bodyweight</h3></div>
         <div class="entry bodyweight-entry">
           <label>Weight <input type="number" id="bwValue" min="1" step="0.1" inputmode="decimal" placeholder="Bodyweight"></label>
           <label>Unit
             <select id="bwUnit"><option value="lb">lb</option><option value="kg">kg</option></select>
           </label>
         </div>
-        <p class="component-note">Logged against today. Weigh in at the same time of day; the weekly trend matters, not one morning.</p>
       </section>
     </section>
 
     <!-- ============ SUPPLEMENTS ============ -->
     <section class="panel" id="panel-supplements" role="tabpanel" aria-label="Supplements" hidden>
       <div class="page-heading">
-        <p class="eyebrow">Supplement tracker</p>
-        <h2>Daily intake</h2>
-        <p>Record what you actually took. The tracker does not prescribe a stack.</p>
+        <h2>Supplements</h2>
       </div>
 
       <section class="bui-insight-card" data-bui="Insight Cards">
@@ -201,12 +189,12 @@
       </section>
 
       <section class="bui-task-rows" data-bui="Task Rows">
-        <div class="component-header"><h3>Taken</h3><span>Recorded intake</span></div>
+        <div class="component-header"><h3>Taken</h3></div>
         <div class="supplement-list" id="supplementList"></div>
       </section>
 
       <section class="bui-fine-tune-card" data-bui="Fine-tune Card">
-        <div class="component-header"><h3>Log a supplement</h3><span>Name and dose</span></div>
+        <div class="component-header"><h3>Log a supplement</h3></div>
         <div class="supplement-add">
           <input type="text" id="supplementName" maxlength="80" list="supplementNames" placeholder="Supplement name" aria-label="Supplement name">
           <datalist id="supplementNames"><option value="Creatine monohydrate"><option value="Protein powder"></datalist>
@@ -215,10 +203,9 @@
           <button class="action primary" id="addSupplement" type="button">Log taken</button>
         </div>
         <div class="preset-row">
-          <span class="preset-label">Quick add</span>
           <button class="action" type="button" data-supplement-preset="creatine">Creatine · 5 g</button>
         </div>
-        <p class="food-note">Use the label or your clinician’s instructions for dose. This screen records intake; it does not recommend medical treatment.</p>
+        <p class="food-note">Record the label or clinician-directed dose only.</p>
       </section>
 
       <section class="bui-records-table" data-bui="Records Table">
@@ -229,104 +216,40 @@
 
     <!-- ============ AGENT ============ -->
     <section class="panel" id="panel-agent" role="tabpanel" aria-label="AI coach" hidden>
-      <div class="page-heading">
-        <p class="eyebrow">Pi agent · OpenRouter</p>
-        <h2>Training OS Coach</h2>
-        <p>Ask about your recent logs or draft a workout, meal, supplement, or weigh-in.</p>
+      <div class="page-heading agent-heading">
+        <h2>Coach</h2>
+        <div class="agent-title-actions" data-bui="Selection Actions">
+          <span class="agent-state" id="agentConnection" data-state="checking">Checking</span>
+          <button class="action compact" id="agentReset" type="button" hidden>New conversation</button>
+        </div>
       </div>
 
-      <section class="bui-task-rows agent-identity" data-bui="Task Rows">
-        <div class="agent-identity-copy">
-          <strong>Your private training agent</strong>
-          <span id="agentModel">Checking connection…</span>
+      <div id="agentWorkspace">
+        <!-- Beautiful UI: Chat + Streaming Text -->
+        <div class="bui-chat agent-thread" id="agentThread" aria-label="Coach conversation" data-bui="Chat">
+          <p class="agent-empty" id="agentEmpty">What do you want to log, review, or change?</p>
         </div>
-        <span class="agent-state" id="agentConnection" data-state="checking">Checking</span>
-      </section>
 
-      <!-- Beautiful UI: Approval Card -->
-      <section class="bui-approval-card agent-connect" id="agentConnectCard" data-bui="Approval Card">
-        <div class="component-header"><h3>Connect OpenRouter</h3><span>Your key, private storage</span></div>
-        <p>Sign in to OpenRouter to create a user-controlled key. Training OS stores it inside your private Cloudflare Agent and never puts it in this page or your synced workout data.</p>
-        <button class="action primary" id="agentConnect" type="button">Connect OpenRouter</button>
-        <p class="food-note">The free router chooses an available compatible model. OpenRouter account limits apply. No Apple Health, wearable, or health MCP is connected.</p>
-      </section>
-
-      <div id="agentWorkspace" hidden>
-        <div class="agent-layout">
-          <div class="agent-main">
-            <!-- Beautiful UI: Search + Recommendation Card -->
-            <div class="bui-search agent-suggestions" aria-label="Suggested questions" data-bui="Search">
-              <button class="bui-recommendation-card" type="button" data-bui="Recommendation Card" data-agent-prompt="Review my last workouts. What should I focus on in my next session?"><strong>Review my training</strong><span>Use recent sets to plan the next session</span></button>
-              <button class="bui-recommendation-card" type="button" data-bui="Recommendation Card" data-agent-prompt="Help me log the sets I just completed, including any lighter drop reps. Ask me for what you need."><strong>Log my sets</strong><span>Capture different loads and drop reps</span></button>
-              <button class="bui-recommendation-card" type="button" data-bui="Recommendation Card" data-agent-prompt="Summarize my protein and supplement consistency over the last two weeks."><strong>Check consistency</strong><span>Review food and supplement patterns</span></button>
-            </div>
-
-            <!-- Beautiful UI: Chat + Streaming Text -->
-            <div class="bui-chat agent-thread" id="agentThread" aria-label="Coach conversation" data-bui="Chat">
-              <div class="agent-message assistant">
-                <div><strong>Training OS Coach</strong><p>I can review your last 60 days and prepare logs for you to approve. I cannot diagnose injuries or see health data outside this app.</p></div>
-              </div>
-            </div>
-
-            <!-- Beautiful UI: Prompt Bar -->
-            <form class="bui-prompt-bar agent-composer" id="agentForm" data-bui="Prompt Bar">
-              <label for="agentPrompt">Message your coach</label>
-              <textarea id="agentPrompt" rows="3" maxlength="2400" placeholder="I got 6 reps at 135, then finished 4 reps at 95…"></textarea>
-              <div class="agent-compose-row">
-                <div class="agent-prompt-meta" aria-label="Agent context">60-day context · Pi · Free model</div>
-                <span id="agentLiveStatus" role="status"></span>
-                <button class="action primary" id="agentSend" type="submit">Send</button>
-              </div>
-              <span class="agent-key-hint">Enter to send · Shift + Enter for a new line</span>
-            </form>
+        <!-- Beautiful UI: Prompt Bar -->
+        <form class="bui-prompt-bar agent-composer" id="agentForm" data-bui="Prompt Bar">
+          <label class="visually-hidden" for="agentPrompt">Message your coach</label>
+          <textarea id="agentPrompt" rows="3" maxlength="2400" placeholder="I got 6 reps at 135, then finished 4 at 95…"></textarea>
+          <div class="agent-compose-row">
+            <span id="agentLiveStatus" role="status"></span>
+            <button class="action primary" id="agentSend" type="submit">Send</button>
           </div>
-
-          <aside class="agent-rail bui-context-cards" aria-label="Agent context and controls" data-bui="Context Cards">
-            <section class="bui-flowchart" data-bui="Flowchart">
-              <div class="component-header"><h3>Agent run</h3><span>Control path</span></div>
-              <ol class="agent-flow">
-                <li><strong>Context</strong><span>Read the last 60 days</span></li>
-                <li><strong>Reason</strong><span>Pi runs an OpenRouter model</span></li>
-                <li><strong>Review</strong><span>You approve every write</span></li>
-                <li><strong>Record</strong><span>Save to Training OS</span></li>
-              </ol>
-            </section>
-            <section class="agent-context-card">
-              <div class="component-header"><h3>Active context</h3><span class="agent-state" data-state="connected">Private</span></div>
-              <div class="agent-context-row"><strong>Training history</strong><span>Last 60 days</span></div>
-              <div class="agent-context-row"><strong>Available actions</strong><span>4 draft tools</span></div>
-              <div class="agent-context-row"><strong>Write permission</strong><span>Ask every time</span></div>
-              <div class="agent-context-row"><strong>Model privacy</strong><span id="agentPrivacy">Checking…</span></div>
-              <div class="agent-context-row"><strong>Credential</strong><span id="agentCredential">Checking…</span></div>
-            </section>
-            <section class="agent-guardrail-card">
-              <p class="eyebrow">Health data</p>
-              <strong>Training OS only</strong>
-              <p>No Apple Health, wearable, medical record, or health MCP is connected.</p>
-            </section>
-            <!-- Beautiful UI: Selection Actions -->
-            <section class="agent-controls-card" data-bui="Selection Actions">
-              <div class="component-header"><h3>Conversation</h3></div>
-              <div class="agent-controls">
-                <button class="action" id="agentReset" type="button">New conversation</button>
-                <button class="action" id="agentDisconnect" type="button">Disconnect</button>
-              </div>
-              <p class="food-note">General fitness education only. For urgent symptoms or an injury, stop training and seek appropriate medical care.</p>
-            </section>
-          </aside>
-        </div>
+        </form>
+        <p class="agent-safety">Fitness guidance only. Stop for sharp pain or urgent symptoms.</p>
       </div>
     </section>
 
     <!-- ============ PROGRESS ============ -->
     <section class="panel" id="panel-progress" role="tabpanel" aria-label="Progress" hidden>
       <div class="page-heading">
-        <p class="eyebrow">Weight + workout trends</p>
         <h2>Progress</h2>
-        <p>Strength records, bodyweight history, and consistency in one view.</p>
       </div>
       <section class="bui-insight-card" data-bui="Insight Cards">
-        <div class="component-header"><h2>Progress</h2><span id="progressWho"></span></div>
+        <div class="component-header"><h3>Summary</h3></div>
         <div class="insight-summary progress-summary">
           <div><strong id="statSessions">0</strong><span>sessions logged</span></div>
           <div><strong id="statLifts">0</strong><span>sets recorded</span></div>
@@ -336,7 +259,7 @@
       </section>
 
       <section class="bui-records-table" data-bui="Records Table">
-        <div class="component-header"><h3>Strength</h3><span>First to latest</span></div>
+        <div class="component-header"><h3>Strength</h3></div>
         <div id="strengthBody"></div>
       </section>
 
@@ -350,24 +273,18 @@
         <div id="stackBody"></div>
       </section>
 
-      <section class="bui-selection-actions" data-bui="Selection Actions">
-        <div class="component-header"><h3>Your data</h3></div>
-        <p class="component-note" id="dataNote"></p>
+      <section class="bui-selection-actions" data-bui="Selection Actions" aria-label="Data controls">
         <div class="selection-actions">
           <button class="action" id="exportCsv" type="button">Export CSV</button>
           <button class="action" id="backupButton" type="button">Backup</button>
           <label class="visually-hidden" for="restoreInput">Restore backup</label>
           <input class="visually-hidden" id="restoreInput" type="file" accept="application/json">
           <button class="action" id="restoreButton" type="button">Restore</button>
-          <button class="action" id="themeButton" type="button">Theme</button>
+          <button class="action" id="themeButton" type="button">Dark mode</button>
           <button class="action" id="installButton" type="button" hidden>Install app</button>
         </div>
       </section>
 
-      <details class="bui-context-card" data-bui="Context Cards">
-        <summary>Why the plan looks like this</summary>
-        <div class="body" id="evidenceBody"></div>
-      </details>
     </section>
     </main>
   </div>
@@ -386,7 +303,10 @@
       ['preworkout', 'Pre-workout', 'Pre'],
       ['sleep', 'Sleep', 'Sleep']
     ];
-    const CHALLENGE_START = new Date(2026, 7, 17);
+    const CHALLENGE_START = new Date(2026, 7, 31);
+    // Frozen migration anchor. Existing week/day grid records were created against
+    // the earlier August 17 draft and must never move when the live block changes.
+    const LEGACY_CHALLENGE_START = new Date(2026, 7, 17);
     const CHALLENGE_LENGTH = 60;
 
     /* ================= small helpers ================= */
@@ -549,7 +469,7 @@
 
     /** week+weekday -> the calendar date that slot represented. */
     function dateForSlot(week, dayIndex) {
-      const start = new Date(CHALLENGE_START);
+      const start = new Date(LEGACY_CHALLENGE_START);
       start.setDate(start.getDate() + (week - 1) * 7);
       // CHALLENGE_START is a Monday, so dayIndex maps straight onto it.
       start.setDate(start.getDate() + dayIndex);
@@ -709,7 +629,10 @@
       }
 
       const previous = lastSession(state.profile, exercise.id, date);
-      if (!previous) return { kind: 'first', text: `First time: pick a weight you could manage about ${exercise.repHigh} reps with, and stop 2 reps short. Log what you did.` };
+      if (!previous) {
+        const range = exercise.repLow === exercise.repHigh ? exercise.repLow : `${exercise.repLow}–${exercise.repHigh}`;
+        return { kind: 'first', text: `No history yet. Choose a starting weight. Stop after ${range} clean reps with 2 reps in reserve, then record what you did.` };
+      }
 
       const reps = previous.sets.map(s => s.reps).filter(r => r != null);
       const when = labelForDate(previous.date);
@@ -721,12 +644,16 @@
     }
 
     /* ================= state ================= */
+    const initialWorkoutDate = dateKey() < dateKey(CHALLENGE_START)
+      ? dateKey(CHALLENGE_START)
+      : localStorage.getItem('jt-lupe-active-date') || dateKey();
     const state = {
       tab: 'train',
-      date: localStorage.getItem('jt-lupe-active-date') || dateKey(),
+      date: initialWorkoutDate,
       profile: PROFILES.includes(localStorage.getItem(PROFILE_KEY)) ? localStorage.getItem(PROFILE_KEY) : 'jt',
       fuelDate: dateKey(),
       supplementDate: dateKey(),
+      coachContext: null,
       timer: 90,
       timerId: null
     };
@@ -1162,17 +1089,26 @@
     }));
 
     /* ================= tabs ================= */
-    const TAB_CONTEXT = {
-      train: 'Today’s workout, set history, and progression become context.',
-      fuel: 'Meals, protein, bodyweight, and today’s fundamentals become context.',
-      supplements: 'Supplement intake and recent adherence become context.',
-      agent: 'Your last 60 days and any pending drafts become context.',
-      progress: 'Strength, bodyweight, and consistency trends become context.'
-    };
+    function uiContextFor(tab = state.tab) {
+      const surface = {
+        train: 'workout', fuel: 'food', supplements: 'supplements',
+        agent: 'coach', progress: 'progress'
+      }[tab];
+      const date = tab === 'train' ? state.date
+        : tab === 'fuel' ? state.fuelDate
+          : tab === 'supplements' ? state.supplementDate : dateKey();
+      const context = { surface, date };
+      if (tab === 'train') {
+        const session = dayForDate(state.date);
+        context.session = { id: session.id, label: session.label, focus: session.focus };
+      }
+      return context;
+    }
 
     function setTab(name) {
       flushPending();
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      if (name === 'agent' && state.tab !== 'agent') state.coachContext = uiContextFor(state.tab);
       state.tab = name;
       document.querySelectorAll('.tab').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.tab === name)));
       ['train', 'fuel', 'supplements', 'agent', 'progress'].forEach(id => { el(`panel-${id}`).hidden = id !== name; });
@@ -1181,24 +1117,22 @@
       if (name === 'supplements') renderSupplements();
       if (name === 'agent') refreshAgentStatus();
       if (name === 'progress') renderProgress();
-      el('globalAgentContext').textContent = TAB_CONTEXT[name] || TAB_CONTEXT.agent;
       el('globalAgentForm').hidden = name === 'agent';
       window.scrollTo(0, 0);
     }
     document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => setTab(tab.dataset.tab)));
-    el('coachChip').addEventListener('click', () => setTab('agent'));
     el('globalAgentForm').addEventListener('submit', async event => {
       event.preventDefault();
       const prompt = el('globalAgentPrompt').value.trim();
       if (!prompt) { el('globalAgentPrompt').focus(); return; }
+      const uiContext = uiContextFor(state.tab);
       el('agentPrompt').value = prompt;
       el('globalAgentPrompt').value = '';
       setTab('agent');
       await refreshAgentStatus();
-      if (agentConnected) sendAgentMessage(prompt);
+      if (agentConnected) sendAgentMessage(prompt, uiContext);
       else {
-        el('agentLiveStatus').textContent = 'Connect OpenRouter to send this message.';
-        el('agentConnect').focus();
+        el('agentLiveStatus').textContent = 'The coach is unavailable right now. Your logs still work.';
       }
     });
 
@@ -1237,13 +1171,20 @@
       el('sessionSub').textContent = day.note;
 
       const dayNumber = challengeDay(state.date);
-      el('challengeLine').textContent = dayNumber < 1 ? `Starts in ${1 - dayNumber} day${1 - dayNumber === 1 ? '' : 's'}`
+      el('challengeLine').textContent = dayNumber < 1 ? 'Starts Monday · Aug 31'
         : dayNumber > CHALLENGE_LENGTH ? 'Challenge complete' : `Day ${dayNumber} of ${CHALLENGE_LENGTH}`;
 
       const isToday = state.date === dateKey();
       const flag = el('backfillFlag');
       flag.hidden = isToday;
-      if (!isToday) flag.textContent = `Catching up — logging ${labelForDate(state.date)}, ${day.label}. Not today.`;
+      if (!isToday) {
+        const selectedDate = parseDate(state.date).toLocaleDateString(undefined, {
+          weekday: 'long', month: 'short', day: 'numeric'
+        });
+        flag.textContent = state.date > dateKey()
+          ? `Planned for ${selectedDate}.`
+          : `Catching up — ${selectedDate}. Not today.`;
+      }
 
       if (!day.exercises.length) {
         el('exerciseList').innerHTML = '<p class="empty">Recovery day. The next lifting sessions are Monday, Wednesday, and Friday.</p>';
@@ -1286,7 +1227,6 @@
                   <input type="number" class="in-drop-reps" name="set-${esc(ex.id)}-${n}-finish-${amountLabel.toLowerCase()}" data-ex="${ex.id}" data-set="${n}" value="${esc(dropAmount)}" min="0" max="999" inputmode="numeric" placeholder="—" aria-label="Set ${n} finish ${amountLabel.toLowerCase()} for ${esc(ex.label)}">
                 </label>
               </div>
-              <p>Example: 6 reps at the working weight, then 4 lighter or assisted reps.</p>
             </details>
           </fieldset>`;
         }).join('');
@@ -1301,10 +1241,8 @@
             <p class="coach" data-kind="${coach.kind}">${esc(coach.text)}</p>
             <div class="set-list">${rows}</div>
             ${count > 1 ? `<div class="set-tools">
-              <button class="action compact fill-sets" type="button" data-ex="${ex.id}">Fill blank sets from set 1</button>
-              <span>Copies weight and reps. Existing sets stay unchanged.</span>
+              <button class="action compact fill-sets" type="button" data-ex="${ex.id}">Copy set 1 to blanks</button>
             </div>` : ''}
-            <p class="set-help">Log each set as performed. Leave an unperformed set blank.</p>
           </article>`;
       }).join('');
 
@@ -1645,7 +1583,6 @@
         input.checked = (readJSON(K.habit(state.profile, date, input.dataset.habit)) || {}).done === true;
       });
 
-      el('bwWho').textContent = PROFILE_LABEL[state.profile];
       // Show the weigh-in for the day on screen. Falling back to the current weight
       // on a past day made it look like that day had already been recorded.
       const logged = readJSON(K.bodyweight(state.profile, date));
@@ -1877,22 +1814,17 @@
        The model can read a server-filtered snapshot and draft structured records.
        Only applyAgentProposal writes to localStorage, and it runs only from a human
        click on an approval card. OpenRouter credentials never enter localStorage. */
-    const AGENT_VERIFIER_KEY = 'jt-lupe-openrouter-verifier';
     const agentProposals = new Map();
     const agentProposalSignatures = new Set();
     let agentConnected = false;
     let agentBusy = false;
 
-    const base64Url = bytes => btoa(String.fromCharCode(...bytes))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-    function setAgentStatus(stateName, label, model = '') {
+    function setAgentStatus(stateName, label) {
       agentConnected = stateName === 'connected';
       el('agentConnection').dataset.state = stateName;
       el('agentConnection').textContent = label;
-      el('agentModel').textContent = model || (stateName === 'error' ? 'Cloud agent unavailable' : 'Checking connection…');
-      el('agentConnectCard').hidden = agentConnected;
-      el('agentWorkspace').hidden = !agentConnected;
+      el('agentWorkspace').hidden = false;
+      el('agentSend').disabled = !agentConnected;
     }
 
     async function refreshAgentStatus() {
@@ -1902,77 +1834,22 @@
         if (!response.ok || isSignedOut(response)) throw new Error('unavailable');
         const status = await response.json();
         if (status.connected) {
-          const shortModel = status.model === 'openrouter/free'
-            ? 'Free OpenRouter route · model varies'
-            : `${status.model} · OpenRouter`;
-          setAgentStatus('connected', 'Connected', shortModel);
-          el('agentPrivacy').textContent = status.privacy?.zeroDataRetention
-            ? 'Zero data retention required'
-            : 'Data-collecting providers denied';
-          el('agentCredential').textContent = status.source === 'workspace'
-            ? 'Managed Cloudflare secret'
-            : 'Personal OpenRouter key';
-          el('agentDisconnect').hidden = status.source === 'workspace';
+          setAgentStatus('connected', 'Connected');
         } else {
-          setAgentStatus('ready', 'Not connected', 'Pi agent ready · OpenRouter required');
-          el('agentPrivacy').textContent = 'Applies when connected';
-          el('agentCredential').textContent = 'Not connected';
-          el('agentDisconnect').hidden = false;
+          setAgentStatus('ready', 'Unavailable');
         }
       } catch {
-        setAgentStatus('error', 'Cloud only', 'Open the private Worker app to use the coach');
-        el('agentPrivacy').textContent = 'Cloud unavailable';
-        el('agentCredential').textContent = 'Cloud unavailable';
+        setAgentStatus('error', 'Unavailable');
       }
     }
 
-    async function beginOpenRouterConnection() {
-      if (!syncState.enabled) {
-        el('agentLiveStatus').textContent = 'Open the signed-in cloud app first.';
-        return;
-      }
-      const bytes = crypto.getRandomValues(new Uint8Array(64));
-      const verifier = base64Url(bytes);
-      const challenge = base64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
-      sessionStorage.setItem(AGENT_VERIFIER_KEY, verifier);
-      const callbackUrl = `${location.origin}${location.pathname}`;
-      const auth = new URL('https://openrouter.ai/auth');
-      auth.searchParams.set('callback_url', callbackUrl);
-      auth.searchParams.set('code_challenge', challenge);
-      auth.searchParams.set('code_challenge_method', 'S256');
-      location.assign(auth);
-    }
-
-    async function finishOpenRouterConnection() {
-      const params = new URLSearchParams(location.search);
-      const code = params.get('code');
-      if (!code) return;
-      const verifier = sessionStorage.getItem(AGENT_VERIFIER_KEY);
-      sessionStorage.removeItem(AGENT_VERIFIER_KEY);
-      history.replaceState(null, '', location.pathname);
-      setTab('agent');
-      if (!verifier) {
-        setAgentStatus('error', 'Try again', 'The secure connection session expired');
-        return;
-      }
-      agentBusy = true;
-      el('agentLiveStatus').textContent = 'Finishing the secure OpenRouter connection…';
-      try {
-        const response = await apiFetch(`./api/agent/connect?ns=${SYNC_NS}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, verifier })
-        });
-        if (!response.ok) throw new Error('connect failed');
-        el('agentLiveStatus').textContent = 'OpenRouter connected.';
-      } catch {
-        setAgentStatus('error', 'Connection failed', 'OpenRouter did not complete the connection');
-      } finally {
-        agentBusy = false;
-        await refreshAgentStatus();
-      }
+    function clearAgentEmpty() {
+      el('agentEmpty')?.remove();
+      el('agentReset').hidden = false;
     }
 
     function appendAgentMessage(role, text = '') {
+      clearAgentEmpty();
       const row = document.createElement('div');
       row.className = `agent-message ${role}`;
       row.dataset.bui = role === 'assistant' ? 'Streaming Text' : 'Chat';
@@ -1989,6 +1866,7 @@
     }
 
     function appendAgentLoading() {
+      clearAgentEmpty();
       const row = document.createElement('details');
       row.className = 'bui-thinking agent-loading';
       row.dataset.bui = 'Thinking';
@@ -2018,10 +1896,14 @@
     }
 
     function appendAgentTool(name) {
+      clearAgentEmpty();
       const chip = document.createElement('div');
       chip.className = 'agent-tool';
       chip.dataset.bui = 'Tool Chips';
-      chip.textContent = name === 'get_training_snapshot' ? 'Reading 60-day training context' : 'Preparing approval card';
+      chip.textContent = name === 'get_training_snapshot' ? 'Reading 60-day training context'
+        : name === 'search_food_catalog' ? 'Searching the Food catalog'
+          : ['open_training_surface', 'control_training_interface'].includes(name)
+            ? 'Preparing Training OS interface' : 'Preparing approval card';
       el('agentThread').append(chip);
       chip.scrollIntoView({ block: 'nearest' });
       return chip;
@@ -2036,6 +1918,11 @@
       if (proposal.kind === 'meal') return `${proposal.date} · ${proposal.name} · ${proposal.protein} g protein${proposal.kcal ? ` · ${proposal.kcal} kcal` : ''}${proposal.estimate ? ' · estimate' : ''}`;
       if (proposal.kind === 'supplement') return `${proposal.date} · ${proposal.name} · ${proposal.dose} ${proposal.unit}`;
       if (proposal.kind === 'bodyweight') return `${proposal.date} · ${proposal.value} ${proposal.unit}`;
+      if (proposal.kind === 'habit') {
+        const names = { protein: 'Hit protein target', preworkout: 'Pre-workout meal', sleep: 'Protect sleep' };
+        return `${proposal.date} · ${names[proposal.habit] || proposal.habit} · ${proposal.done ? 'complete' : 'not complete'}`;
+      }
+      if (proposal.kind === 'removal') return `${proposal.date} · remove ${proposal.label || proposal.recordKind}`;
       return 'Review this draft before saving.';
     }
 
@@ -2044,11 +1931,24 @@
       if (proposal.kind === 'meal') return JSON.stringify(['meal', proposal.date, proposal.name, proposal.protein, proposal.kcal || 0, proposal.estimate === true]);
       if (proposal.kind === 'supplement') return JSON.stringify(['supplement', proposal.date, proposal.name, proposal.dose, proposal.unit]);
       if (proposal.kind === 'bodyweight') return JSON.stringify(['bodyweight', proposal.date, proposal.value, proposal.unit]);
+      if (proposal.kind === 'habit') return JSON.stringify(['habit', proposal.date, proposal.habit, proposal.done === true]);
+      if (proposal.kind === 'removal') return JSON.stringify(['removal', proposal.date, proposal.recordKind,
+        proposal.recordId || '', proposal.exerciseId || '', proposal.setNumber || 0]);
       return JSON.stringify(proposal);
     }
 
     const formatDropEfforts = drops => Array.isArray(drops) && drops.length
       ? drops.map(drop => `${drop.reps} @ ${drop.load}`).join(', ') : 'None';
+
+    function normalizeAgentLoad(value) {
+      const tag = Object.prototype.toString.call(value);
+      if (!['[object Number]', '[object String]'].includes(tag)) return null;
+      const clean = String(value).trim();
+      if (!clean || clean.length > 30) return null;
+      const numeric = Number(clean);
+      if (!Number.isNaN(numeric) && (!Number.isFinite(numeric) || numeric < 0 || numeric > 10000)) return null;
+      return tag === '[object Number]' ? numeric : clean;
+    }
 
     function proposalDiffRows(proposal) {
       const empty = 'Not logged';
@@ -2077,15 +1977,23 @@
           ['Dose', empty, `${proposal.dose} ${proposal.unit}`]
         ];
       }
+      if (proposal.kind === 'habit') {
+        const current = readJSON(K.habit(state.profile, proposal.date, proposal.habit));
+        return [['Daily check', current?.done ? 'Complete' : 'Not complete', proposal.done ? 'Complete' : 'Not complete']];
+      }
+      if (proposal.kind === 'removal') return [['Record', proposal.label || proposal.recordKind, 'Remove after approval']];
       return [['Record', empty, proposalSummary(proposal)]];
     }
 
     function proposalData(proposal) {
-      const allowed = ['kind', 'date', 'exerciseId', 'exerciseName', 'setNumber', 'load', 'reps', 'drops', 'name', 'protein', 'kcal', 'estimate', 'dose', 'unit', 'value'];
+      const allowed = ['kind', 'date', 'exerciseId', 'exerciseName', 'setNumber', 'load', 'reps', 'drops',
+        'name', 'protein', 'kcal', 'estimate', 'dose', 'unit', 'value', 'habit', 'done',
+        'recordKind', 'recordId', 'label'];
       return Object.fromEntries(allowed.filter(key => proposal[key] !== undefined).map(key => [key, proposal[key]]));
     }
 
     function appendAgentProposal(proposal) {
+      clearAgentEmpty();
       const signature = proposalSignature(proposal);
       if (agentProposalSignatures.has(signature)) return;
       agentProposalSignatures.add(signature);
@@ -2154,30 +2062,80 @@
 
     function applyAgentProposal(id, card, button, badge) {
       const proposal = agentProposals.get(id);
-      if (!proposal || card.dataset.applied === 'true') return;
-      const date = /^\d{4}-\d{2}-\d{2}$/.test(proposal.date || '') && proposal.date <= dateKey() ? proposal.date : dateKey();
+      if (!proposal || card.dataset.applied) return;
+      const reject = () => {
+        card.dataset.applied = 'rejected';
+        button.textContent = 'Cannot apply';
+        button.disabled = true;
+        badge.textContent = 'Invalid draft';
+        agentProposals.delete(id);
+        el('agentLiveStatus').textContent = 'That draft was invalid. Nothing changed.';
+      };
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(proposal.date || '') || proposal.date > dateKey()) { reject(); return; }
+      const date = proposal.date;
       if (proposal.kind === 'set') {
-        writeSet(state.profile, date, String(proposal.exerciseId).slice(0, 80), Number(proposal.setNumber), {
-          load: proposal.load, reps: Math.max(0, Number(proposal.reps) || 0),
-          drops: Array.isArray(proposal.drops) ? proposal.drops.slice(0, 6).map(drop => ({ load: drop.load, reps: Math.max(1, Number(drop.reps) || 1) })) : [],
+        const exerciseId = String(proposal.exerciseId || '');
+        const setNumber = Number(proposal.setNumber);
+        const load = normalizeAgentLoad(proposal.load);
+        const reps = Number(proposal.reps);
+        const rawDrops = Array.isArray(proposal.drops) ? proposal.drops.slice(0, 6) : [];
+        const drops = rawDrops.map(drop => ({ load: normalizeAgentLoad(drop?.load), reps: Number(drop?.reps) }));
+        if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(exerciseId) || !Number.isInteger(setNumber)
+          || setNumber < 1 || setNumber > 20 || load === null || !Number.isInteger(reps)
+          || reps < 0 || reps > 200 || drops.some(drop => drop.load === null || !Number.isInteger(drop.reps)
+            || drop.reps < 1 || drop.reps > 100)) { reject(); return; }
+        writeSet(state.profile, date, exerciseId, setNumber, {
+          load, reps, drops,
           createdBy: 'agent-approved'
         });
+        const session = K.session(state.profile, date);
+        if (localStorage.getItem(session) === null) writeJSON(session, { templateId: dayForDate(date).id });
       } else if (proposal.kind === 'meal') {
+        const name = String(proposal.name || '').trim().slice(0, 120);
+        const protein = Number(proposal.protein);
+        const kcal = proposal.kcal === undefined ? 0 : Number(proposal.kcal);
+        if (!name || !Number.isFinite(protein) || protein < 0 || protein > 500
+          || !Number.isFinite(kcal) || kcal < 0 || kcal > 10000) { reject(); return; }
         const key = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
-        writeJSON(K.meal(state.profile, date, key), { name: String(proposal.name).slice(0, 120), protein: Math.max(0, Number(proposal.protein) || 0), kcal: Math.max(0, Number(proposal.kcal) || 0), estimate: proposal.estimate === true, createdBy: 'agent-approved' });
+        writeJSON(K.meal(state.profile, date, key), { name, protein, kcal, estimate: proposal.estimate === true, createdBy: 'agent-approved' });
       } else if (proposal.kind === 'supplement') {
+        const name = String(proposal.name || '').trim().slice(0, 100);
+        const dose = Number(proposal.dose);
+        const unit = String(proposal.unit || '').trim().slice(0, 20);
+        if (!name || !unit || !Number.isFinite(dose) || dose <= 0 || dose > 10000) { reject(); return; }
         const key = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
-        writeJSON(K.supplement(state.profile, date, key), { name: String(proposal.name).slice(0, 100), dose: Number(proposal.dose), unit: String(proposal.unit).slice(0, 20), at: new Date().toISOString(), createdBy: 'agent-approved' });
+        writeJSON(K.supplement(state.profile, date, key), { name, dose, unit, at: new Date().toISOString(), createdBy: 'agent-approved' });
       } else if (proposal.kind === 'bodyweight') {
         const unit = proposal.unit === 'kg' ? 'kg' : 'lb';
         const value = Number(proposal.value);
-        if (!value) return;
+        if (!Number.isFinite(value) || value < 40 || value > 1500) { reject(); return; }
         writeJSON(K.bodyweight(state.profile, date), { value, unit, createdBy: 'agent-approved' });
         if (date === dateKey()) {
           saveData(`jt-lupe-${state.profile}-weight`, value);
           saveData(`jt-lupe-${state.profile}-unit`, unit);
         }
-      } else return;
+      } else if (proposal.kind === 'habit') {
+        if (!['protein', 'preworkout', 'sleep'].includes(proposal.habit)) { reject(); return; }
+        writeJSON(K.habit(state.profile, date, proposal.habit), { done: proposal.done === true, createdBy: 'agent-approved' });
+      } else if (proposal.kind === 'removal') {
+        let key = null;
+        if (proposal.recordKind === 'set') {
+          const exerciseId = String(proposal.exerciseId || '');
+          const setNumber = Number(proposal.setNumber);
+          if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(exerciseId) || !Number.isInteger(setNumber) || setNumber < 1 || setNumber > 20) { reject(); return; }
+          key = K.set(state.profile, date, exerciseId, setNumber);
+        } else if (proposal.recordKind === 'meal' || proposal.recordKind === 'supplement') {
+          const recordId = String(proposal.recordId || '');
+          if (!/^[a-zA-Z0-9._:-]{1,160}$/.test(recordId)) { reject(); return; }
+          key = proposal.recordKind === 'meal'
+            ? K.meal(state.profile, date, recordId)
+            : K.supplement(state.profile, date, recordId);
+        } else { reject(); return; }
+        if (localStorage.getItem(key) === null) { reject(); return; }
+        localStorage.removeItem(key);
+        markDirty(key);
+        scheduleSync();
+      } else { reject(); return; }
       recordActivity(state.profile, 'approved', proposal.kind, proposalSummary({ ...proposal, date }));
       card.dataset.applied = 'true';
       button.textContent = 'Applied';
@@ -2185,6 +2143,53 @@
       badge.textContent = 'Saved locally';
       agentProposals.delete(id);
       renderAll();
+    }
+
+    function driveTrainingUi(action) {
+      if (action?.kind === 'navigate') {
+        const tabBySurface = { workout: 'train', food: 'fuel', supplements: 'supplements', progress: 'progress' };
+        const tab = tabBySurface[action.surface];
+        if (!tab) return false;
+        const requestedDate = String(action.date || '');
+        const validDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
+          && dateKey(parseDate(requestedDate)) === requestedDate;
+        const latestDate = tab === 'train' ? shiftDate(dateKey(), 90) : dateKey();
+        const fallbackDate = tab === 'train' ? state.date : dateKey();
+        const date = validDate && requestedDate <= latestDate ? requestedDate : fallbackDate;
+        if (tab === 'train') state.date = date;
+        if (tab === 'fuel') state.fuelDate = date;
+        if (tab === 'supplements') state.supplementDate = date;
+        setTab(tab);
+        if (tab === 'train') renderSession();
+        return true;
+      }
+      if (action?.kind !== 'interface') return false;
+      if (action.action === 'timer_start' || action.action === 'timer_pause' || action.action === 'timer_reset') {
+        setTab('train');
+        if (action.action === 'timer_start' && !state.timerId) el('timerToggle').click();
+        if (action.action === 'timer_pause' && state.timerId) el('timerToggle').click();
+        if (action.action === 'timer_reset') el('timerReset').click();
+      } else if (action.action === 'food_search') {
+        setTab('fuel');
+        el('foodQuery').value = String(action.value || '').slice(0, 80);
+        if (el('foodQuery').value) el('foodGo').click();
+        else el('foodQuery').focus();
+      } else if (action.action === 'import_notes') {
+        setTab('train');
+        el('importBlock').open = true;
+        el('importText').value = String(action.value || '').slice(0, 2000);
+        if (el('importText').value) el('importPreview').click();
+        else el('importText').focus();
+      } else if (['export_csv', 'download_backup', 'restore_backup', 'toggle_theme', 'install_app'].includes(action.action)) {
+        setTab('progress');
+        const control = {
+          export_csv: 'exportCsv', download_backup: 'backupButton', restore_backup: 'restoreButton',
+          toggle_theme: 'themeButton', install_app: 'installButton'
+        }[action.action];
+        if (['restore_backup', 'install_app'].includes(action.action)) el(control).focus();
+        else el(control).click();
+      } else return false;
+      return true;
     }
 
     function consumeAgentEvent(event, data, responseState) {
@@ -2202,6 +2207,10 @@
         finishAgentLoading(responseState.loading);
         responseState.loading = null;
         appendAgentProposal(data);
+      } else if (event === 'ui_action') {
+        finishAgentLoading(responseState.loading);
+        responseState.loading = null;
+        responseState.uiActions.push(data);
       }
       else if (event === 'status') el('agentLiveStatus').textContent = data.text || '';
       else if (event === 'done') {
@@ -2210,11 +2219,12 @@
         if (responseState.copy) responseState.copy.textContent = responseState.copy.textContent.replace(/\*\*|`/g, '');
         responseState.tools.forEach(tool => { tool.dataset.state = 'done'; });
         el('agentLiveStatus').textContent = `Answered with ${data.model || 'OpenRouter'}.`;
+        responseState.uiActions.forEach(action => driveTrainingUi(action));
       }
       else if (event === 'error') throw new Error(data.message || 'The coach could not answer.');
     }
 
-    async function sendAgentMessage(prompt) {
+    async function sendAgentMessage(prompt, uiContext = state.coachContext || uiContextFor('agent')) {
       if (agentBusy || !agentConnected) return;
       const text = String(prompt || '').trim();
       if (!text) { el('agentPrompt').focus(); return; }
@@ -2227,14 +2237,14 @@
       try {
         const response = await apiFetch(`./api/agent/chat?ns=${SYNC_NS}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-          body: JSON.stringify({ prompt: text, profile: state.profile })
+          body: JSON.stringify({ prompt: text, profile: state.profile, uiContext })
         });
-        if (response.status === 409) { await refreshAgentStatus(); throw new Error('Connect OpenRouter to continue.'); }
+        if (response.status === 503) { await refreshAgentStatus(); throw new Error('The coach is unavailable right now.'); }
         if (!response.ok || !response.body) throw new Error('The coach is unavailable right now.');
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
-        const responseState = { copy: null, loading, tools: [] };
+        const responseState = { copy: null, loading, tools: [], uiActions: [] };
         while (true) {
           // eslint-disable-next-line no-await-in-loop
           const { done, value } = await reader.read();
@@ -2257,12 +2267,11 @@
         el('agentLiveStatus').textContent = 'Nothing was changed.';
       } finally {
         agentBusy = false;
-        el('agentSend').disabled = false;
+        el('agentSend').disabled = !agentConnected;
         el('agentPrompt').focus();
       }
     }
 
-    el('agentConnect').addEventListener('click', beginOpenRouterConnection);
     el('agentForm').addEventListener('submit', event => { event.preventDefault(); sendAgentMessage(el('agentPrompt').value); });
     el('agentPrompt').addEventListener('keydown', event => {
       if (event.key === 'Enter' && !event.shiftKey) {
@@ -2270,17 +2279,13 @@
         el('agentForm').requestSubmit();
       }
     });
-    document.querySelectorAll('[data-agent-prompt]').forEach(button => button.addEventListener('click', () => sendAgentMessage(button.dataset.agentPrompt)));
     el('agentReset').addEventListener('click', async () => {
       await apiFetch(`./api/agent/reset?ns=${SYNC_NS}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-      el('agentThread').innerHTML = '<div class="agent-message assistant"><div><strong>Training OS Coach</strong><p>New conversation. What are we working on?</p></div></div>';
+      el('agentThread').innerHTML = '<p class="agent-empty" id="agentEmpty">What do you want to log, review, or change?</p>';
+      el('agentReset').hidden = true;
       agentProposals.clear();
       agentProposalSignatures.clear();
       el('agentLiveStatus').textContent = 'Conversation reset.';
-    });
-    el('agentDisconnect').addEventListener('click', async () => {
-      await apiFetch(`./api/agent/disconnect?ns=${SYNC_NS}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-      await refreshAgentStatus();
     });
 
     /* ================= progress ================= */
@@ -2349,7 +2354,6 @@
     }
 
     function renderProgress() {
-      el('progressWho').textContent = PROFILE_LABEL[state.profile];
       const strength = readStrength(state.profile);
       const weights = readWeightHistory(state.profile);
       const habits = readHabitHistory(state.profile);
@@ -2405,9 +2409,6 @@
         </table></div>`
         : '<p class="empty">No daily fundamentals history yet.</p>';
 
-      el('dataNote').textContent = syncState.enabled
-        ? `Synced to your private database as ${syncState.email}. Backup still works offline.`
-        : 'Stored on this device only. Back up before clearing browser data.';
     }
 
     /* ================= data in and out ================= */
@@ -2443,7 +2444,7 @@
         readSupplementHistory(profile).forEach(row => row.entries.forEach(item => {
           lines.push(['supplement', profile, row.date, '', '', item.name, item.dose, item.unit].map(csvCell).join(','));
         }));
-        const mealPattern = new RegExp(`^jt-lupe-meal-${profile}-(\\d{4}-\\d{2}-\\d{2})-`);
+        const mealPattern = new RegExp(`^jt-lupe:${profile}:meal:(\\d{4}-\\d{2}-\\d{2}):`);
         const seen = new Set();
         for (let index = 0; index < localStorage.length; index += 1) {
           const key = localStorage.key(index);
@@ -2499,10 +2500,15 @@
       }
     });
 
+    const paintThemeButton = () => {
+      el('themeButton').textContent = document.documentElement.dataset.theme === 'dark' ? 'Light mode' : 'Dark mode';
+    };
+    paintThemeButton();
     el('themeButton').addEventListener('click', () => {
       const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
       document.documentElement.dataset.theme = next;
       localStorage.setItem('jt-lupe-theme', next);
+      paintThemeButton();
     });
 
     let installPrompt = null;
@@ -2524,44 +2530,12 @@
 
     /* ================= static copy ================= */
     el('rulesBody').innerHTML = `
-      <p><strong>Double progression.</strong> Keep the same weight until you hit the top of
-      the rep range on every working set. Then add the smallest jump available and expect
-      reps to fall back to the bottom of the range. Climb again.</p>
-      <p><strong>Leave 1–3 reps in the tank.</strong> A set that ends with 5+ reps left is
-      too light to matter. Grinding to absolute failure buys very little extra growth and
-      costs you the next session.</p>
       <ul>
-        <li>Roughly 10+ hard sets per muscle per week drives growth.</li>
-        <li>Train Monday, Wednesday, and Friday. The rest days are part of the plan.</li>
-        <li>Rest 2–3 minutes on the big lifts. The timer defaults to 90 seconds for the rest.</li>
-        <li>Log every set. If a set becomes a drop set, record the working reps and the lighter finish separately.</li>
+        <li>Start with a weight you can lift in the target range with about two clean reps left.</li>
+        <li>Keep it until every set reaches the top of the range, then add the smallest jump.</li>
+        <li>Record lighter or assisted finish reps inside that set’s Drop section.</li>
       </ul>
-      <p class="muted">Sources:
-        <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/">2026 ACSM position stand</a>,
-        <a href="https://pubmed.ncbi.nlm.nih.gov/41343037/">2026 volume meta-regression</a>,
-        <a href="https://pubmed.ncbi.nlm.nih.gov/42410632/">failure vs non-failure review</a>.</p>`;
-
-    el('evidenceBody').innerHTML = `
-      <p>Three weight-first sessions, repeated exposure for the major muscle groups, and
-      one progression rule. The plan borrows the Anime Physique priorities — lats,
-      shoulders, chest, balanced legs and core — without pretending a gym has no weights.</p>
-      <ul>
-        <li><strong>Monday:</strong> V-taper and quads.</li>
-        <li><strong>Wednesday:</strong> chest and posterior chain.</li>
-        <li><strong>Friday:</strong> full body with extra back and shoulder work.</li>
-        <li><strong>Protein 1.6–2.2 g/kg</strong> daily. Total matters far more than timing.</li>
-        <li><strong>Creatine monohydrate 3–5 g</strong> every day. No loading phase needed.</li>
-        <li><strong>Definition comes from losing fat</strong> while training preserves the muscle.</li>
-      </ul>
-      <p class="muted">
-        <a href="https://www.youtube.com/watch?v=3Zgrh5009_k">Anime Physique exercise priorities</a> ·
-        <a href="https://www.youtube.com/watch?v=qQrfSU3TTwc">Anime Physique split guidance</a> ·
-        <a href="https://jissn.biomedcentral.com/counter/pdf/10.1186/s12970-017-0177-8.pdf">ISSN protein stand</a> ·
-        <a href="https://link.springer.com/article/10.1186/s12970-021-00412-w">ISSN creatine review</a> ·
-        <a href="https://pubmed.ncbi.nlm.nih.gov/41433021/">2025 creatine meta-analysis</a></p>
-      <p class="muted">Healthy adults without current injuries. Stop anything that causes sharp
-      pain. Kidney disease, pregnancy, medication affecting kidney function, or under 18 —
-      talk to a clinician before supplementing.</p>`;
+      `;
 
     /* ================= render everything ================= */
     function renderAll() {
@@ -2576,7 +2550,10 @@
        works with no network at all. In production, Cloudflare Access supplies an
        identity and the same data also round-trips to this person's own SQLite
        database in a Durable Object. */
-    const SYNC_NS = 'gym';
+    const requestedNamespace = new URLSearchParams(location.search).get('ns') || '';
+    const localNamespaceOverride = ['127.0.0.1', 'localhost'].includes(location.hostname)
+      && /^[a-zA-Z0-9_-]{1,64}$/.test(requestedNamespace);
+    const SYNC_NS = localNamespaceOverride ? requestedNamespace : 'gym';
     const CURSOR_KEY = 'jt-lupe-sync-cursor';
     const DEVICE_KEY = 'jt-lupe-sync-device';
     const DIRTY_KEY = 'jt-lupe-sync-dirty';
@@ -2638,6 +2615,7 @@
       const chip = el('syncChip');
       chip.dataset.state = stateName;
       chip.title = title || label;
+      chip.setAttribute('aria-label', title || label);
       el('syncText').textContent = label;
     }
 
@@ -2727,7 +2705,8 @@
           `Synced as ${syncState.email}. ${pulled} change(s) pulled.`);
       } catch (error) {
         console.warn('sync', error);
-        setSyncChip('offline', 'Retrying', `Saved on this device. ${String(error.message || error)}`);
+        setSyncChip('offline', 'Saved offline', `Saved on this device. Upload will retry automatically. ${String(error.message || error)}`);
+        scheduleSync(10000);
       } finally {
         syncState.busy = false;
       }
@@ -2794,7 +2773,6 @@
 
     async function initSync() {
       await connectSync();
-      await finishOpenRouterConnection();
 
       // Attached whatever happened above. A page that started with no signal has to be
       // able to recover on its own — nobody reloads a PWA on the way out of the gym.

@@ -1,8 +1,9 @@
 # JT + Lupe Training OS
 
 An installable workout, weight, food, and supplement tracker for JT and Lupe. The
-60-day training block begins Monday, August 17, 2026 and runs through Thursday,
-October 15, 2026.
+60-day training block begins Monday, August 31, 2026 and runs through Thursday,
+October 29, 2026. Lifting days are Monday, Wednesday, and Friday; workout, food,
+and supplement logging all begin with that opening week.
 
 Private app: <https://jt-lupe-workout.jt-lupe-workout-cloud.workers.dev/>
 
@@ -82,23 +83,33 @@ The application shell is rebuilt from [Beautiful UI](https://www.beautifului.dev
 an MIT-licensed collection of copy-paste primitives for AI-native interfaces.
 Beautiful UI is not a runtime dependency in this zero-build PWA. Its catalog contracts
 are implemented directly in the document and `beautiful-ui.css`, preserving offline
-startup without a frontend build step. The implementation uses Sidebar Nav, Context
-Cards, Recommendation Card, Task Rows, Search, Filter Table, Records Table, Prompt Bar,
-Chat, Streaming Text, Thinking, Loading State, Tool Chips, Approval Card, Insight Cards,
+startup without a frontend build step. Every product surface uses a catalog primitive;
+catalog demos with no user job are not mounted. The active vocabulary includes Sidebar
+Nav, Context Cards, Task Rows, Search, Filter Table, Records Table, Prompt Bar, Chat,
+Streaming Text, Thinking, Loading State, Tool Chips, Approval Card, Insight Cards,
 Fine-tune Card, and Selection Actions. No generic card, chip, badge, pill, or second UI
 system is layered on top.
+The component-by-component source and compatibility record is in
+[`BEAUTIFUL_UI_PROVENANCE.md`](BEAUTIFUL_UI_PROVENANCE.md).
 
 ## AI-native architecture
 
 The agent is a control layer, not an automatic writer. A system-wide Prompt Bar hands
 off from Workout, Food, Supplements, or Progress into the same conversation. The
 Cloudflare Agent uses Pi for the agent loop and OpenRouter for inference. It receives
-only the signed-in profile's server-built 60-day snapshot. Read tools inspect that
+only the signed-in profile's server-built 60-day snapshot. Normal two-month challenge
+history remains complete; storage applies per-record-type candidate and hard-scan
+ceilings, skips corrupt rows before candidate caps, and explicitly marks pathological
+overflow before it can reach the model. Read tools inspect that
 snapshot; write tools return typed proposals. The browser performs the final write only
 after a human applies a Beautiful UI Approval Card, then stores an append-only receipt.
-The current shared OpenRouter credential is a Cloudflare secret and never enters the
-browser or repository. The optional OAuth path stores a user credential in that
-person's private Agent Durable Object. No Apple Health, wearable, medical record, or
+The coach uses the same USDA/Whole Foods catalog as the Food surface and can drive the
+dated views, rest timer, food search, import, exports, backup, theme, restore handoff,
+and installation handoff. Navigation and routine device controls do not change a
+training record; every record mutation still requires an Approval Card.
+The shared OpenRouter credential is a Cloudflare secret and never enters the browser
+or repository. The coach is ready after Cloudflare Access sign-in; JT and Lupe never
+connect or manage a model credential. No Apple Health, wearable, medical record, or
 health MCP is connected.
 
 Deploying a new version never touches this data: the service worker caches app files

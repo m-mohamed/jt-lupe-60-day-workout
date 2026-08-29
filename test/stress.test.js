@@ -4,12 +4,14 @@
 //
 // Needs `wrangler dev --port 8777` with the dev-auth flags from README.md.
 const { chromium } = require('playwright-core');
+const { readFileSync } = require('node:fs');
 const { launchOptions, SELECT_ALL } = require('./browser.js');
 const R = []; const t = (n, ok, d = '') => R.push(`${ok ? 'PASS' : 'FAIL'}  ${n}${d ? `  -> ${d}` : ''}`);
 const settle = p => p.waitForFunction(
   () => ['synced', 'local', 'offline', 'error'].includes(document.getElementById('syncChip').dataset.state),
   null, { timeout: 60000 });
-const url = 'http://127.0.0.1:8777/';
+const namespace = 'two-month-acceptance';
+const url = `http://127.0.0.1:8777/?ns=${namespace}`;
 
 (async () => {
   const b = await chromium.launch(launchOptions());
@@ -18,7 +20,7 @@ const url = 'http://127.0.0.1:8777/';
   const errors = []; p.on('pageerror', e => errors.push(String(e)));
   await p.goto(url); await settle(p);
 
-  const me = await p.evaluate(() => fetch('./api/me?ns=gym').then(r => r.json()).catch(() => null));
+  const me = await p.evaluate(ns => fetch(`./api/me?ns=${ns}`).then(r => r.json()).catch(() => null), namespace);
   if (!me || !me.email) {
     console.error('Not signed in to the dev worker — this suite would test nothing. Got:', JSON.stringify(me));
     console.error('Start it with: npx wrangler@4 dev --port 8777 --var ACCESS_TEAM_DOMAIN: --var ACCESS_AUD: --var DEV_EMAIL:stress@local');
@@ -31,11 +33,10 @@ const url = 'http://127.0.0.1:8777/';
 
   /* ---------- write a full 60-day challenge for both people ---------- */
   const seeded = await p.evaluate(() => {
-    const start = new Date(2026, 7, 17);
-    let sets = 0, meals = 0, habits = 0, weights = 0;
+    const start = new Date(2026, 7, 31);
+    let sets = 0, meals = 0, habits = 0, weights = 0, supplements = 0;
     for (let offset = 0; offset < 60; offset += 1) {
       const d = new Date(start); d.setDate(start.getDate() + offset);
-      if (d.getDay() === 0 || d.getDay() === 6) continue;      // weekdays only, like the plan
       const date = dateKey(d);
       const day = dayForDate(date);
       for (const profile of ['jt', 'lupe']) {
@@ -57,12 +58,19 @@ const url = 'http://127.0.0.1:8777/';
         });
         writeJSON(K.supplement(profile, date, `s${offset}`), {
           name: 'Creatine monohydrate', dose: 5, unit: 'g', at: new Date().toISOString()
-        });
+        }); supplements += 1;
       }
     }
-    return { sets, meals, habits, weights, dirty: readDirty().length, local: Object.keys(localStorage).filter(k => k.startsWith('jt-lupe')).length };
+    const profileCounts = Object.fromEntries(['jt', 'lupe'].map(profile => [profile,
+      Object.keys(localStorage).filter(key => key.startsWith(`jt-lupe:${profile}:`)).length]));
+    return { sets, meals, habits, weights, supplements, profileCounts,
+      dirty: readDirty().length, local: Object.keys(localStorage).filter(k => k.startsWith('jt-lupe')).length };
   });
   t('seeded a full challenge for both profiles', seeded.sets > 1000 && seeded.dirty > 1500,
+    JSON.stringify(seeded));
+  t('two-month acceptance data covers every day for JT and Lupe',
+    seeded.meals === 120 && seeded.habits === 360 && seeded.weights === 120 && seeded.supplements === 120
+      && seeded.profileCounts.jt === seeded.profileCounts.lupe,
     JSON.stringify(seeded));
 
   /* ---------- it must all reach the server, in batches, without wedging ---------- */
@@ -72,7 +80,7 @@ const url = 'http://127.0.0.1:8777/';
   await settle(p);
   const elapsed = Date.now() - started;
 
-  const server = await p.evaluate(() => fetch('./api/stats?ns=gym').then(r => r.json()));
+  const server = await p.evaluate(ns => fetch(`./api/stats?ns=${ns}`).then(r => r.json()), namespace);
   const dirtyLeft = await p.evaluate(() => readDirty().length);
   t('the whole backlog syncs, nothing left dirty', dirtyLeft === 0, `dirty=${dirtyLeft} after ${elapsed}ms`);
   t('every local record reached the server', server.records >= seeded.local - 5,
@@ -85,7 +93,11 @@ const url = 'http://127.0.0.1:8777/';
     const progress = await time(() => { setTab('progress'); renderProgress(); });
     const fuel = await time(() => { setTab('fuel'); renderFuel(); });
     const train = await time(() => { setTab('train'); renderSession(); });
-    return { progress, fuel, train,
+    const jtSets = document.getElementById('statLifts').textContent;
+    setProfile('lupe'); renderProgress();
+    const lupeSets = document.getElementById('statLifts').textContent;
+    setProfile('jt');
+    return { progress, fuel, train, jtSets, lupeSets,
       strengthRows: document.querySelectorAll('#strengthBody tr').length,
       sessions: document.getElementById('statSessions').textContent,
       sets: document.getElementById('statLifts').textContent };
@@ -98,6 +110,9 @@ const url = 'http://127.0.0.1:8777/';
   t('progress counts the active profile’s whole challenge',
     Number(render.sets.replace(/\D/g, '')) >= Math.floor(seeded.sets / 2),
     JSON.stringify({ sessions: render.sessions, sets: render.sets, seeded: seeded.sets }));
+  t('JT and Lupe each retain an isolated two-month progress history',
+    render.jtSets === render.lupeSets && Number(render.jtSets.replace(/\D/g, '')) > 500,
+    JSON.stringify({ jt: render.jtSets, lupe: render.lupeSets }));
 
   /* ---------- a second device must converge on the same data ---------- */
   const ctx2 = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
@@ -110,13 +125,13 @@ const url = 'http://127.0.0.1:8777/';
   t('a fresh device pulls the whole history', second > 1500, `${second} records`);
 
   /* ---------- last write wins across two devices ---------- */
-  await p.evaluate(() => { writeSet('jt', '2026-08-19', 'leg-press', 1, { load: '111', unit: 'lb', reps: 5, seconds: null, rir: 2 }); scheduleSync(); });
+  await p.evaluate(() => { writeSet('jt', '2026-08-31', 'leg-press', 1, { load: '111', unit: 'lb', reps: 5, seconds: null, rir: 2 }); scheduleSync(); });
   await p.waitForTimeout(2500);
-  await p2.evaluate(() => { writeSet('jt', '2026-08-19', 'leg-press', 1, { load: '222', unit: 'lb', reps: 5, seconds: null, rir: 2 }); scheduleSync(); });
+  await p2.evaluate(() => { writeSet('jt', '2026-08-31', 'leg-press', 1, { load: '222', unit: 'lb', reps: 5, seconds: null, rir: 2 }); scheduleSync(); });
   await p2.waitForTimeout(3000);
   await p.evaluate(() => scheduleSync()); await p.waitForTimeout(3000);
-  const converged = await p.evaluate(() => fetch('./api/export?ns=gym').then(r => r.json())
-    .then(dump => JSON.parse(dump.data['jt-lupe:jt:set:2026-08-19:leg-press:1']).load));
+  const converged = await p.evaluate(ns => fetch(`./api/export?ns=${ns}`).then(r => r.json())
+    .then(dump => JSON.parse(dump.data['jt-lupe:jt:set:2026-08-31:leg-press:1']).load), namespace);
   t('last write wins across two devices', converged === '222', String(converged));
 
   /* ---------- a flapping connection must not lose or duplicate ---------- */
@@ -125,7 +140,7 @@ const url = 'http://127.0.0.1:8777/';
   for (let round = 0; round < 4; round += 1) {
     await ctx.setOffline(true);
     await p.evaluate(n => { window.dispatchEvent(new Event('offline'));
-      writeSet('lupe', '2026-08-20', 'leg-press', n + 1, { load: `${300 + n}`, unit: 'lb', reps: 6, seconds: null, rir: 2 }); }, round);
+      writeSet('lupe', '2026-09-07', 'leg-press', n + 1, { load: `${300 + n}`, unit: 'lb', reps: 6, seconds: null, rir: 2 }); }, round);
     await p.waitForTimeout(400);
     await ctx.setOffline(false);
     await p.evaluate(() => window.dispatchEvent(new Event('online')));
@@ -134,14 +149,14 @@ const url = 'http://127.0.0.1:8777/';
   /* eslint-enable no-await-in-loop */
   await p.evaluate(() => scheduleSync());
   await p.waitForFunction(() => readDirty().length === 0, null, { timeout: 45000 }).catch(() => {});
-  const flap = await p.evaluate(() => fetch('./api/export?ns=gym').then(r => r.json())
-    .then(dump => Object.keys(dump.data).filter(k => k.startsWith('jt-lupe:lupe:set:2026-08-20:leg-press:')).length));
+  const flap = await p.evaluate(ns => fetch(`./api/export?ns=${ns}`).then(r => r.json())
+    .then(dump => Object.keys(dump.data).filter(k => k.startsWith('jt-lupe:lupe:set:2026-09-07:leg-press:')).length), namespace);
   t('four offline/online flaps land exactly four sets', flap === 4, String(flap));
   t('nothing left queued after the flapping', (await p.evaluate(() => readDirty().length)) === 0);
 
   /* ---------- the Worker's own limits ---------- */
-  const limits = await p.evaluate(async () => {
-    const post = body => fetch('./api/sync?ns=gym', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const limits = await p.evaluate(async ns => {
+    const post = body => fetch(`./api/sync?ns=${ns}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(async r => ({ status: r.status, body: await r.json() }));
     return {
       tooMany: await post({ changes: Array.from({ length: 2001 }, (_, i) => ({ key: `k${i}`, value: 'x' })) }),
@@ -152,9 +167,9 @@ const url = 'http://127.0.0.1:8777/';
       notArray: await post({ changes: 'nope' }),
       oversizedBody: await post({ changes: [], padding: 'x'.repeat(2 * 1024 * 1024) }),
       badNs: await fetch('./api/sync?ns=../evil', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"changes":[]}' }).then(r => r.status),
-      badJson: await fetch('./api/sync?ns=gym', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'not json' }).then(r => r.status)
+      badJson: await fetch(`./api/sync?ns=${ns}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'not json' }).then(r => r.status)
     };
-  });
+  }, namespace);
   t('over-large batch rejected', limits.tooMany.status === 400 && /too many/.test(limits.tooMany.body.detail || ''), JSON.stringify(limits.tooMany.body));
   t('oversized value rejected', limits.hugeValue.status === 400, JSON.stringify(limits.hugeValue.body));
   t('value limit measures UTF-8 bytes', limits.multibyteValue.status === 400, JSON.stringify(limits.multibyteValue.body));
@@ -168,7 +183,7 @@ const url = 'http://127.0.0.1:8777/';
 
   /* ---------- a rejected batch must not wedge the queue ---------- */
   const recovered = await p.evaluate(async () => {
-    writeSet('jt', '2026-08-21', 'leg-press', 1, { load: '77', unit: 'lb', reps: 9, seconds: null, rir: 2 });
+    writeSet('jt', '2026-09-09', 'leg-press', 1, { load: '77', unit: 'lb', reps: 9, seconds: null, rir: 2 });
     scheduleSync();
     await new Promise(s => setTimeout(s, 4000));
     return { dirty: readDirty().length, chip: document.getElementById('syncChip').dataset.state };
@@ -176,7 +191,7 @@ const url = 'http://127.0.0.1:8777/';
   t('a normal write still syncs after rejected batches', recovered.dirty === 0 && recovered.chip === 'synced', JSON.stringify(recovered));
 
   /* ---------- typing while the app is being navigated hard ---------- */
-  await p.evaluate(() => { setTab('train'); state.date = '2026-08-26'; renderSession(); });
+  await p.evaluate(() => { setTab('train'); state.date = '2026-09-02'; renderSession(); });
   await p.waitForTimeout(400);
   const exId = await p.evaluate(() => document.querySelectorAll('.in-load')[0].dataset.ex);
   await p.locator('.in-load').nth(0).tap();
@@ -190,13 +205,20 @@ const url = 'http://127.0.0.1:8777/';
   }
   /* eslint-enable no-await-in-loop */
   await p.waitForTimeout(600);
-  const raced = await p.evaluate(id => setsFor('jt', '2026-08-26', id).map(s => s.load), exId);
+  const raced = await p.evaluate(id => setsFor('jt', '2026-09-02', id).map(s => s.load), exId);
   t('a set value typed then hammered through tabs survives without changing other sets',
     raced[0] === '137' && raced.slice(1).every(load => load !== '137'), JSON.stringify(raced));
 
   /* ---------- export at full volume ---------- */
-  const exported = await p.evaluate(() => fetch('./api/export?ns=gym').then(r => r.json()).then(d => ({ count: d.count, keys: Object.keys(d.data).length })));
+  const exported = await p.evaluate(ns => fetch(`./api/export?ns=${ns}`).then(r => r.json()).then(d => ({ count: d.count, keys: Object.keys(d.data).length })), namespace);
   t('export returns the whole namespace', exported.count === exported.keys && exported.count > 1500, JSON.stringify(exported));
+
+  await p.locator('.tab[data-tab="progress"]').tap();
+  const csvDownload = p.waitForEvent('download');
+  await p.locator('#exportCsv').tap();
+  const csv = readFileSync(await (await csvDownload).path(), 'utf8');
+  t('human CSV export includes current meal records', /"meal","jt","2026-08-31"/.test(csv)
+    && /"Chicken and rice"/.test(csv), csv.slice(-500));
 
   t('no page errors on either device', errors.length === 0 && errors2.length === 0, [...errors, ...errors2].join(' | '));
 

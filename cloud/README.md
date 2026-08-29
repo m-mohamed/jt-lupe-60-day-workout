@@ -7,7 +7,10 @@ records, and a separate private Agent Durable Object owns the Pi conversation an
 user's OpenRouter credential.
 
 Nothing in `src/store.js` knows what a workout is. A second small tool can use the
-same deployment by passing a different `?ns=`.
+same deployment by passing a different `?ns=`. Non-`gym` namespaces also receive a
+separate Agent Durable Object, so acceptance checks and future apps cannot address
+the founders' gym conversation. The `gym` object name remains unchanged across this
+migration, preserving the existing conversation.
 
 ## Why this shape
 
@@ -48,11 +51,9 @@ of the response, so a device never re-applies its own writes.
 | `GET /api/food` | USDA lookup plus clearly labelled Whole Foods Hot Bar estimates |
 | `GET /api/export` | full namespace dump for backup |
 | `GET /api/stats` | record count, version, database size |
-| `GET /api/agent/status` | Pi agent connection and selected model |
-| `POST /api/agent/connect` | exchange a user-authorized OpenRouter OAuth code |
+| `GET /api/agent/status` | Pi agent availability, capabilities, and selected model |
 | `POST /api/agent/chat` | stream Pi text, tool activity, and typed proposals |
 | `POST /api/agent/reset` | clear the private conversation |
-| `POST /api/agent/disconnect` | remove the OpenRouter credential |
 
 All routes take `?ns=` and are denied without a valid Access JWT.
 
@@ -135,15 +136,22 @@ is the primary model router because it
 chooses from currently available free models and filters for requested capabilities
 such as tool calling. Free model availability can change without notice, so the
 default does not force a fixed fallback model.
-Production can use a shared Cloudflare secret, configured with
-`npx wrangler secret put OPENROUTER_API_KEY`, or user-controlled OpenRouter OAuth PKCE.
-The shared key never enters the browser or repository. An OAuth credential stays in
-that person's private Agent SQLite database.
+Production uses one shared Cloudflare secret, configured with
+`npx wrangler secret put OPENROUTER_API_KEY`. The key never enters the browser or
+repository. The coach is therefore available immediately after a permitted JT or Lupe
+sign-in without a separate provider connection flow.
 
-The agent reads a server-built, profile-scoped 60-day snapshot. Its set, meal,
-supplement, and bodyweight tools return proposals only. They do not write the record
-store. The browser presents a Beautiful UI Approval Card and writes only after a human
-confirms.
+The agent reads a server-built, profile-scoped 60-day snapshot. SQLite filters by
+profile and date and stops at 2,000 candidate rows before materialization. A 96 KiB
+serialized ceiling preserves the complete normal two-month challenge while marking
+pathological overflow as truncated. Its set, meal,
+supplement, bodyweight, habit, and record-removal tools return proposals only. They do
+not write the record store. The browser presents a Beautiful UI Approval Card and
+writes only after a human confirms. Read-only tools search the same USDA/Whole Foods
+catalog as the Food UI and can navigate the visible Training OS surface without changing
+data. A separate typed interface tool drives the existing timer, search, import, export,
+backup, theme, restore, and installation controls; browser-protected file and install
+prompts still require the person.
 
 Every Pi request has a 45-second timeout, one bounded retry, a 1,600-token response
 ceiling, and OpenRouter provider routing that denies data-collecting endpoints and

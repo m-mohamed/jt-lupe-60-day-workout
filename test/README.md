@@ -32,6 +32,7 @@ Then `node test/<file>` with `playwright-core` resolvable (`NODE_PATH=tools/node
 | File | Port | Covers |
 | --- | --- | --- |
 | `a11y.test.js` | 8911 | computed AA contrast, 40px targets, names, focus, one H1 — both themes |
+| `responsive.test.js` | 8911 | every surface at 320, 390, 768, and 1280px; clipping and overflow |
 | `session-flow.test.js` | 8911 | a training night: log, correct, cut sets, backfill a day |
 | `supplements.test.js` | 8911 | quick and custom intake, dose/unit history, single-entry undo |
 | `stress.test.js` | 8777 | a full 60-day challenge: batching, two devices, flapping, Worker limits |
@@ -42,7 +43,12 @@ Then `node test/<file>` with `playwright-core` resolvable (`NODE_PATH=tools/node
 | `edge-cases.test.js` | 8777 | injection, corrupt records, offline queue, restore |
 | `migration.test.js` | 8911 | v3 grid → v4 dated records |
 | `import.test.js` | 8911 | pasting a session from notes |
+| `agent-parity.test.js` | 8911 | approval-driven record parity, safe UI navigation, and untrusted-draft rejection |
 | `../cloud/access.test.mjs` | — | Access JWT verification |
+| `../cloud/agent-tools.test.mjs` | — | typed proposal tools stay write-free and cover every record type |
+| `../cloud/agent-runtime.test.mjs` | — | the real Pi loop streams tool calls, proposals, follow-up text, and safe failures |
+| `../cloud/agent-migration.test.mjs` | — | retired personal OAuth credentials are deleted at Agent startup |
+| `../cloud/food-catalog.test.mjs` | — | precise Hot Bar interception and shared USDA routing |
 
 ## The rule these exist to enforce
 

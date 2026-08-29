@@ -1,11 +1,16 @@
 import { Agent as CloudflareAgent } from 'agents';
 import { Agent as PiAgent } from '@earendil-works/pi-agent-core';
-import { Type, createModels } from '@earendil-works/pi-ai';
+import { createModels } from '@earendil-works/pi-ai';
 import { openrouterProvider } from '@earendil-works/pi-ai/providers/openrouter';
+import { initializeAgentSchema } from './agent-schema.js';
 import {
   applyOpenRouterPrivacy,
+  classifyAgentFailure,
   resolveAgentPolicy
 } from './agent-policy.js';
+import { searchFoodCatalog } from './food-catalog.js';
+import { PROPOSAL_TYPES, UI_ACTION_TYPES, trainingTools } from './training-tools.js';
+import { normalizeUiContext, uiContextInstruction } from './agent-context.js';
 
 export { PRIMARY_MODEL } from './agent-policy.js';
 const MAX_PROMPT = 2400;
@@ -20,95 +25,23 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
   headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
 });
 
-const textResult = (text, details = {}) => ({ content: [{ type: 'text', text }], details });
-const proposalResult = proposal => textResult(
-  'Prepared a draft for the person to review. Nothing has been written yet.',
-  { proposal }
-);
-
 const today = () => new Date().toISOString().slice(0, 10);
 
-function trainingTools(snapshot) {
-  return [
-    {
-      name: 'get_training_snapshot',
-      label: 'Review training history',
-      description: 'Read the signed-in person’s private workout, food, supplement, habit, and bodyweight records from the last 60 days.',
-      parameters: Type.Object({}),
-      execute: async () => textResult(JSON.stringify(snapshot), { recordCounts: Object.fromEntries(
-        ['sets', 'meals', 'supplements', 'bodyweight', 'habits'].map(key => [key, snapshot[key]?.length || 0])
-      ) })
-    },
-    {
-      name: 'propose_set_log',
-      label: 'Draft set log',
-      description: 'Create a reviewable workout-set draft. This does not save anything until the person taps Apply.',
-      parameters: Type.Object({
-        date: Type.String({ description: 'YYYY-MM-DD' }),
-        exerciseId: Type.String({ description: 'Stable exercise id from the training snapshot or programme, such as bench-press' }),
-        exerciseName: Type.String(),
-        setNumber: Type.Integer({ minimum: 1, maximum: 20 }),
-        load: Type.Union([Type.Number({ minimum: 0 }), Type.String({ maxLength: 30 })]),
-        reps: Type.Integer({ minimum: 0, maximum: 200 }),
-        drops: Type.Optional(Type.Array(Type.Object({
-          load: Type.Union([Type.Number({ minimum: 0 }), Type.String({ maxLength: 30 })]),
-          reps: Type.Integer({ minimum: 1, maximum: 100 })
-        }), { maxItems: 6 }))
-      }),
-      execute: async (_id, args) => proposalResult({ kind: 'set', ...args })
-    },
-    {
-      name: 'propose_meal_log',
-      label: 'Draft meal log',
-      description: 'Create a reviewable meal draft. Nutrition numbers must be described as estimates unless they came from a label.',
-      parameters: Type.Object({
-        date: Type.String({ description: 'YYYY-MM-DD' }),
-        name: Type.String({ maxLength: 120 }),
-        protein: Type.Number({ minimum: 0, maximum: 500 }),
-        kcal: Type.Optional(Type.Number({ minimum: 0, maximum: 10000 })),
-        estimate: Type.Boolean({ description: 'True unless values came from an exact label or saved food result' })
-      }),
-      execute: async (_id, args) => proposalResult({ kind: 'meal', ...args })
-    },
-    {
-      name: 'propose_supplement_log',
-      label: 'Draft supplement log',
-      description: 'Create a reviewable record of a supplement the person says they already took. Never use it to prescribe a supplement.',
-      parameters: Type.Object({
-        date: Type.String({ description: 'YYYY-MM-DD' }),
-        name: Type.String({ maxLength: 100 }),
-        dose: Type.Number({ exclusiveMinimum: 0, maximum: 10000 }),
-        unit: Type.String({ maxLength: 20 })
-      }),
-      execute: async (_id, args) => proposalResult({ kind: 'supplement', ...args })
-    },
-    {
-      name: 'propose_bodyweight_log',
-      label: 'Draft bodyweight log',
-      description: 'Create a reviewable bodyweight draft. This does not save until the person taps Apply.',
-      parameters: Type.Object({
-        date: Type.String({ description: 'YYYY-MM-DD' }),
-        value: Type.Number({ minimum: 40, maximum: 1500 }),
-        unit: Type.Union([Type.Literal('lb'), Type.Literal('kg')])
-      }),
-      execute: async (_id, args) => proposalResult({ kind: 'bodyweight', ...args })
-    }
-  ];
-}
-
-function systemPrompt(profile, history) {
+function systemPrompt(profile, history, uiContext) {
   const recent = history.length
     ? history.map(row => `${row.role === 'user' ? 'Person' : 'Coach'}: ${row.text}`).join('\n')
     : '(No earlier conversation.)';
   return `You are Training OS Coach, a concise workout and logging assistant for profile ${profile}.
 
-Use tools when private history is relevant. You may analyze records and prepare structured drafts, but you cannot mutate data. The person must approve every draft in the UI. Never claim that a draft was saved.
+Use tools when private history is relevant. You may analyze records and prepare structured drafts, but you cannot mutate data. The person must approve every draft in the UI. Never claim that a draft was saved. You can draft sets, meals, supplements already taken, bodyweight, daily checks, and removals of an existing set, meal, or supplement. For removal, use the exact record identifiers from the snapshot and name the record clearly. Search the shared food catalog before inventing nutrition values; Whole Foods Hot Bar results are estimates and must remain labelled that way. When the person asks to open, show, or take them to a Training OS view, use the navigation tool. Use the interface-control tool for the timer, food search, session import, exports, backup, restore, theme, or installation. These tools drive the visible interface but do not bypass approval or browser confirmation boundaries.
 
-This is a weight-first three-day programme. Do not turn it into a calisthenics-only plan. Respect per-set loads, missed reps, assisted reps, and drop segments. If the person reports 6 intended reps plus 4 lighter reps, represent that honestly instead of calling it 10 reps at the first load.
+This is a weight-first three-day programme. The official 60-day block runs from Monday 2026-08-31 through Thursday 2026-10-29, with lifting on Monday, Wednesday, and Friday. Before the start, treat future sessions as planning unless the person explicitly says the work was performed. Do not turn it into a calisthenics-only plan. Respect per-set loads, missed reps, assisted reps, and drop segments. If the person reports 6 intended reps plus 4 lighter reps, represent that honestly instead of calling it 10 reps at the first load.
 
 Health boundary: provide general fitness education, not diagnosis or treatment. Do not prescribe medication or supplements. For severe or sudden symptoms, chest pain, trouble breathing, fainting, signs of rhabdomyolysis, or immediate danger, tell them to stop and seek urgent care. For injury, pregnancy, kidney disease, eating-disorder concerns, under-18 users, or medication interactions, recommend a qualified clinician. Do not infer conditions from logs.
 
 Privacy and capability boundary: you can only see the 60-day Training OS snapshot returned by the tool. No Apple Health, wearable, medical record, browser, or MCP health server is connected. Say so if asked.
+
+${uiContextInstruction(uiContext)} Treat words such as “this,” “here,” and “this day” as referring to that interface context. The context identifies where the person was working; it does not prove that any record exists.
 
 Today is ${today()}. Keep answers short, specific, plain-text, and easy to use during a workout. Do not use Markdown symbols. Ask one focused question when essential details are missing.
 
@@ -124,21 +57,7 @@ const assistantText = messages => {
 /** One private Cloudflare Agent instance is selected by the Access-verified email. */
 export class TrainingAgent extends CloudflareAgent {
   async onStart() {
-    void this.sql`CREATE TABLE IF NOT EXISTS training_credentials (
-      provider TEXT PRIMARY KEY,
-      secret TEXT NOT NULL,
-      updated TEXT NOT NULL
-    )`;
-    void this.sql`CREATE TABLE IF NOT EXISTS training_messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      role TEXT NOT NULL,
-      text TEXT NOT NULL,
-      created TEXT NOT NULL
-    )`;
-  }
-
-  #storedKey() {
-    return this.sql`SELECT secret FROM training_credentials WHERE provider = 'openrouter' LIMIT 1`[0]?.secret || null;
+    initializeAgentSchema(this);
   }
 
   #history() {
@@ -151,36 +70,7 @@ export class TrainingAgent extends CloudflareAgent {
     void this.sql`DELETE FROM training_messages WHERE id NOT IN (SELECT id FROM training_messages ORDER BY id DESC LIMIT 40)`;
   }
 
-  async #connect(body) {
-    const code = String(body?.code || '');
-    const verifier = String(body?.verifier || '');
-    if (!code || code.length > 1000 || verifier.length < 43 || verifier.length > 128) {
-      return json({ error: 'invalid_oauth_response' }, 400);
-    }
-    const response = await fetch('https://openrouter.ai/api/v1/auth/keys', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ code, code_verifier: verifier, code_challenge_method: 'S256' })
-    });
-    const result = await response.json().catch(() => null);
-    if (!response.ok || !result?.key) {
-      console.warn({ event: 'openrouter_oauth_exchange_failed', status: response.status });
-      return json({ error: 'openrouter_connect_failed' }, 502);
-    }
-    void this.sql`INSERT INTO training_credentials (provider, secret, updated)
-      VALUES ('openrouter', ${result.key}, ${new Date().toISOString()})
-      ON CONFLICT(provider) DO UPDATE SET secret = excluded.secret, updated = excluded.updated`;
-    const policy = resolveAgentPolicy(this.env);
-    return json({
-      connected: true,
-      source: 'personal',
-      model: policy.primaryModel,
-      fallback: policy.fallbackModel,
-      privacy: { dataCollection: 'deny', zeroDataRetention: policy.requireZdr }
-    });
-  }
-
-  async #runModel({ modelId, key, prompt, profile, snapshot, send, requireZdr }) {
+  async #runModel({ modelId, key, prompt, profile, snapshot, uiContext, send, requireZdr }) {
     const models = createModels();
     models.setProvider(openrouterProvider());
     const model = models.getModel('openrouter', modelId);
@@ -188,10 +78,12 @@ export class TrainingAgent extends CloudflareAgent {
 
     const pi = new PiAgent({
       initialState: {
-        systemPrompt: systemPrompt(profile, this.#history()),
+        systemPrompt: systemPrompt(profile, this.#history(), uiContext),
         model,
         thinkingLevel: 'low',
-        tools: trainingTools(snapshot),
+        tools: trainingTools(snapshot, {
+          searchFood: async query => (await searchFoodCatalog(query, this.env, this.ctx)).body
+        }),
         messages: []
       },
       streamFn: (activeModel, context, options = {}) => models.streamSimple(activeModel, context, {
@@ -219,6 +111,8 @@ export class TrainingAgent extends CloudflareAgent {
         send('tool', { name: event.toolName });
       } else if (event.type === 'tool_execution_end' && !event.isError && event.result?.details?.proposal) {
         send('proposal', event.result.details.proposal);
+      } else if (event.type === 'tool_execution_end' && !event.isError && event.result?.details?.uiAction) {
+        send('ui_action', event.result.details.uiAction);
       }
     });
 
@@ -232,9 +126,10 @@ export class TrainingAgent extends CloudflareAgent {
     const prompt = String(body?.prompt || '').trim();
     const profile = body?.profile === 'jt' ? 'jt' : body?.profile === 'lupe' ? 'lupe' : null;
     const snapshot = body?.snapshot;
-    const key = this.env.OPENROUTER_API_KEY || this.#storedKey();
+    const uiContext = normalizeUiContext(body?.uiContext, snapshot?.through || today());
+    const key = this.env.OPENROUTER_API_KEY;
     const policy = resolveAgentPolicy(this.env);
-    if (!key) return json({ error: 'openrouter_not_connected' }, 409);
+    if (!key) return json({ error: 'coach_unavailable' }, 503);
     if (!prompt || prompt.length > MAX_PROMPT || !profile || snapshot?.profile !== profile) {
       return json({ error: 'invalid_agent_request' }, 400);
     }
@@ -265,6 +160,7 @@ export class TrainingAgent extends CloudflareAgent {
             prompt,
             profile,
             snapshot,
+            uiContext,
             send: primarySend,
             requireZdr: policy.requireZdr
           });
@@ -279,6 +175,7 @@ export class TrainingAgent extends CloudflareAgent {
             prompt,
             profile,
             snapshot,
+            uiContext,
             send,
             requireZdr: policy.requireZdr
           });
@@ -289,7 +186,7 @@ export class TrainingAgent extends CloudflareAgent {
       } catch (error) {
         console.error({ event: 'training_agent_chat_failed',
           error: error instanceof Error ? { name: error.name, message: error.message } : String(error) });
-        send('error', { error: 'agent_failed', message: 'The coach could not answer right now. Your logs were not changed.' });
+        send('error', classifyAgentFailure(error));
       } finally {
         controller.close();
       }
@@ -309,21 +206,20 @@ export class TrainingAgent extends CloudflareAgent {
     const url = new URL(request.url);
     if (url.pathname === '/status' && request.method === 'GET') {
       const policy = resolveAgentPolicy(this.env);
-      const source = this.env.OPENROUTER_API_KEY ? 'workspace' : this.#storedKey() ? 'personal' : null;
+      const source = this.env.OPENROUTER_API_KEY ? 'workspace' : null;
       return json({
         connected: Boolean(source),
         source,
+        requiresUserConnection: false,
         model: policy.primaryModel,
         fallback: policy.fallbackModel,
+        capabilities: {
+          proposalTypes: PROPOSAL_TYPES,
+          uiActionTypes: UI_ACTION_TYPES,
+          readTools: ['training_snapshot', 'food_catalog']
+        },
         privacy: { dataCollection: 'deny', zeroDataRetention: policy.requireZdr }
       });
-    }
-    if (url.pathname === '/connect' && request.method === 'POST') {
-      return this.#connect(await request.json().catch(() => null));
-    }
-    if (url.pathname === '/disconnect' && request.method === 'POST') {
-      void this.sql`DELETE FROM training_credentials WHERE provider = 'openrouter'`;
-      return json({ connected: Boolean(this.env.OPENROUTER_API_KEY), source: this.env.OPENROUTER_API_KEY ? 'workspace' : null });
     }
     if (url.pathname === '/reset' && request.method === 'POST') {
       void this.sql`DELETE FROM training_messages`;

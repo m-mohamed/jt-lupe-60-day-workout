@@ -12,12 +12,18 @@ This is one tracking application with five first-class jobs:
 | **Workout** | Record every set, weight, rep, and lighter finish. |
 | **Food** | Record meals and protein, including editable Hot Bar estimates. |
 | **Supplements** | Record the product, actual dose, unit, and date taken. |
-| **Coach** | Read private history and prepare set, meal, supplement, or bodyweight drafts for approval. |
+| **Coach** | Read private history and prepare set, meal, supplement, bodyweight, habit, or removal drafts for approval. |
 | **Progress** | Read strength, bodyweight, intake consistency, and exports. |
 
 The training plan is weight-first. Machines, cables, dumbbells, and kettlebells are
 the main tools. The Anime Physique material informs priorities such as lats, shoulders,
 upper chest, legs, and core. It does not turn the plan into a calisthenics program.
+
+The Coach and direct controls share one capability surface: all record changes resolve
+to the same local-first record functions, while the Coach adds an approval step. It can
+also search the same food catalog and drive dated views, the timer, import, exports,
+backup, theme, restore, and installation. Browser-protected restore and install steps
+focus the direct control so the person can choose a file or confirm the system prompt.
 
 ## Beautiful UI is the source system
 
