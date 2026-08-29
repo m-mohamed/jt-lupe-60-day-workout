@@ -76,17 +76,29 @@ if (!existsSync(resolve(playwright, 'playwright-core'))) {
 console.log('starting servers…');
 execFileSync(process.execPath, [resolve(repo, 'cloud', 'build-assets.mjs')], { cwd: resolve(repo, 'cloud'), stdio: 'inherit' });
 const staticServer = start('static server', 'python3', ['-m', 'http.server', String(STATIC_PORT), '--bind', '127.0.0.1'], repo);
-// The dev-auth flags are not optional: wrangler dev otherwise reads the production
-// Access config, 401s everything, and the worker-backed suites test local-only mode.
-const workerServer = start('wrangler dev', 'npx', ['wrangler@4', 'dev', '--port', String(WORKER_PORT),
-  '--persist-to', TEST_STATE,
-  '--var', 'ACCESS_TEAM_DOMAIN:', '--var', 'ACCESS_AUD:', '--var', 'DEV_EMAIL:dev@local'], resolve(repo, 'cloud'));
-
 if (!await waitFor(`http://127.0.0.1:${STATIC_PORT}/index.html`, 30) || staticServer.exitCode !== null) { console.error('static server never came up'); process.exit(1); }
-if (!await waitFor(`http://127.0.0.1:${WORKER_PORT}/api/me?ns=gym`, 90) || workerServer.exitCode !== null) { console.error('wrangler dev never came up'); process.exit(1); }
-const workerIdentity = await fetch(`http://127.0.0.1:${WORKER_PORT}/api/me?ns=gym`).then(response => response.json()).catch(() => null);
-if (workerIdentity?.email !== 'dev@local') { console.error('wrangler dev identity mismatch'); process.exit(1); }
-console.log('servers up\n');
+console.log('static server up\n');
+
+let workerServer;
+const startWorker = async () => {
+  console.log('starting worker…');
+  // Start Wrangler only when the first worker-backed suite needs it. It has no role
+  // in the static suites; deferring it shortens its lifetime and resource overlap on
+  // constrained CI runners before the final stress suite reaches it.
+  //
+  // The dev-auth flags are not optional: wrangler dev otherwise reads the
+  // production Access config, 401s everything, and tests a different path.
+  workerServer = start('wrangler dev', 'npx', ['wrangler@4', 'dev', '--port', String(WORKER_PORT),
+    '--persist-to', TEST_STATE,
+    '--var', 'ACCESS_TEAM_DOMAIN:', '--var', 'ACCESS_AUD:', '--var', 'DEV_EMAIL:dev@local'], resolve(repo, 'cloud'));
+  if (!await waitFor(`http://127.0.0.1:${WORKER_PORT}/api/me?ns=gym`, 90) || workerServer.exitCode !== null) {
+    console.error('wrangler dev never came up'); process.exit(1);
+  }
+  const workerIdentity = await fetch(`http://127.0.0.1:${WORKER_PORT}/api/me?ns=gym`)
+    .then(response => response.json()).catch(() => null);
+  if (workerIdentity?.email !== 'dev@local') { console.error('wrangler dev identity mismatch'); process.exit(1); }
+  console.log('worker up\n');
+};
 
 const run = (label, command, args, options = {}) => {
   const started = Date.now();
@@ -124,6 +136,7 @@ results.push(run('agent routing', process.execPath, ['agent-routing.test.mjs'], 
 results.push(run('agent runtime', process.execPath, ['agent-runtime.test.mjs'], { cwd: resolve(repo, 'cloud') }));
 results.push(run('agent migration', process.execPath, ['agent-migration.test.mjs'], { cwd: resolve(repo, 'cloud') }));
 for (const suite of SUITES) {
+  if (suite.port === WORKER_PORT && !workerServer) await startWorker();
   results.push(run(suite.file.replace('.test.js', ''), process.execPath, [resolve(repo, 'test', suite.file)],
     { env: { ...process.env, NODE_PATH: playwright } }));
 }
