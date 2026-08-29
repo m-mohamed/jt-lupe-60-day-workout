@@ -1,18 +1,17 @@
 export const PRIMARY_MODEL = 'openrouter/free';
-export const FALLBACK_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 
-const modelName = (value, fallback) => {
+const modelName = value => {
   const candidate = String(value || '').trim();
-  return candidate && candidate.length <= 160 ? candidate : fallback;
+  return candidate && candidate.length <= 160 ? candidate : null;
 };
 
 /** Resolve deployment policy once so status and execution cannot disagree. */
 export function resolveAgentPolicy(env = {}) {
-  const primaryModel = modelName(env.OPENROUTER_MODEL, PRIMARY_MODEL);
-  const fallback = modelName(env.OPENROUTER_FALLBACK_MODEL, FALLBACK_MODEL);
+  const primaryModel = modelName(env.OPENROUTER_MODEL) || PRIMARY_MODEL;
+  const fallback = modelName(env.OPENROUTER_FALLBACK_MODEL);
   return {
     primaryModel,
-    fallbackModel: fallback === primaryModel ? null : fallback,
+    fallbackModel: fallback && fallback !== primaryModel ? fallback : null,
     requireZdr: String(env.OPENROUTER_REQUIRE_ZDR || '').toLowerCase() === 'true'
   };
 }

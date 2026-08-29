@@ -30,8 +30,8 @@ const url = 'http://127.0.0.1:8777/';
     return { status: response.status, body: await response.json() };
   });
   test('private agent status route responds', status.status === 200 && status.body.connected === false, JSON.stringify(status));
-  test('best free primary and router fallback are explicit',
-    status.body.model === 'openrouter/free' && status.body.fallback === 'nvidia/nemotron-3-ultra-550b-a55b:free', JSON.stringify(status.body));
+  test('free router delegates selection without forcing a fixed model',
+    status.body.model === 'openrouter/free' && status.body.fallback === null, JSON.stringify(status.body));
   test('OpenRouter privacy routing is explicit',
     status.body.privacy?.dataCollection === 'deny' && status.body.privacy?.zeroDataRetention === false,
     JSON.stringify(status.body.privacy));

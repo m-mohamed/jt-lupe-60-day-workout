@@ -7,7 +7,7 @@ import {
   resolveAgentPolicy
 } from './agent-policy.js';
 
-export { FALLBACK_MODEL, PRIMARY_MODEL } from './agent-policy.js';
+export { PRIMARY_MODEL } from './agent-policy.js';
 const MAX_PROMPT = 2400;
 const HISTORY_ROWS = 12;
 const MODEL_TIMEOUT_MS = 45_000;

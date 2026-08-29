@@ -248,7 +248,7 @@
         <div class="component-header"><h3>Connect OpenRouter</h3><span>Your key, private storage</span></div>
         <p>Sign in to OpenRouter to create a user-controlled key. Training OS stores it inside your private Cloudflare Agent and never puts it in this page or your synced workout data.</p>
         <button class="action primary" id="agentConnect" type="button">Connect OpenRouter</button>
-        <p class="food-note">The selected model is free, but OpenRouter applies account limits. No Apple Health, wearable, or health MCP is connected.</p>
+        <p class="food-note">The free router chooses an available compatible model. OpenRouter account limits apply. No Apple Health, wearable, or health MCP is connected.</p>
       </section>
 
       <div id="agentWorkspace" hidden>
@@ -1903,10 +1903,8 @@
         const status = await response.json();
         if (status.connected) {
           const shortModel = status.model === 'openrouter/free'
-            ? 'Free model router · OpenRouter'
-            : status.model === 'nvidia/nemotron-3-ultra-550b-a55b:free'
-              ? 'Nemotron 3 Ultra · free fallback'
-              : `${status.model} · OpenRouter`;
+            ? 'Free OpenRouter route · model varies'
+            : `${status.model} · OpenRouter`;
           setAgentStatus('connected', 'Connected', shortModel);
           el('agentPrivacy').textContent = status.privacy?.zeroDataRetention
             ? 'Zero data retention required'

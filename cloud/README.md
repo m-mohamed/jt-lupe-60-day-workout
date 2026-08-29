@@ -129,10 +129,12 @@ outside the repository with `--persist-to`, as the package script does.
 
 ## Pi + OpenRouter agent
 
-`TrainingAgent` uses `@earendil-works/pi-agent-core` and `@earendil-works/pi-ai` inside
-Cloudflare's Agent runtime. `openrouter/free` is the primary model router because it
-can choose a currently available free tool-capable model; the fixed fallback is
-`nvidia/nemotron-3-ultra-550b-a55b:free`.
+`TrainingAgent` uses [`@earendil-works/pi-agent-core` and `@earendil-works/pi-ai`](https://github.com/earendil-works/pi)
+inside Cloudflare's Agent runtime. [`openrouter/free`](https://openrouter.ai/docs/guides/routing/routers/free-router)
+is the primary model router because it
+chooses from currently available free models and filters for requested capabilities
+such as tool calling. Free model availability can change without notice, so the
+default does not force a fixed fallback model.
 Production can use a shared Cloudflare secret, configured with
 `npx wrangler secret put OPENROUTER_API_KEY`, or user-controlled OpenRouter OAuth PKCE.
 The shared key never enters the browser or repository. An OAuth credential stays in
@@ -145,18 +147,23 @@ confirms.
 
 Every Pi request has a 45-second timeout, one bounded retry, a 1,600-token response
 ceiling, and OpenRouter provider routing that denies data-collecting endpoints and
-requires requested parameters such as tools. Model choices are deployment settings:
+[requires requested parameters](https://openrouter.ai/docs/guides/routing/provider-selection)
+such as tools. Model choices are deployment settings:
 
 ```jsonc
-"OPENROUTER_MODEL": "openrouter/free",
-"OPENROUTER_FALLBACK_MODEL": "nvidia/nemotron-3-ultra-550b-a55b:free"
+"OPENROUTER_MODEL": "openrouter/free"
 ```
 
-Set `OPENROUTER_REQUIRE_ZDR` to `true` only when both selected models have an eligible
+`OPENROUTER_FALLBACK_MODEL` is optional and has no default. Set it only when the
+deployment intentionally owns a second model choice. OpenRouter already performs
+provider fallback inside the selected model route.
+
+Set `OPENROUTER_REQUIRE_ZDR` to `true` only when the selected route has an eligible
 zero-data-retention provider. Strict ZDR can leave the free router with no endpoint,
 so the default uses `data_collection: deny` while preserving free-model availability.
-Free models are best-effort and rate-limited; replace the model variables with stable
-paid model ids when reliable production capacity matters.
+The app reports that limitation instead of weakening the configured privacy policy.
+Free models are best-effort, rate-limited, and can have higher latency. Use a stable
+paid model id when reliable production capacity matters.
 
 ## Cost
 

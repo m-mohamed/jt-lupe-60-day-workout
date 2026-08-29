@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import {
-  FALLBACK_MODEL,
   PRIMARY_MODEL,
   applyOpenRouterPrivacy,
   resolveAgentPolicy
@@ -9,7 +8,7 @@ import {
 const standard = resolveAgentPolicy({});
 assert.deepEqual(standard, {
   primaryModel: PRIMARY_MODEL,
-  fallbackModel: FALLBACK_MODEL,
+  fallbackModel: null,
   requireZdr: false
 });
 
