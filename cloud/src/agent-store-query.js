@@ -3,7 +3,8 @@ export const AGENT_SNAPSHOT_KIND_LIMITS = Object.freeze({
   meal: 250,
   supplement: 250,
   bodyweight: 120,
-  habit: 180
+  habit: 180,
+  steps: 120
 });
 export const MAX_AGENT_SNAPSHOT_ROWS = Object.values(AGENT_SNAPSHOT_KIND_LIMITS)
   .reduce((total, limit) => total + limit, 0);
@@ -28,10 +29,10 @@ export function datedExportQueries({ ns, keyPrefix, kinds, oldest, through }) {
     const scanLimit = AGENT_SNAPSHOT_KIND_SCAN_LIMITS[kind];
     const datedPrefix = `${keyPrefix}${kind}:`;
     const dateStart = datedPrefix.length + 1;
-    const keyEndingClause = kind === 'bodyweight'
+    const keyEndingClause = kind === 'bodyweight' || kind === 'steps'
       ? 'AND length(key) = ?'
       : "AND substr(key, ?, 1) = ':'";
-    const keyEndingParam = kind === 'bodyweight'
+    const keyEndingParam = kind === 'bodyweight' || kind === 'steps'
       ? datedPrefix.length + 10
       : dateStart + 10;
     return {

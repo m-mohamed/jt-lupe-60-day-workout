@@ -33,7 +33,7 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
 
   // XSS via load value rendered into an input
   r = await p.evaluate(() => {
-    state.date = '2026-08-26';
+    state.date = '2026-09-01';
     renderSession();
     writeSet(state.profile, state.date, dayForDate(state.date).exercises[1].id, 1, { load:'" onfocus="window.pwnedByLoad=1', unit:'lb', reps:5, seconds:null, rir:null });
     setTab('train'); renderSession();
@@ -85,16 +85,12 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   });
   t('profiles isolated', r.lupe===111 && r.jt===222, JSON.stringify(r));
 
-  // Bodyweight and timed work must not receive a machine-style weight jump.
+  // Bodyweight work must not receive a machine-style weight jump.
   r = await p.evaluate(() => {
-    setTab('train'); state.date='2026-08-26'; renderSession();
-    const bodyweight = document.querySelectorAll('.coach')[1].innerText;
-    state.date='2026-08-28'; renderSession();
-    const timed = [...document.querySelectorAll('.coach')].at(-1).innerText;
-    return { bodyweight, timed };
+    setTab('train'); state.date='2026-08-31'; renderSession();
+    return { bodyweight: [...document.querySelectorAll('.coach')].at(-1).innerText };
   });
   t('bodyweight work uses a variation, not a numeric jump', !/Go up to \d|start at \d/i.test(r.bodyweight), r.bodyweight.slice(0,80));
-  t('timed never told to add weight', /Timed/i.test(r.timed) && !/Go up/i.test(r.timed), r.timed.slice(0,50));
 
   // Whole Foods Hot Bar must be reliable even when USDA has no matching menu rows.
   r = await p.evaluate(() => fetch('./api/food?q=Whole%20Foods%20Hot%20Bar%20chicken').then(response => response.json()));

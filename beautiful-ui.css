@@ -193,7 +193,7 @@ textarea { resize: vertical; }
   font-weight: 650;
 }
 .action:hover, .row-action:hover { background: var(--surface-subtle); }
-.action:active, .row-action:active, .tab:active, .nav-action:active { transform: translateY(1px); }
+.action:active, .row-action:active, .tab:active, .nav-action:active { transform: scale(.96); }
 .action.primary { border-color: var(--surface-strong); background: var(--surface-strong); color: var(--surface); }
 .action.compact { min-height: 40px; padding: 0 10px; }
 .row-action { min-height: 36px; padding: 0 8px; border-color: transparent; background: transparent; color: var(--text-soft); }
@@ -277,7 +277,7 @@ textarea { resize: vertical; }
 }
 .meal-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
 .meal-protein { color: var(--accent); font: 650 11px/1 ui-monospace, "SFMono-Regular", Consolas, monospace; white-space: nowrap; }
-.meal-add { display: grid; grid-template-columns: minmax(0, 1fr) 90px auto; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line-strong); }
+.meal-add { display: grid; grid-template-columns: minmax(160px, 2fr) repeat(4, minmax(68px, .7fr)) auto; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line-strong); }
 .habits label { display: grid; align-content: center; min-width: 0; min-height: 44px; }
 .habits strong { font-size: 13px; font-weight: 650; }
 .habits span { margin-top: 2px; color: var(--text-faint); font-size: 11px; }
@@ -328,6 +328,10 @@ table.data abbr { text-decoration: none; }
 }
 .entry { display: grid; gap: 10px; }
 .bodyweight-entry { grid-template-columns: minmax(0, 1fr) 92px; }
+.steps-entry { grid-template-columns: minmax(0, 1fr) minmax(110px, .6fr); align-items: end; }
+.step-week { display: grid; align-content: center; min-height: 44px; padding: 6px 0; }
+.step-week strong { font-size: 20px; line-height: 1.15; }
+.step-week span { color: var(--text-faint); font-size: 10px; }
 .entry label { color: var(--text-soft); font-size: 11px; font-weight: 620; }
 .supplement-add { display: grid; grid-template-columns: minmax(0, 1fr) 84px 108px auto; gap: 8px; }
 
@@ -349,6 +353,36 @@ table.data abbr { text-decoration: none; }
 .insight-summary strong { display: block; overflow: hidden; font-size: clamp(28px, 7vw, 42px); font-weight: 700; line-height: 1.2; text-overflow: ellipsis; }
 .insight-summary span { display: block; margin-top: 7px; color: color-mix(in srgb, var(--surface) 65%, transparent); font-size: 11px; }
 .progress-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nutrition-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* Beautiful UI — Approval Card, used as the focused onboarding surface */
+.onboarding-dialog {
+  width: min(640px, calc(100% - 28px));
+  max-height: min(760px, calc(100dvh - 28px));
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-floating);
+}
+.onboarding-dialog::backdrop { background: rgb(17 17 17 / 58%); backdrop-filter: blur(6px); }
+.onboarding-shell { padding: clamp(22px, 5vw, 36px); }
+.onboarding-head h2 { margin: 7px 0 0; font-size: clamp(28px, 7vw, 40px); }
+.onboarding-meter { margin: 20px 0 26px; }
+.onboarding-step h3 { margin-bottom: 18px; font-size: 16px; }
+.onboarding-grid { display: grid; gap: 14px; }
+.onboarding-grid.split { grid-template-columns: minmax(0, 1fr) 100px; margin-bottom: 14px; }
+.onboarding-grid label { display: grid; gap: 6px; color: var(--text-soft); font-size: 11px; font-weight: 650; }
+.onboarding-grid label > span { color: var(--text-faint); font-size: 10px; }
+.onboarding-targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.onboarding-targets > div { min-width: 0; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.onboarding-targets strong { display: block; font-size: clamp(22px, 6vw, 32px); line-height: 1.15; }
+.onboarding-targets span { color: var(--text-faint); font-size: 10px; }
+.onboarding-targets > div:last-child { grid-column: 1 / -1; }
+.onboarding-error { min-height: 22px; margin: 14px 0 0; color: var(--danger); font-size: 12px; }
+.onboarding-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
 
 /* Beautiful UI — Context Cards */
 .bui-context-card {
@@ -471,6 +505,7 @@ table.data abbr { text-decoration: none; }
   .nav-action { padding: 0 8px; }
   input[type="text"], input[type="number"], input[type="date"], select, textarea { font-size: 16px; }
   .meal-add { grid-template-columns: minmax(0, 1fr) 78px; }
+  .meal-add #mealName { grid-column: 1 / -1; }
   .meal-add .primary { grid-column: 1 / -1; width: 100%; }
   .supplement-add { grid-template-columns: minmax(0, 1fr) 82px; }
   .supplement-add #supplementName { grid-column: 1 / -1; }

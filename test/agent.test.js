@@ -40,7 +40,7 @@ const url = 'http://127.0.0.1:8777/';
   test('free router delegates selection without forcing a fixed model',
     status.body.model === 'openrouter/free' && status.body.fallback === null, JSON.stringify(status.body));
   test('status advertises every approval-only record action',
-    JSON.stringify(status.body.capabilities?.proposalTypes) === JSON.stringify(['set', 'meal', 'supplement', 'bodyweight', 'habit', 'removal']),
+    JSON.stringify(status.body.capabilities?.proposalTypes) === JSON.stringify(['set', 'meal', 'supplement', 'bodyweight', 'habit', 'steps', 'profile', 'removal']),
     JSON.stringify(status.body.capabilities));
   test('status advertises safe UI-driving actions separately from record writes',
     JSON.stringify(status.body.capabilities?.uiActionTypes) === JSON.stringify(['navigate', 'interface']),

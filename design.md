@@ -10,10 +10,10 @@ This is one tracking application with five first-class jobs:
 | Surface | Job |
 | --- | --- |
 | **Workout** | Record every set, weight, rep, and lighter finish. |
-| **Food** | Record meals and protein, including editable Hot Bar estimates. |
+| **Food** | Record full meal macros, steps, and bodyweight, including editable Hot Bar estimates. |
 | **Supplements** | Record the product, actual dose, unit, and date taken. |
-| **Coach** | Read private history and prepare set, meal, supplement, bodyweight, habit, or removal drafts for approval. |
-| **Progress** | Read strength, bodyweight, intake consistency, and exports. |
+| **Coach** | Read private history and prepare any supported record or plan change for approval. |
+| **Progress** | Read strength, weekly bodyweight, steps, intake consistency, and exports. |
 
 The training plan is weight-first. Machines, cables, dumbbells, and kettlebells are
 the main tools. The Anime Physique material informs priorities such as lats, shoulders,
@@ -22,14 +22,14 @@ upper chest, legs, and core. It does not turn the plan into a calisthenics progr
 The Coach and direct controls share one capability surface: all record changes resolve
 to the same local-first record functions, while the Coach adds an approval step. It can
 also search the same food catalog and drive dated views, the timer, import, exports,
-backup, theme, restore, and installation. Browser-protected restore and install steps
+plan editing, backup, theme, restore, and installation. Browser-protected restore and install steps
 focus the direct control so the person can choose a file or confirm the system prompt.
 
 ## Beautiful UI is the source system
 
 [Beautiful UI](https://www.beautifului.dev/) is the catalog contract. It is a public
-collection of copy-paste AI-interface patterns rather than a runtime dependency in
-this zero-build PWA. The document uses the catalog's named structures directly and
+collection of copy-paste AI-interface patterns rather than a runtime package in
+this vanilla PWA. The document uses the catalog's named structures directly and
 `beautiful-ui.css` provides their responsive vanilla-CSS implementation.
 
 Every primary surface starts from a Beautiful UI primitive:
@@ -40,25 +40,23 @@ Every primary surface starts from a Beautiful UI primitive:
 - **Task Rows** own exercises, daily fundamentals, and completed supplement intake.
 - **Records Table** owns meal, strength, bodyweight, and supplement history.
 - **Search** becomes the food lookup surface.
-- **Fine-tune Card** owns bodyweight and supplement entry.
-- **Insight Cards** own the protein, intake, and progress summaries.
+- **Fine-tune Card** owns bodyweight, steps, and supplement entry.
+- **Insight Cards** own macros, intake, and progress summaries.
 - **Prompt Bar** is the system-wide handoff into the agent and the chat composer.
 - **Chat**, **Streaming Text**, **Thinking**, **Loading State**, and **Tool Chips**
   expose the live agent run.
-- **Recommendation Card** provides focused agent starters.
-- **Approval Card** is the only agent-to-record write gate.
-- **Context Cards** disclose retrieved scope and health boundaries.
+- **Approval Card** is the only agent-to-record write gate and the focused onboarding shell.
+- **Context Cards** own workout notes import.
 - **Diff Table** compares current and proposed values before an agent write.
-- **Flowchart** exposes the agent's context, reasoning, review, and record path.
 - **Code Block** reveals the exact structured draft behind an approval.
-- **Selection Actions** own export, backup, restore, theme, and conversation controls.
+- **Selection Actions** own onboarding, export, backup, restore, theme, and conversation controls.
 
 Do not add a parallel design language. A new surface must use the tokens and one of
 these component grammars before it adds product-specific behavior.
 
-All twenty catalog primitives have a product job. None is included as decoration:
-review components make agent writes inspectable, while tracking components keep the
-daily workflow fast.
+Catalog primitives are mounted only when they have a product job. Recommendation Card
+and Flowchart are intentionally omitted because starter buttons duplicated the Prompt
+Bar and implementation diagrams added non-product copy.
 
 ## Interface rules
 
@@ -87,19 +85,26 @@ An exercise Task Row always contains:
 `100 × 6 + 70 × 4` is one planned set with two efforts. It is not stored as two
 ordinary sets. Blank planned rows mean not performed and are omitted.
 
-The plan runs Monday, Wednesday, and Friday. Other dates render recovery rather than
+The PPLU plan runs Monday, Tuesday, Thursday, and Friday. Other dates render recovery rather than
 silently mapping to a different workout. Historical exercises remain readable after
 the program changes.
 
 ## Food contract
 
-Food shows a dated protein total, meal records, Beautiful UI Search, daily fundamental
-Task Rows, and bodyweight entry. A database result fills the editable meal form; it
+Food shows dated macro totals, meal records, Beautiful UI Search, daily steps and weekly
+step total, daily fundamental Task Rows, and bodyweight entry. A database result fills the editable meal form; it
 never writes without the user pressing Add.
 
 Whole Foods Hot Bar has no stable USDA menu. Matching searches use clearly labeled
 built-in estimates in 4, 6, and 8 ounce portions. The interface explains store/day
-variation and leaves protein editable.
+variation and leaves every macro editable.
+
+## Onboarding contract
+
+OnboardJS core owns the three-step state machine, navigation, draft persistence, and
+completion event. Beautiful UI owns the visible Approval Card and Selection Actions.
+The saved profile contains only product inputs and derived targets; OnboardJS internal
+state never enters the synced profile record.
 
 ## Supplement contract
 
@@ -129,14 +134,15 @@ dashboard.
 - Both themes meet WCAG AA text contrast and 40px touch targets.
 - `prefers-reduced-motion` effectively disables motion.
 - The app remains fully usable offline.
-- Browser verification covers 390px mobile and desktop before deployment.
+- Browser verification covers 320px, 390px, tablet, and desktop before deployment.
 
 ## Definition of done
 
 - No legacy visual system is active or shipped in the document.
 - Workout, food, supplements, Coach, and progress all use Beautiful UI components.
 - Per-set and in-set drop values survive editing, sync, history, backup, and CSV.
-- Food estimates identify uncertainty.
+- Food estimates identify uncertainty and keep full macros editable.
+- Onboarding, plan targets, and daily steps sync per person.
 - Supplement history keeps dose and unit.
 - Lint, Access tests, browser suites, accessibility audit, screenshots, CI, Worker
   deploy, and live endpoint checks all pass.

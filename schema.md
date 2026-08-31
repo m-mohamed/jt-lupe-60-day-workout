@@ -1,6 +1,6 @@
 # Data model — first principles
 
-Status: implemented 2026-08-18 (schema v4)
+Status: implemented 2026-08-31 (schema v5)
 Supersedes: the flat `jt-lupe-{field}-w{week}-d{day}-e{index}-{profile}` keys
 
 ## Why this is being redone
@@ -43,11 +43,12 @@ per-user, so the profile prefix exists only for the signed-out local copy.
 | --- | --- | --- |
 | `set:{date}:{exerciseId}:{n}` | `{load, unit, reps, rir, seconds, drops, at}` | one planned set, `n` is 1-based |
 | `session:{date}` | `{templateId, startedAt, note}` | which session was trained that date |
-| `meal:{date}:{id}` | `{name, protein, kcal, fdcId, grams, at}` | `fdcId`/`grams` present when picked from the food database |
+| `meal:{date}:{id}` | `{name, kcal, protein, carbs, fat, fdcId, grams, at}` | `fdcId`/`grams` present when picked from the food database |
 | `bodyweight:{date}` | `{value, unit, at}` | one weigh-in per date, latest wins |
+| `steps:{date}` | `{value, at}` | one daily count, latest wins |
 | `habit:{date}:{habitId}` | `{done, at}` | |
 | `supplement:{date}:{id}` | `{name, dose, unit, at}` | one recorded intake; `id` prevents same-day collisions |
-| `programme` | `{version, days:[...]}` | the plan itself, versioned |
+| `profile` | `{weight, unit, heightCm, experience, dailySteps, mealsPerDay, freeMealsPerWeek, targets}` | onboarding inputs and starting targets |
 
 `load` is a number **or** the string `BW`; `unit` is `lb`/`kg`/null. `reps` and `seconds`
 are both nullable, and exactly one is expected to be set for a given set. `rir` is
@@ -59,10 +60,10 @@ ordinary sets.
 ## Programme, separately from the log
 
 ```json
-{ "version": 2,
-  "days": [ { "id": "v-taper-quads", "label": "Monday", "focus": "V-Taper + Quads",
-              "exercises": [ { "id": "seated-row", "label": "Seated row",
-                               "sets": 3, "repLow": 8, "repHigh": 12, "kind": "load" } ] } ] }
+{ "version": 3,
+  "days": [ { "id": "push-quads", "label": "Monday", "focus": "Push + Quads",
+              "exercises": [ { "id": "dumbbell-incline-press", "label": "Dumbbell incline press",
+                               "sets": 4, "repLow": 5, "repHigh": 8, "kind": "load" } ] } ] }
 ```
 
 `kind` is `load`, `bodyweight`, or `timed`, which is what the coach already branches on -
@@ -97,16 +98,17 @@ starts August 31; changing the live start must never move historical records.
 
 ## Implemented
 
-Schema v4. Live keys are `jt-lupe:{profile}:{type}:{date}[:...]`. The migration runs once
+Schema v5. Live keys are `jt-lupe:{profile}:{type}:{date}[:...]`; `profile` is the one
+intentional undated record. The migration runs once
 on load, writes the replacements, verifies them, and only then removes the originals.
 
 Verified: a v3 device migrates with sets, habits, bodyweight and meals carried and the old
-grid keys gone; "3 sets of 12 at 55" now stores three set records; one set can keep a
-lighter finish; a timed carry stores seconds rather than reps; bodyweight work keeps
-`BW`; supplement doses keep their unit; a full challenge syncs to the per-user database.
+grid keys gone; every planned set stores separately; one set can keep a lighter finish;
+bodyweight work keeps `BW`; meals keep full macros; step counts, targets, and supplement
+doses retain their units; a full challenge syncs to the per-user database.
 
 ## Frontend independence
 
-The client remains zero-build HTML, JavaScript, and the Beautiful UI stylesheet. This
-model does not depend on that choice. A later framework port must keep these keys and
-migration guarantees rather than rewriting history.
+The client remains vanilla HTML and JavaScript with a small bundled OnboardJS core
+entrypoint. This model does not depend on that choice. A later framework port must keep
+these keys and migration guarantees rather than rewriting history.

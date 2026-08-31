@@ -52,13 +52,13 @@ const EXPECTED_OPEN_DATE = TODAY < OFFICIAL_START ? OFFICIAL_START : TODAY;
       start: challengeDay('2026-08-31'),
       end: challengeDay('2026-10-29'),
       before: challengeDay('2026-08-30'),
-      openingWeek: ['2026-08-31', '2026-09-02', '2026-09-04'].map(date => dayForDate(date).label),
+      openingWeek: ['2026-08-31', '2026-09-01', '2026-09-03', '2026-09-04'].map(date => dayForDate(date).label),
       futureFlag: document.getElementById('backfillFlag').textContent
     };
   });
   t('August 31 is Day 1 and October 29 is Day 60',
     officialDates.start === 1 && officialDates.end === 60 && officialDates.before === 0
-      && officialDates.openingWeek.join(',') === 'Monday,Wednesday,Friday',
+      && officialDates.openingWeek.join(',') === 'Monday,Tuesday,Thursday,Friday',
     JSON.stringify(officialDates));
   t('a future workout is labelled planned, never backfilled',
     officialDates.futureFlag.startsWith('Planned for ') && !/Catching up|Not today/.test(officialDates.futureFlag),
@@ -70,7 +70,7 @@ const EXPECTED_OPEN_DATE = TODAY < OFFICIAL_START ? OFFICIAL_START : TODAY;
   await p.evaluate(() => { state.date = '2026-08-31'; renderSession(); });
   const firstUseCopy = await p.locator('.coach').first().innerText();
   t('first-use weight guidance is direct and actionable',
-    firstUseCopy.startsWith('No history yet.') && /clean reps/.test(firstUseCopy) && /2 reps in reserve/.test(firstUseCopy)
+    firstUseCopy === 'No history yet. Choose a weight that leaves 2 clean reps.'
       && !/First time|manage about/i.test(firstUseCopy), firstUseCopy);
 
   // --- log each set at the weight actually used, including one in-set drop ---
@@ -159,7 +159,7 @@ const EXPECTED_OPEN_DATE = TODAY < OFFICIAL_START ? OFFICIAL_START : TODAY;
 
   // --- the protein target must follow bodyweight ---
   r = await p.evaluate(() => document.getElementById('proteinTarget').textContent);
-  t('protein target derived from bodyweight', /\d+–\d+ g/.test(r), r);
+  t('protein target derived from bodyweight', /of \d+ g protein/.test(r), r);
 
   // --- two meals added in the same instant must both survive ---
   await fresh();

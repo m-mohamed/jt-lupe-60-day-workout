@@ -36,7 +36,7 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
         name: 'Whole Foods Hot Bar — chicken breast (estimate)',
         brand: 'Whole Foods Hot Bar · estimate',
         kind: 'Built-in estimate',
-        protein100: 31,
+        protein100: 31, carbs100: 0, fat100: 3.6,
         kcal100: 165,
         servingGrams: 113,
         portions: [{ label: '4 oz', grams: 113 }]
@@ -51,7 +51,7 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
       source: 'workspace',
       model: 'openrouter/free',
       capabilities: {
-        proposalTypes: ['set', 'meal', 'supplement', 'bodyweight', 'habit', 'removal'],
+        proposalTypes: ['set', 'meal', 'supplement', 'bodyweight', 'habit', 'steps', 'profile', 'removal'],
         uiActionTypes: ['navigate', 'interface'],
         readTools: ['training_snapshot', 'food_catalog']
       },
@@ -70,10 +70,13 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
       const proposals = [
         { kind: 'set', date: DATE, exerciseId: EXERCISE_ID, exerciseName: 'Lat pulldown', setNumber: 1,
           load: 135, reps: 6, drops: [{ load: 95, reps: 4 }] },
-        { kind: 'meal', date: DATE, name: 'Whole Foods Hot Bar chicken', protein: 42, kcal: 510, estimate: true },
+        { kind: 'meal', date: DATE, name: 'Whole Foods Hot Bar chicken', protein: 42, carbs: 48, fat: 16, kcal: 510, estimate: true },
         { kind: 'supplement', date: DATE, name: 'Creatine monohydrate', dose: 5, unit: 'g' },
         { kind: 'bodyweight', date: DATE, value: 198.4, unit: 'lb' },
-        { kind: 'habit', date: DATE, habit: 'sleep', done: true }
+        { kind: 'habit', date: DATE, habit: 'sleep', done: true },
+        { kind: 'steps', date: DATE, value: 11240 },
+        { kind: 'profile', weight: 198.4, unit: 'lb', heightCm: 178, experience: 'returning',
+          dailySteps: 10000, mealsPerDay: 4, freeMealsPerWeek: 2 }
       ];
       frames += event('tool', { name: 'get_training_snapshot' });
       proposals.forEach(proposal => { frames += event('proposal', proposal); });
@@ -105,7 +108,7 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
       frames += event('tool', { name: 'control_training_interface' });
       frames += event('ui_action', {
         kind: 'interface', action: 'import_notes',
-        value: 'Lat pulldown 135 x 6\nLat pulldown 95 x 4'
+        value: 'Dumbbell incline press 40 x 8\nDumbbell incline press 35 x 8'
       });
       frames += event('delta', { text: 'Opening a reviewable import preview.' });
     } else if (lower.includes('start rest timer')) {
@@ -140,7 +143,7 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
   await ask('Log every type of record for my workout.');
   const apply = page.locator('.agent-proposal:not([data-applied])').getByRole('button', { name: 'Apply to my log' });
   const draftCount = await apply.count();
-  t('coach can draft every manual record type from a typed prompt', draftCount === 5, String(draftCount));
+  t('coach can draft every manual record type from a typed prompt', draftCount === 7, String(draftCount));
   for (let index = 0; index < draftCount; index += 1) {
     // eslint-disable-next-line no-await-in-loop
     await apply.first().tap();
@@ -160,6 +163,8 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
       supplementId: supplementKey?.split(':').at(-1),
       bodyweight: JSON.parse(localStorage.getItem(`jt-lupe:jt:bodyweight:${date}`)),
       sleep: JSON.parse(localStorage.getItem(`jt-lupe:jt:habit:${date}:sleep`)),
+      steps: JSON.parse(localStorage.getItem(`jt-lupe:jt:steps:${date}`)),
+      profile: JSON.parse(localStorage.getItem('jt-lupe:jt:profile')),
       receipts: keys.filter(key => key.startsWith('jt-lupe:jt:activity:')).length
     };
   }, { date: DATE, exerciseId: EXERCISE_ID });
@@ -167,7 +172,8 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
   t('approved coach drafts save through the same record system',
     saved.set?.load === 135 && saved.set?.drops?.[0]?.load === 95 && saved.session
       && saved.meal?.protein === 42 && saved.supplement?.dose === 5
-      && saved.bodyweight?.value === 198.4 && saved.sleep?.done === true && saved.receipts === 5,
+      && saved.bodyweight?.value === 198.4 && saved.sleep?.done === true && saved.steps?.value === 11240
+      && saved.profile?.dailySteps === 10000 && saved.receipts === 7,
     JSON.stringify(saved));
 
   await ask('Remove the records I just logged.');
@@ -185,7 +191,7 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
     receipts: Object.keys(localStorage).filter(key => key.startsWith('jt-lupe:jt:activity:')).length
   }), { date: DATE, exerciseId: EXERCISE_ID });
   t('approved removal drafts remove only the named records',
-    removed.set === null && removed.meals === 0 && removed.supplements === 0 && removed.receipts === 8,
+    removed.set === null && removed.meals === 0 && removed.supplements === 0 && removed.receipts === 10,
     JSON.stringify(removed));
 
   await ask('Open Food for August 23.');
@@ -210,7 +216,7 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
   t('coach can open the same future Day 1 planning surface as the direct UI',
     plannedNavigation.date === '2026-08-31' && plannedNavigation.selected === 'true'
       && /Monday/.test(plannedNavigation.title) && /Day 1 of 60/i.test(plannedNavigation.challenge)
-      && (/Planned for Monday/i.test(plannedNavigation.flag) || /Catching up/i.test(plannedNavigation.flag)),
+      && (plannedNavigation.flag === '' || /Planned for Monday|Catching up/i.test(plannedNavigation.flag)),
     JSON.stringify(plannedNavigation));
 
   await page.locator('.tab[data-tab="agent"]').tap();
@@ -234,7 +240,8 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
     selected: document.querySelector('[data-tab="train"]').getAttribute('aria-selected')
   }));
   t('coach passes workout notes into the same review-first importer',
-    imported.notes.includes('Lat pulldown 135 x 6') && imported.preview.includes('Lat pulldown')
+    imported.notes.includes('Dumbbell incline press 40 x 8') && imported.preview.includes('Dumbbell incline press')
+      && imported.preview.includes('2 of 2 lines matched')
       && imported.open === true && imported.selected === 'true', JSON.stringify(imported));
 
   await page.locator('.tab[data-tab="agent"]').tap();
@@ -247,7 +254,7 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
     receipts: Object.keys(localStorage).filter(key => key.startsWith('jt-lupe:jt:activity:')).length
   }), DATE);
   t('untrusted model drafts cannot bypass direct-UI value constraints',
-    rejected.malformedSet === false && rejected.bodyweight?.value === 198.4 && rejected.receipts === 8,
+    rejected.malformedSet === false && rejected.bodyweight?.value === 198.4 && rejected.receipts === 10,
     JSON.stringify(rejected));
 
   await ask('Start rest timer.');

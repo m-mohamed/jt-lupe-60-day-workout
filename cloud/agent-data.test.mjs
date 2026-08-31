@@ -4,7 +4,9 @@ import { buildTrainingSnapshot, MAX_SNAPSHOT_BYTES } from './src/agent-data.js';
 const dump = {
   data: {
     'jt-lupe:lupe:set:2026-08-26:bench-press:1': JSON.stringify({ load: 135, reps: 8, drops: [{ load: 95, reps: 2 }] }),
-    'jt-lupe:lupe:meal:2026-08-26:lunch': JSON.stringify({ name: 'Whole Foods Hot Bar chicken', protein: 42, kcal: 510 }),
+    'jt-lupe:lupe:meal:2026-08-26:lunch': JSON.stringify({ name: 'Whole Foods Hot Bar chicken', protein: 42, carbs: 48, fat: 16, kcal: 510 }),
+    'jt-lupe:lupe:steps:2026-08-26': JSON.stringify({ value: 11240 }),
+    'jt-lupe:lupe:profile': JSON.stringify({ weight: 183.4, unit: 'lb', heightCm: 178, experience: 'returning', dailySteps: 10000, mealsPerDay: 4, freeMealsPerWeek: 2 }),
     'jt-lupe:lupe:supplement:2026-08-26:creatine': JSON.stringify({ name: 'Creatine monohydrate', dose: 5, unit: 'g' }),
     'jt-lupe:lupe:bodyweight:2026-08-26': JSON.stringify({ value: 183.4, unit: 'lb' }),
     'jt-lupe:lupe:habit:2026-08-26:sleep': JSON.stringify({ done: true }),
@@ -22,7 +24,9 @@ assert.deepEqual(snapshot.sets[0], {
   date: '2026-08-26', exerciseId: 'bench-press', setNumber: 1,
   load: 135, reps: 8, drops: [{ load: 95, reps: 2 }]
 });
-assert.deepEqual(snapshot.meals[0], { date: '2026-08-26', id: 'lunch', name: 'Whole Foods Hot Bar chicken', protein: 42, kcal: 510 });
+assert.deepEqual(snapshot.meals[0], { date: '2026-08-26', id: 'lunch', name: 'Whole Foods Hot Bar chicken', protein: 42, carbs: 48, fat: 16, kcal: 510 });
+assert.deepEqual(snapshot.steps, [{ date: '2026-08-26', value: 11240 }]);
+assert.deepEqual(snapshot.plan, { weight: 183.4, unit: 'lb', heightCm: 178, experience: 'returning', dailySteps: 10000, mealsPerDay: 4, freeMealsPerWeek: 2 });
 assert.deepEqual(snapshot.supplements[0], { date: '2026-08-26', id: 'creatine', name: 'Creatine monohydrate', dose: 5, unit: 'g' });
 assert.deepEqual(snapshot.habits[0], { date: '2026-08-26', habit: 'sleep', done: true });
 assert.equal(JSON.stringify(snapshot).includes('225'), false, 'never leak the other profile');

@@ -1,6 +1,6 @@
 import { Type } from '@earendil-works/pi-ai';
 
-export const PROPOSAL_TYPES = ['set', 'meal', 'supplement', 'bodyweight', 'habit', 'removal'];
+export const PROPOSAL_TYPES = ['set', 'meal', 'supplement', 'bodyweight', 'habit', 'steps', 'profile', 'removal'];
 export const UI_ACTION_TYPES = ['navigate', 'interface'];
 
 const textResult = (text, details = {}) => ({ content: [{ type: 'text', text }], details });
@@ -19,11 +19,11 @@ export function trainingTools(snapshot, { searchFood = async () => ({ foods: [],
     {
       name: 'get_training_snapshot',
       label: 'Review training history',
-      description: 'Read the signed-in person’s private workout, food, supplement, habit, and bodyweight records from the last 60 days.',
+      description: 'Read the signed-in person’s private plan, workout, food, supplement, habit, steps, and bodyweight records from the last 60 days.',
       parameters: Type.Object({}),
       execute: async () => textResult(JSON.stringify(snapshot), {
         recordCounts: Object.fromEntries(
-          ['sets', 'meals', 'supplements', 'bodyweight', 'habits'].map(key => [key, snapshot[key]?.length || 0])
+          ['sets', 'meals', 'supplements', 'bodyweight', 'habits', 'steps'].map(key => [key, snapshot[key]?.length || 0])
         ),
         truncated: snapshot.truncated === true,
         omitted: snapshot.omitted || {}
@@ -67,6 +67,8 @@ export function trainingTools(snapshot, { searchFood = async () => ({ foods: [],
         date: Type.String({ description: 'YYYY-MM-DD' }),
         name: Type.String({ maxLength: 120 }),
         protein: Type.Number({ minimum: 0, maximum: 500 }),
+        carbs: Type.Optional(Type.Number({ minimum: 0, maximum: 1500 })),
+        fat: Type.Optional(Type.Number({ minimum: 0, maximum: 500 })),
         kcal: Type.Optional(Type.Number({ minimum: 0, maximum: 10000 })),
         estimate: Type.Boolean({ description: 'True unless values came from an exact label or saved food result' })
       }),
@@ -105,6 +107,31 @@ export function trainingTools(snapshot, { searchFood = async () => ({ foods: [],
         done: Type.Boolean()
       }),
       execute: async (_id, args) => proposalResult({ kind: 'habit', ...args })
+    },
+    {
+      name: 'propose_step_log',
+      label: 'Draft step log',
+      description: 'Create a reviewable daily step-count draft. This does not save until the person taps Apply.',
+      parameters: Type.Object({
+        date: Type.String({ description: 'YYYY-MM-DD' }),
+        value: Type.Integer({ minimum: 0, maximum: 100000 })
+      }),
+      execute: async (_id, args) => proposalResult({ kind: 'steps', ...args })
+    },
+    {
+      name: 'propose_profile_update',
+      label: 'Draft plan update',
+      description: 'Create a reviewable update to the person’s starting profile and nutrition/activity plan.',
+      parameters: Type.Object({
+        weight: Type.Number({ minimum: 40, maximum: 1500 }),
+        unit: Type.Union([Type.Literal('lb'), Type.Literal('kg')]),
+        heightCm: Type.Number({ minimum: 100, maximum: 250 }),
+        experience: Type.Union([Type.Literal('new'), Type.Literal('returning'), Type.Literal('consistent')]),
+        dailySteps: Type.Integer({ minimum: 1000, maximum: 50000 }),
+        mealsPerDay: Type.Integer({ minimum: 1, maximum: 8 }),
+        freeMealsPerWeek: Type.Integer({ minimum: 0, maximum: 7 })
+      }),
+      execute: async (_id, args) => proposalResult({ kind: 'profile', ...args })
     },
     {
       name: 'propose_record_removal',
@@ -153,6 +180,7 @@ export function trainingTools(snapshot, { searchFood = async () => ({ foods: [],
           Type.Literal('download_backup'),
           Type.Literal('restore_backup'),
           Type.Literal('toggle_theme'),
+          Type.Literal('edit_profile'),
           Type.Literal('install_app')
         ]),
         value: Type.Optional(Type.String({ maxLength: 2000, description: 'Food query or session notes for the matching action.' }))

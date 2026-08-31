@@ -3,7 +3,7 @@ import { trainingTools } from './src/training-tools.js';
 
 const snapshot = {
   profile: 'jt', windowDays: 60, through: '2026-08-28',
-  sets: [], meals: [], supplements: [], bodyweight: [], habits: []
+  plan: null, sets: [], meals: [], supplements: [], bodyweight: [], habits: [], steps: []
 };
 const tools = trainingTools(snapshot, {
   searchFood: async query => ({ foods: [{ id: 'hotbar', name: query, estimate: true }] })
@@ -18,6 +18,8 @@ assert.deepEqual(names, [
   'propose_supplement_log',
   'propose_bodyweight_log',
   'propose_habit_log',
+  'propose_step_log',
+  'propose_profile_update',
   'propose_record_removal',
   'open_training_surface',
   'control_training_interface'
@@ -29,6 +31,20 @@ const habitResult = await habit.execute('habit-call', {
 });
 assert.deepEqual(habitResult.details.proposal, {
   kind: 'habit', date: '2026-08-28', habit: 'sleep', done: true
+});
+
+const steps = tools.find(tool => tool.name === 'propose_step_log');
+const stepResult = await steps.execute('step-call', { date: '2026-08-28', value: 11240 });
+assert.deepEqual(stepResult.details.proposal, { kind: 'steps', date: '2026-08-28', value: 11240 });
+
+const profile = tools.find(tool => tool.name === 'propose_profile_update');
+const profileResult = await profile.execute('profile-call', {
+  weight: 180, unit: 'lb', heightCm: 178, experience: 'returning',
+  dailySteps: 10000, mealsPerDay: 4, freeMealsPerWeek: 2
+});
+assert.deepEqual(profileResult.details.proposal, {
+  kind: 'profile', weight: 180, unit: 'lb', heightCm: 178, experience: 'returning',
+  dailySteps: 10000, mealsPerDay: 4, freeMealsPerWeek: 2
 });
 
 const remove = tools.find(tool => tool.name === 'propose_record_removal');

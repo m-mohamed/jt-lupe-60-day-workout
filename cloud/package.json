@@ -16,9 +16,11 @@
   "dependencies": {
     "@earendil-works/pi-agent-core": "0.84.4",
     "@earendil-works/pi-ai": "0.84.4",
+    "@onboardjs/core": "^1.0.0-rc.4",
     "agents": "0.22.0"
   },
   "devDependencies": {
+    "esbuild": "^0.25.10",
     "wrangler": "4.127.1"
   }
 }

@@ -24,14 +24,14 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   const stored = await p.evaluate(()=>{
     document.getElementById('importApply').click();
     const keys = Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-31:')).toSorted();
-    return { keys, seated: keys.filter(k=>k.includes('seated-row')).length,
-             pulldown: keys.filter(k=>k.includes('lat-pulldown')).length,
+    return { keys, incline: keys.filter(k=>k.includes('dumbbell-incline-press')).length,
+             legPress: keys.filter(k=>k.includes('leg-press')).length,
              core: localStorage.getItem('jt-lupe:jt:set:2026-08-31:hanging-knee-raise:1') };
   });
-  t('Seated row stored as THREE sets', stored.seated === 3, String(stored.seated));
-  t('Pulldown stored as THREE sets', stored.pulldown === 3, String(stored.pulldown));
+  t('Incline press stored as FOUR sets', stored.incline === 4, String(stored.incline));
+  t('Leg press stored as THREE sets', stored.legPress === 3, String(stored.legPress));
   t('bodyweight row keeps BW and its reps', /"load":"BW"/.test(stored.core||'') && /"reps":12/.test(stored.core||''), stored.core);
-  t('total set records for Monday', stored.keys.length === 20, String(stored.keys.length));
+  t('total set records for Monday', stored.keys.length === 21, String(stored.keys.length));
   t('no page errors', errors.length===0, errors.slice(0,2).join(' | '));
   console.log(JSON.stringify({results:R}, null, 1));
   await b.close();

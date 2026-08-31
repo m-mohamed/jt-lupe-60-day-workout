@@ -2,12 +2,12 @@
 // conservative built-in estimates keep the common search useful while the app and
 // agent both label every result as an estimate.
 const WHOLE_FOODS_HOT_BAR = [
-  { id: 'wfm-hotbar-chicken', name: 'Whole Foods Hot Bar — chicken breast (estimate)', protein100: 31, kcal100: 165 },
-  { id: 'wfm-hotbar-salmon', name: 'Whole Foods Hot Bar — baked salmon (estimate)', protein100: 22, kcal100: 206 },
-  { id: 'wfm-hotbar-meatballs', name: 'Whole Foods Hot Bar — turkey meatballs (estimate)', protein100: 18, kcal100: 220 },
-  { id: 'wfm-hotbar-tofu', name: 'Whole Foods Hot Bar — tofu and vegetables (estimate)', protein100: 8, kcal100: 120 },
-  { id: 'wfm-hotbar-mac', name: 'Whole Foods Hot Bar — macaroni and cheese (estimate)', protein100: 7, kcal100: 164 },
-  { id: 'wfm-hotbar-rice', name: 'Whole Foods Hot Bar — brown rice (estimate)', protein100: 2.6, kcal100: 123 }
+  { id: 'wfm-hotbar-chicken', name: 'Whole Foods Hot Bar — chicken breast (estimate)', protein100: 31, carbs100: 0, fat100: 3.6, kcal100: 165 },
+  { id: 'wfm-hotbar-salmon', name: 'Whole Foods Hot Bar — baked salmon (estimate)', protein100: 22, carbs100: 0, fat100: 12, kcal100: 206 },
+  { id: 'wfm-hotbar-meatballs', name: 'Whole Foods Hot Bar — turkey meatballs (estimate)', protein100: 18, carbs100: 8, fat100: 12, kcal100: 220 },
+  { id: 'wfm-hotbar-tofu', name: 'Whole Foods Hot Bar — tofu and vegetables (estimate)', protein100: 8, carbs100: 8, fat100: 7, kcal100: 120 },
+  { id: 'wfm-hotbar-mac', name: 'Whole Foods Hot Bar — macaroni and cheese (estimate)', protein100: 7, carbs100: 21, fat100: 6, kcal100: 164 },
+  { id: 'wfm-hotbar-rice', name: 'Whole Foods Hot Bar — brown rice (estimate)', protein100: 2.6, carbs100: 25.6, fat100: 1, kcal100: 123 }
 ].map(food => Object.assign(food, {
   brand: 'Whole Foods Hot Bar · estimate',
   kind: 'Built-in estimate',
@@ -43,6 +43,8 @@ const foodRows = payload => (payload.foods || []).map(food => ({
   brand: food.brandOwner || food.brandName || null,
   kind: food.dataType,
   protein100: nutrient(food, 'Protein'),
+  carbs100: nutrient(food, 'Carbohydrate, by difference') ?? 0,
+  fat100: nutrient(food, 'Total lipid (fat)') ?? 0,
   kcal100: nutrient(food, 'Energy'),
   portions: (() => {
     const all = (food.foodMeasures || [])

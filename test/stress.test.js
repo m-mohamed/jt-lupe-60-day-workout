@@ -191,7 +191,7 @@ const url = `http://127.0.0.1:8777/?ns=${namespace}`;
   t('a normal write still syncs after rejected batches', recovered.dirty === 0 && recovered.chip === 'synced', JSON.stringify(recovered));
 
   /* ---------- typing while the app is being navigated hard ---------- */
-  await p.evaluate(() => { setTab('train'); state.date = '2026-09-02'; renderSession(); });
+  await p.evaluate(() => { setTab('train'); state.date = '2026-09-03'; renderSession(); });
   await p.waitForTimeout(400);
   const exId = await p.evaluate(() => document.querySelectorAll('.in-load')[0].dataset.ex);
   await p.locator('.in-load').nth(0).tap();
@@ -205,7 +205,7 @@ const url = `http://127.0.0.1:8777/?ns=${namespace}`;
   }
   /* eslint-enable no-await-in-loop */
   await p.waitForTimeout(600);
-  const raced = await p.evaluate(id => setsFor('jt', '2026-09-02', id).map(s => s.load), exId);
+  const raced = await p.evaluate(id => setsFor('jt', '2026-09-03', id).map(s => s.load), exId);
   t('a set value typed then hammered through tabs survives without changing other sets',
     raced[0] === '137' && raced.slice(1).every(load => load !== '137'), JSON.stringify(raced));
 

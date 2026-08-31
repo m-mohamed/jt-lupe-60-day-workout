@@ -2,7 +2,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PROFILE = /^(jt|lupe)$/;
 const UTF8 = new TextEncoder();
 export const MAX_SNAPSHOT_BYTES = 96 * 1024;
-const SNAPSHOT_LISTS = ['sets', 'meals', 'supplements', 'bodyweight', 'habits'];
+const SNAPSHOT_LISTS = ['sets', 'meals', 'supplements', 'bodyweight', 'habits', 'steps'];
 
 const read = raw => {
   try { return JSON.parse(raw); } catch { return null; }
@@ -37,6 +37,7 @@ export function isTrainingSnapshotCandidate(key, raw, prefix) {
   }
   if (kind === 'meal' || kind === 'supplement') return Boolean(value.name);
   if (kind === 'bodyweight') return boundedNumber(value.value, 40, 1500) !== null;
+  if (kind === 'steps') return boundedNumber(value.value, 0, 100000) !== null;
   if (kind === 'habit') return Boolean(parts[2]);
   return false;
 }
@@ -47,7 +48,7 @@ export function trainingSnapshotWindow(profile, now = new Date()) {
   cutoff.setUTCDate(cutoff.getUTCDate() - 59);
   return {
     keyPrefix: `jt-lupe:${profile}:`,
-    kinds: ['set', 'meal', 'supplement', 'bodyweight', 'habit'],
+    kinds: ['set', 'meal', 'supplement', 'bodyweight', 'habit', 'steps'],
     oldest: dayKey(cutoff),
     through: dayKey(now)
   };
@@ -65,9 +66,10 @@ function boundSnapshot(snapshot) {
 
   const bounded = {
     profile: snapshot.profile,
+    plan: snapshot.plan,
     windowDays: snapshot.windowDays,
     through: snapshot.through,
-    sets: [], meals: [], supplements: [], bodyweight: [], habits: [],
+    sets: [], meals: [], supplements: [], bodyweight: [], habits: [], steps: [],
     snapshotLimitBytes: MAX_SNAPSHOT_BYTES,
     truncated: true,
     candidateLimitReached: snapshot.candidateLimitReached,
@@ -122,13 +124,30 @@ export function buildTrainingSnapshot(dump, profile, now = new Date()) {
   const prefix = window.keyPrefix;
   const snapshot = {
     profile, windowDays: 60, through: window.through,
-    sets: [], meals: [], supplements: [], bodyweight: [], habits: [],
+    plan: null, sets: [], meals: [], supplements: [], bodyweight: [], habits: [], steps: [],
     candidateLimitReached: dump?.candidateLimitReached === true,
     candidateKindsLimited: Array.isArray(dump?.candidateLimitedKinds) ? dump.candidateLimitedKinds : [],
     sourceScanLimitReached: dump?.sourceScanLimitReached === true,
     sourceScanKindsLimited: Array.isArray(dump?.sourceScanLimitedKinds) ? dump.sourceScanLimitedKinds : []
   };
   snapshot.truncated = snapshot.candidateLimitReached || snapshot.sourceScanLimitReached;
+
+  const rawPlan = read(dump?.data?.[`${prefix}profile`]);
+  if (Object.prototype.toString.call(rawPlan) === '[object Object]') {
+    const weight = boundedNumber(rawPlan.weight, 40, 1500);
+    const heightCm = boundedNumber(rawPlan.heightCm, 100, 250);
+    const dailySteps = boundedNumber(rawPlan.dailySteps, 1000, 50000);
+    const mealsPerDay = boundedNumber(rawPlan.mealsPerDay, 1, 8);
+    const freeMealsPerWeek = boundedNumber(rawPlan.freeMealsPerWeek, 0, 7);
+    if (weight !== null && heightCm !== null && dailySteps !== null
+      && mealsPerDay !== null && freeMealsPerWeek !== null) {
+      snapshot.plan = {
+        weight, unit: rawPlan.unit === 'kg' ? 'kg' : 'lb', heightCm,
+        experience: ['new', 'returning', 'consistent'].includes(rawPlan.experience) ? rawPlan.experience : 'returning',
+        dailySteps, mealsPerDay, freeMealsPerWeek
+      };
+    }
+  }
 
   for (const [key, raw] of Object.entries(dump?.data || {})) {
     if (!key.startsWith(prefix)) continue;
@@ -156,6 +175,8 @@ export function buildTrainingSnapshot(dump, profile, now = new Date()) {
     } else if (kind === 'meal' && value.name) {
       snapshot.meals.push({ date, id: String(parts.slice(2).join(':')).slice(0, 160),
         name: String(value.name).slice(0, 120), protein: boundedNumber(value.protein, 0, 500) ?? 0,
+        carbs: boundedNumber(value.carbs, 0, 1500) ?? 0,
+        fat: boundedNumber(value.fat, 0, 500) ?? 0,
         kcal: boundedNumber(value.kcal, 0, 10000) ?? 0 });
     } else if (kind === 'supplement' && value.name) {
       snapshot.supplements.push({ date, id: String(parts.slice(2).join(':')).slice(0, 160),
@@ -165,10 +186,12 @@ export function buildTrainingSnapshot(dump, profile, now = new Date()) {
       snapshot.bodyweight.push({ date, value: boundedNumber(value.value, 40, 1500), unit: value.unit === 'kg' ? 'kg' : 'lb' });
     } else if (kind === 'habit' && parts[2]) {
       snapshot.habits.push({ date, habit: String(parts[2]).slice(0, 40), done: value.done === true });
+    } else if (kind === 'steps') {
+      snapshot.steps.push({ date, value: boundedNumber(value.value, 0, 100000) });
     }
   }
 
-  for (const list of [snapshot.sets, snapshot.meals, snapshot.supplements, snapshot.bodyweight, snapshot.habits]) {
+  for (const list of [snapshot.sets, snapshot.meals, snapshot.supplements, snapshot.bodyweight, snapshot.habits, snapshot.steps]) {
     list.sort((a, b) => b.date.localeCompare(a.date));
   }
   return boundSnapshot(snapshot);

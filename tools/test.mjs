@@ -23,6 +23,7 @@ const SUITES = [
   { file: 'a11y.test.js', port: STATIC_PORT },
   { file: 'responsive.test.js', port: STATIC_PORT },
   { file: 'catalog.test.js', port: STATIC_PORT },
+  { file: 'onboarding.test.js', port: STATIC_PORT },
   { file: 'agent-parity.test.js', port: STATIC_PORT },
   { file: 'human-interaction.test.js', port: STATIC_PORT },
   { file: 'session-flow.test.js', port: STATIC_PORT },

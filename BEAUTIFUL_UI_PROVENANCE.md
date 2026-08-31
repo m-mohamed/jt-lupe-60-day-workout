@@ -1,6 +1,6 @@
 # Beautiful UI provenance
 
-Catalog verified: 2026-08-28
+Catalog verified: 2026-08-31
 Source: <https://www.beautifului.dev/>
 License: <https://www.beautifului.dev/license>
 
@@ -17,20 +17,20 @@ an undocumented Beautiful UI import or API.
 | Loading State | Coach pixel loader and elapsed time |
 | Thinking | Expandable Coach run state |
 | Streaming Text | Incremental Coach reply |
-| Approval Card | Human approval before any record write |
+| Approval Card | Human approval before any record write and focused onboarding shell |
 | Tool Chips | Agent tools and rest timer |
 | Task Rows | Exercise, supplement, and Agent status rows |
 | Chat | Coach transcript |
 | Prompt Bar | Global and Coach composers |
-| Context Cards | Workout import and progression help |
+| Context Cards | Workout notes import |
 | Diff Table | Current versus proposed record values |
-| Records Table | Strength, weight, meal, and supplement history |
+| Records Table | Strength, weight, meal, step, and supplement history |
 | Filter Table | Workout date/session controls |
 | Sidebar Nav | Desktop navigation and mobile bottom adaptation |
 | Search | Food lookup and Coach recommendations |
-| Insight Cards | Food and progress summaries |
+| Insight Cards | Macro and progress summaries |
 | Code Block | Structured proposal disclosure |
-| Fine-tune Card | Bodyweight and supplement entry |
+| Fine-tune Card | Bodyweight, steps, and supplement entry |
 | Selection Actions | Export, backup, restore, theme, and conversation controls |
 
 Recommendation Card and Flowchart are valid catalog primitives but are deliberately not

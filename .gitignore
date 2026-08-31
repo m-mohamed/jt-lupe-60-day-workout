@@ -4,3 +4,4 @@ node_modules/
 .dev.vars
 tools/node_modules/
 cloud/public/
+onboarding.js

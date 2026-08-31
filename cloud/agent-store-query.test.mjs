@@ -33,12 +33,13 @@ insert.run('gym', 'jt-lupe:jt:meal:2026-07-99:invalid-calendar', '{"name":"Bad"}
 insert.run('gym', 'jt-lupe:jt:meal:2026-07-02:oversized-utf8', JSON.stringify({ name: '🍱'.repeat(3000) }), 'device', '2026-07-02T12:00:00Z');
 insert.run('gym', 'jt-lupe:jt:bodyweight:2026-08-26', '{"value":180}', 'device', '2026-08-26T12:00:00Z');
 insert.run('gym', 'jt-lupe:jt:bodyweight:2026-08-26:extra', '{"value":999}', 'device', '2026-08-26T12:00:00Z');
+insert.run('gym', 'jt-lupe:jt:steps:2026-08-26', '{"value":11240}', 'device', '2026-08-26T12:00:00Z');
 insert.run('gym', 'jt-lupe:jt:activity:event', '{}', 'device', '2026-08-26T12:00:00Z');
 
 const queries = datedExportQueries({
   ns: 'gym',
   keyPrefix: KEY_PREFIX,
-  kinds: ['set', 'meal', 'supplement', 'bodyweight', 'habit'],
+  kinds: ['set', 'meal', 'supplement', 'bodyweight', 'habit', 'steps'],
   oldest: '2026-06-30',
   through: '2026-08-28'
 });
@@ -64,6 +65,8 @@ assert.deepEqual(rowsByKind.meal.map(row => row.key), ['jt-lupe:jt:meal:2026-07-
   'calendar-invalid dates and values over the UTF-8 byte ceiling are removed before the limit');
 assert.deepEqual(rowsByKind.bodyweight.map(row => row.key), ['jt-lupe:jt:bodyweight:2026-08-26'],
   'bodyweight keys must end after their exact date');
+assert.deepEqual(rowsByKind.steps.map(row => row.key), ['jt-lupe:jt:steps:2026-08-26'],
+  'step keys must end after their exact date');
 assert.equal(capped.rows.some(row => row.key.startsWith('jt-lupe:lupe:')), false,
   'the storage query never crosses profile boundaries');
 

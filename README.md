@@ -2,7 +2,7 @@
 
 An installable workout, weight, food, and supplement tracker for JT and Lupe. The
 60-day training block begins Monday, August 31, 2026 and runs through Thursday,
-October 29, 2026. Lifting days are Monday, Wednesday, and Friday; workout, food,
+October 29, 2026. The weight-first PPLU week runs Monday, Tuesday, Thursday, and Friday; workout, food,
 and supplement logging all begin with that opening week.
 
 Private app: <https://jt-lupe-workout.jt-lupe-workout-cloud.workers.dev/>
@@ -17,29 +17,36 @@ Four trackers and one agent workspace share the same local-first record system. 
   own the top of the rep range, then add the smallest jump. Every set has its own
   weight and rep fields. A set can also record a lighter or assisted finish, such as
   `100 lb × 6 + 70 lb × 4`. Fill blank sets from set 1 to avoid repeat typing; any
-  set already adjusted stays unchanged. Working sets stay at 1–3 RIR. Timed efforts
-  are never told to add weight. The plan is weight-first on Monday, Wednesday, and Friday.
+  set already adjusted stays unchanged. Working sets stay at 1–3 RIR. Lead lifts use
+  5–8 reps, middle work 10–12, and accessories 12–20.
   **Paste from your notes**
   takes a session logged anywhere else — Notes, paper, a chat thread — matches each
   line to an exercise and logs it; unmatched lines are left alone. A session can also
   be handed over as a link: `?log=<text>&date=YYYY-MM-DD` opens the importer with
   the parse already previewed, so each person applies it inside their own account. It
   never writes on its own — the confirm step is the same as a manual paste.
-- **Food** — protein target derived from bodyweight, a running total, a meal log, and
+- **Food** — calorie, protein, carbohydrate, and fat targets derived from onboarding,
+  full-macro meal logging, daily and weekly steps, and
   daily fundamentals (protein, pre-workout meal, sleep). Food lookup searches USDA
   FoodData Central (public-domain, free) for chains and generic restaurant dishes, and
-  converts a chosen portion into grams of protein. Whole Foods Hot Bar searches return
+  converts a chosen portion into editable macros. Whole Foods Hot Bar searches return
   a built-in set of clearly labelled estimates because the USDA catalog does not have
   a stable Hot Bar menu. Signed-in copy only, because the request is proxied so the key
   never ships in the page.
 - **Supplements** — a dated intake log with a name, actual dose, and unit. Creatine
   5 g is available as a quick-add, but custom supplements are not limited to a fixed
   list. The history records intake; it does not prescribe a medical stack.
-- **Progress** — strength per exercise (first → latest), bodyweight trend, supplement
-  consistency, daily fundamentals, and CSV / JSON export.
+- **Progress** — strength per exercise (first → latest), seven-day bodyweight trend,
+  step average, daily fundamentals, and CSV / JSON export.
 - **Coach** — a Pi agent powered through OpenRouter. The system-wide Prompt Bar carries
   the active screen into the conversation. It reads a private 60-day snapshot and
-  drafts set, meal, supplement, and bodyweight records for human approval.
+  drafts sets, meals, supplements, bodyweight, steps, daily checks, and plan updates
+  for human approval.
+
+The first signed-in launch uses OnboardJS core for a three-step setup flow. It captures
+bodyweight, height, training history, daily steps, meal rhythm, and flexible meals, then
+saves starting calorie and macro targets. The UI remains a Beautiful UI Approval Card;
+OnboardJS supplies the headless navigation and persistence engine.
 
 Each person only ever sees their own numbers. Any past day can be backfilled without
 pretending it happened today. Installs as a PWA and works fully offline.
@@ -58,7 +65,9 @@ Current keys are:
 | --- | --- | --- |
 | `jt-lupe:{profile}:set:{date}:{exercise}:{n}` | one set: load, reps/time, optional drop/assist finish | every performed set kept |
 | `jt-lupe:{profile}:session:{date}` | the programme session used that day | every trained date kept |
-| `jt-lupe:{profile}:meal:{date}:{id}` | `{"name","protein"}` for one meal | every meal kept |
+| `jt-lupe:{profile}:meal:{date}:{id}` | name, calories, protein, carbs, and fat | every meal kept |
+| `jt-lupe:{profile}:steps:{date}` | daily step count | every calendar day kept |
+| `jt-lupe:{profile}:profile` | onboarding inputs and starting targets | latest approved plan |
 | `jt-lupe:{profile}:habit:{date}:{habit}` | daily-fundamentals check-in | every calendar day kept |
 | `jt-lupe:{profile}:supplement:{date}:{id}` | one intake: name, dose, unit, time | every intake kept |
 | `jt-lupe:{profile}:bodyweight:{date}` | dated bodyweight and unit | every calendar day kept |
@@ -81,13 +90,14 @@ each other.
 
 The application shell is rebuilt from [Beautiful UI](https://www.beautifului.dev/),
 an MIT-licensed collection of copy-paste primitives for AI-native interfaces.
-Beautiful UI is not a runtime dependency in this zero-build PWA. Its catalog contracts
+Beautiful UI is not a runtime package dependency in this vanilla PWA. Its catalog contracts
 are implemented directly in the document and `beautiful-ui.css`, preserving offline
 startup without a frontend build step. Every product surface uses a catalog primitive;
 catalog demos with no user job are not mounted. The active vocabulary includes Sidebar
 Nav, Context Cards, Task Rows, Search, Filter Table, Records Table, Prompt Bar, Chat,
 Streaming Text, Thinking, Loading State, Tool Chips, Approval Card, Insight Cards,
-Fine-tune Card, and Selection Actions. No generic card, chip, badge, pill, or second UI
+Fine-tune Card, and Selection Actions. Onboarding uses the Approval Card and Selection
+Actions patterns. No generic card, chip, badge, pill, or second UI
 system is layered on top.
 The component-by-component source and compatibility record is in
 [`BEAUTIFUL_UI_PROVENANCE.md`](BEAUTIFUL_UI_PROVENANCE.md).
@@ -104,7 +114,7 @@ overflow before it can reach the model. Read tools inspect that
 snapshot; write tools return typed proposals. The browser performs the final write only
 after a human applies a Beautiful UI Approval Card, then stores an append-only receipt.
 The coach uses the same USDA/Whole Foods catalog as the Food surface and can drive the
-dated views, rest timer, food search, import, exports, backup, theme, restore handoff,
+  dated views, rest timer, food search, import, plan editor, exports, backup, theme, restore handoff,
 and installation handoff. Navigation and routine device controls do not change a
 training record; every record mutation still requires an Approval Card.
 The shared OpenRouter credential is a Cloudflare secret and never enters the browser
@@ -147,7 +157,7 @@ chosen portion are what turn a row into a meal. Survey (FNDDS) rows carry real p
 
 Whole Foods Hot Bar recipes vary by store and day. The Worker intercepts searches for
 `Whole Foods Hot Bar` and returns common plate components in 4, 6, and 8 oz portions.
-Every result says `estimate`, and the filled protein number remains editable before it
+Every result says `estimate`, and all filled macros remain editable before it
 is added to the log.
 
 ## Deployment

@@ -73,7 +73,7 @@
         <div class="session-nav">
           <button class="action" id="prevDay" type="button" aria-label="Previous day">Previous</button>
           <div class="session-now">
-            <strong id="sessionTitle">Wednesday · Push</strong>
+            <strong id="sessionTitle">Monday · Push</strong>
             <span id="sessionSub">Chest, shoulders, triceps</span>
           </div>
           <button class="action" id="nextDay" type="button" aria-label="Next day">Next</button>
@@ -107,10 +107,6 @@
         </div>
       </details>
 
-      <details class="bui-context-card" data-bui="Context Cards">
-        <summary>How to progress</summary>
-        <div class="body" id="rulesBody"></div>
-      </details>
     </section>
 
     <!-- ============ FUEL ============ -->
@@ -121,16 +117,17 @@
       <!-- Beautiful UI: Insight Cards -->
       <section class="bui-insight-card" data-bui="Insight Cards">
         <div class="component-header">
-          <h2>Daily protein</h2>
+          <h2>Today</h2>
           <input type="date" id="fuelDate" aria-label="Log date">
         </div>
         <p class="backfill-flag" id="fuelBackfill" hidden></p>
-        <div class="insight-summary">
-          <div><strong id="proteinSoFar">0 g</strong><span>logged today</span></div>
-          <div><strong id="proteinTarget">—</strong><span>daily target</span></div>
+        <div class="insight-summary nutrition-summary">
+          <div><strong id="caloriesSoFar">0</strong><span id="caloriesTarget">calories</span></div>
+          <div><strong id="proteinSoFar">0 g</strong><span id="proteinTarget">protein</span></div>
+          <div><strong id="carbsSoFar">0 g</strong><span id="carbsTarget">carbs</span></div>
+          <div><strong id="fatSoFar">0 g</strong><span id="fatTarget">fat</span></div>
         </div>
         <div class="meter" aria-hidden="true"><span id="proteinMeter"></span></div>
-        <p class="component-note" id="proteinHint"></p>
       </section>
 
       <!-- Beautiful UI: Records Table + Search -->
@@ -144,8 +141,19 @@
         <div id="foodResults"></div>
         <div class="meal-add">
           <input type="text" id="mealName" maxlength="80" placeholder="Chicken and rice" aria-label="Meal">
-          <input type="number" id="mealProtein" min="0" max="400" step="1" inputmode="numeric" placeholder="g" aria-label="Protein grams">
+          <input type="number" id="mealKcal" min="0" max="10000" step="1" inputmode="numeric" placeholder="kcal" aria-label="Calories">
+          <input type="number" id="mealProtein" min="0" max="500" step="1" inputmode="numeric" placeholder="P" aria-label="Protein grams">
+          <input type="number" id="mealCarbs" min="0" max="1500" step="1" inputmode="numeric" placeholder="C" aria-label="Carbohydrate grams">
+          <input type="number" id="mealFat" min="0" max="500" step="1" inputmode="numeric" placeholder="F" aria-label="Fat grams">
           <button class="action primary" id="addMeal" type="button">Add meal</button>
+        </div>
+      </section>
+
+      <section class="bui-fine-tune-card" data-bui="Fine-tune Card">
+        <div class="component-header"><h3>Steps</h3><span id="stepTarget">10,000 target</span></div>
+        <div class="entry steps-entry">
+          <label>Today <input type="number" id="stepValue" min="0" max="100000" step="100" inputmode="numeric" placeholder="0"></label>
+          <div class="step-week"><strong id="weeklySteps">0</strong><span>this week</span></div>
         </div>
       </section>
 
@@ -253,8 +261,8 @@
         <div class="insight-summary progress-summary">
           <div><strong id="statSessions">0</strong><span>sessions logged</span></div>
           <div><strong id="statLifts">0</strong><span>sets recorded</span></div>
-          <div><strong id="statStack">0</strong><span>supplement days</span></div>
-          <div><strong id="statBw">—</strong><span>bodyweight change</span></div>
+          <div><strong id="statSteps">0</strong><span>7-day step average</span></div>
+          <div><strong id="statBw">—</strong><span>7-day weight trend</span></div>
         </div>
       </section>
 
@@ -273,6 +281,11 @@
         <div id="stackBody"></div>
       </section>
 
+      <section class="bui-records-table" data-bui="Records Table">
+        <div class="component-header"><h3>Steps</h3></div>
+        <div id="stepsBody"></div>
+      </section>
+
       <section class="bui-selection-actions" data-bui="Selection Actions" aria-label="Data controls">
         <div class="selection-actions">
           <button class="action" id="exportCsv" type="button">Export CSV</button>
@@ -281,6 +294,7 @@
           <input class="visually-hidden" id="restoreInput" type="file" accept="application/json">
           <button class="action" id="restoreButton" type="button">Restore</button>
           <button class="action" id="themeButton" type="button">Dark mode</button>
+          <button class="action" id="editProfileButton" type="button">Edit plan</button>
           <button class="action" id="installButton" type="button" hidden>Install app</button>
         </div>
       </section>
@@ -289,10 +303,64 @@
     </main>
   </div>
 
+  <dialog class="onboarding-dialog" id="onboardingDialog" data-onboarding-engine="onboardjs" data-bui="Approval Card" aria-labelledby="onboardTitle">
+    <div class="onboarding-shell">
+      <div class="onboarding-head">
+        <div>
+          <p class="component-label" id="onboardProgress">1 / 3</p>
+          <h2 id="onboardTitle">Set your starting plan</h2>
+        </div>
+      </div>
+      <div class="meter onboarding-meter" aria-hidden="true"><span id="onboardProgressBar"></span></div>
+
+      <section class="onboarding-step" data-onboard-step="starting-point">
+        <h3>Starting point</h3>
+        <div class="onboarding-grid split">
+          <label>Weight <input type="number" id="onboardWeight" min="40" max="1500" step="0.1" inputmode="decimal"></label>
+          <label>Unit <select id="onboardUnit"><option value="lb">lb</option><option value="kg">kg</option></select></label>
+        </div>
+        <div class="onboarding-grid">
+          <label>Height <input type="number" id="onboardHeight" min="100" max="250" step="1" inputmode="numeric"><span>cm</span></label>
+          <label>Training history
+            <select id="onboardExperience"><option value="new">New</option><option value="returning" selected>Returning</option><option value="consistent">Consistent</option></select>
+          </label>
+        </div>
+      </section>
+
+      <section class="onboarding-step" data-onboard-step="weekly-rhythm" hidden>
+        <h3>Weekly rhythm</h3>
+        <div class="onboarding-grid">
+          <label>Daily steps <input type="number" id="onboardDailySteps" min="1000" max="50000" step="500" value="10000"></label>
+          <label>Meals per day <input type="number" id="onboardMeals" min="1" max="8" step="1" value="4"></label>
+          <label>Flexible meals per week <input type="number" id="onboardFreeMeals" min="0" max="7" step="1" value="2"></label>
+        </div>
+      </section>
+
+      <section class="onboarding-step" data-onboard-step="starting-targets" hidden>
+        <h3>Starting targets</h3>
+        <div class="onboarding-targets">
+          <div><strong id="onboardCalories">—</strong><span>daily calories</span></div>
+          <div><strong id="onboardProtein">—</strong><span>protein</span></div>
+          <div><strong id="onboardCarbs">—</strong><span>carbs</span></div>
+          <div><strong id="onboardFat">—</strong><span>fat</span></div>
+          <div><strong id="onboardWeeklySteps">—</strong><span>weekly steps</span></div>
+        </div>
+        <p class="component-note">Use these as a starting point. Review the weekly trend before changing them.</p>
+      </section>
+
+      <p class="onboarding-error" id="onboardError" role="alert"></p>
+      <div class="onboarding-actions" data-bui="Selection Actions">
+        <button class="action" id="onboardBack" type="button" hidden>Back</button>
+        <button class="action primary" id="onboardNext" type="button">Continue</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="./onboarding.js" defer></script>
   <script>
     /* ================= constants ================= */
     const SCHEMA_KEY = 'jt-lupe-schema-version';
-    const SCHEMA_VERSION = 4;
+    const SCHEMA_VERSION = 5;
     const PROFILE_KEY = 'jt-lupe-profile';
     const LEGACY_KEYS = ['jt-lupe-auth-v1', 'jt-lupe-session'];
     const PROFILES = ['jt', 'lupe'];
@@ -330,6 +398,9 @@
       session: (p, date) => `jt-lupe:${p}:session:${date}`,
       meal:  (p, date, id) => `jt-lupe:${p}:meal:${date}:${id}`,
       mealPrefix: (p, date) => `jt-lupe:${p}:meal:${date}:`,
+      profile: p => `jt-lupe:${p}:profile`,
+      steps: (p, date) => `jt-lupe:${p}:steps:${date}`,
+      stepsPrefix: p => `jt-lupe:${p}:steps:`,
       bodyweight: (p, date) => `jt-lupe:${p}:bodyweight:${date}`,
       bwPrefix: p => `jt-lupe:${p}:bodyweight:`,
       habit: (p, date, id) => `jt-lupe:${p}:habit:${date}:${id}`,
@@ -427,10 +498,10 @@
     const challengeDay = key => Math.floor((parseDate(key) - CHALLENGE_START) / 86400000) + 1;
     const weekOf = key => Math.max(1, Math.min(9, Math.floor((challengeDay(key) - 1) / 7) + 1));
 
-    /** Monday, Wednesday and Friday are training days. Every other date is recovery. */
+    /** Four focused lifting days with recovery between Pull and Legs. */
     function dayForDate(key) {
       const wd = parseDate(key).getDay();
-      const index = { 1: 0, 3: 1, 5: 2 }[wd];
+      const index = { 1: 0, 2: 1, 4: 2, 5: 3 }[wd];
       if (index !== undefined) return DAYS[index];
       return {
         id: 'recovery',
@@ -489,7 +560,7 @@
         if (m) {
           const [, field, w, d, e, profile] = m;
           // V1 grid indexes belong to the original five-day programme, not the
-          // current three-day plan. Keep that frozen map so old history migrates to
+          // current four-day plan. Keep that frozen map so old history migrates to
           // the exercise it actually represented.
           const day = LEGACY_PROGRAMME.days[Number(d)];
           const exercise = day && day.exercises[Number(e)];
@@ -630,8 +701,7 @@
 
       const previous = lastSession(state.profile, exercise.id, date);
       if (!previous) {
-        const range = exercise.repLow === exercise.repHigh ? exercise.repLow : `${exercise.repLow}–${exercise.repHigh}`;
-        return { kind: 'first', text: `No history yet. Choose a starting weight. Stop after ${range} clean reps with 2 reps in reserve, then record what you did.` };
+        return { kind: 'first', text: 'No history yet. Choose a weight that leaves 2 clean reps.' };
       }
 
       const reps = previous.sets.map(s => s.reps).filter(r => r != null);
@@ -1021,55 +1091,69 @@
       ]
     };
 
-    // Weight-first, three-day programme. The Anime Physique research informs the
+    // Weight-first, four-day PPLU programme. The Anime Physique research informs the
     // priorities (lats, shoulders, chest, balanced legs and core), while the actual
     // plan uses the gym equipment JT and Lupe already have.
     const PROGRAMME = {
-      version: 2,
+      version: 3,
       days: [
         {
-          id: 'v-taper-quads',
+          id: 'push-quads',
           label: 'Monday',
-          focus: 'V-Taper + Quads',
-          note: 'Back width, shoulders, quads, arms',
+          focus: 'Push + Quads',
+          note: 'Chest, quads, shoulders, triceps',
           exercises: [
-            { id: 'lat-pulldown', label: 'Lat pulldown', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
-            { id: 'seated-row', label: 'Seated row', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
-            { id: 'leg-press', label: 'Leg press', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
-            { id: 'dumbbell-overhead-press', label: 'Dumbbell overhead press', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
+            { id: 'dumbbell-incline-press', label: 'Dumbbell incline press', sets: 4, repLow: 5, repHigh: 8, kind: 'load', note: '4 × 5–8' },
+            { id: 'leg-press', label: 'Leg press', sets: 3, repLow: 5, repHigh: 8, kind: 'load', note: '3 × 5–8' },
+            { id: 'dumbbell-overhead-press', label: 'Dumbbell overhead press', sets: 3, repLow: 10, repHigh: 12, kind: 'load', note: '3 × 10–12' },
+            { id: 'machine-chest-press', label: 'Machine chest press', sets: 2, repLow: 10, repHigh: 12, kind: 'load', note: '2 × 10–12' },
             { id: 'dumbbell-lateral-raise', label: 'Dumbbell lateral raise', sets: 3, repLow: 12, repHigh: 20, kind: 'load', note: '3 × 12–20' },
-            { id: 'hammer-curl', label: 'Hammer curl', sets: 2, repLow: 10, repHigh: 15, kind: 'load', note: '2 × 10–15' },
-            { id: 'hanging-knee-raise', label: 'Hanging knee raise', sets: 3, repLow: 8, repHigh: 15, kind: 'bodyweight', note: '3 × 8–15' }
+            { id: 'triceps-pressdown', label: 'Triceps pressdown', sets: 3, repLow: 12, repHigh: 20, kind: 'load', note: '3 × 12–20' },
+            { id: 'hanging-knee-raise', label: 'Hanging knee raise', sets: 3, repLow: 12, repHigh: 20, kind: 'bodyweight', note: '3 × 12–20' }
           ]
         },
         {
-          id: 'chest-posterior',
-          label: 'Wednesday',
-          focus: 'Chest + Posterior',
-          note: 'Chest, hamstrings, single-leg strength, upper back',
+          id: 'pull-posterior',
+          label: 'Tuesday',
+          focus: 'Pull + Posterior',
+          note: 'Back width, hamstrings, upper back, biceps',
           exercises: [
-            { id: 'dumbbell-incline-press', label: 'Dumbbell incline press', sets: 4, repLow: 6, repHigh: 10, kind: 'load', note: '4 × 6–10' },
-            { id: 'pull-up-variation', label: 'Pull-up variation', sets: 3, repLow: 5, repHigh: 8, kind: 'bodyweight', note: '3 × 5–8' },
-            { id: 'kettlebell-romanian-deadlift', label: 'Kettlebell Romanian deadlift', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
-            { id: 'split-squat-variation', label: 'Split-squat variation', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12 / leg' },
-            { id: 'triceps-pressdown', label: 'Triceps pressdown', sets: 3, repLow: 10, repHigh: 15, kind: 'load', note: '3 × 10–15' },
+            { id: 'pull-up-variation', label: 'Pull-up variation', sets: 4, repLow: 5, repHigh: 8, kind: 'bodyweight', note: '4 × 5–8' },
+            { id: 'kettlebell-romanian-deadlift', label: 'Kettlebell Romanian deadlift', sets: 3, repLow: 5, repHigh: 8, kind: 'load', note: '3 × 5–8' },
+            { id: 'seated-row', label: 'Seated row', sets: 3, repLow: 10, repHigh: 12, kind: 'load', note: '3 × 10–12' },
+            { id: 'lat-pulldown', label: 'Lat pulldown', sets: 3, repLow: 10, repHigh: 12, kind: 'load', note: '3 × 10–12' },
             { id: 'face-pull', label: 'Face pull', sets: 3, repLow: 12, repHigh: 20, kind: 'load', note: '3 × 12–20' },
-            { id: 'dragon-flag-progression', label: 'Dragon flag progression', sets: 3, repLow: 6, repHigh: 10, kind: 'bodyweight', note: '3 × 6–10 or controlled negatives' }
+            { id: 'hammer-curl', label: 'Hammer curl', sets: 3, repLow: 12, repHigh: 20, kind: 'load', note: '3 × 12–20' },
+            { id: 'standing-calf-raise', label: 'Standing calf raise', sets: 3, repLow: 12, repHigh: 20, kind: 'load', note: '3 × 12–20' }
           ]
         },
         {
-          id: 'full-body',
-          label: 'Friday',
-          focus: 'Full Body + V-Taper',
-          note: 'Chest, back thickness, legs, shoulders, grip',
+          id: 'legs',
+          label: 'Thursday',
+          focus: 'Legs',
+          note: 'Quads, hamstrings, glutes, calves, core',
           exercises: [
-            { id: 'machine-chest-press', label: 'Machine chest press', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
-            { id: 'lat-pulldown', label: 'Lat pulldown', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
-            { id: 'one-arm-dumbbell-row', label: 'One-arm dumbbell row', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12 / side' },
-            { id: 'dumbbell-goblet-squat', label: 'Dumbbell goblet squat', sets: 3, repLow: 8, repHigh: 12, kind: 'load', note: '3 × 8–12' },
-            { id: 'kettlebell-romanian-deadlift', label: 'Kettlebell Romanian deadlift', sets: 2, repLow: 10, repHigh: 15, kind: 'load', note: '2 × 10–15' },
+            { id: 'leg-press', label: 'Leg press', sets: 4, repLow: 5, repHigh: 8, kind: 'load', note: '4 × 5–8' },
+            { id: 'kettlebell-romanian-deadlift', label: 'Kettlebell Romanian deadlift', sets: 3, repLow: 5, repHigh: 8, kind: 'load', note: '3 × 5–8' },
+            { id: 'split-squat-variation', label: 'Split squat', sets: 3, repLow: 10, repHigh: 12, kind: 'load', note: '3 × 10–12 / leg' },
+            { id: 'leg-curl', label: 'Leg curl', sets: 3, repLow: 10, repHigh: 12, kind: 'load', note: '3 × 10–12' },
+            { id: 'standing-calf-raise', label: 'Standing calf raise', sets: 4, repLow: 12, repHigh: 20, kind: 'load', note: '4 × 12–20' },
+            { id: 'dragon-flag-progression', label: 'Dragon flag progression', sets: 3, repLow: 6, repHigh: 10, kind: 'bodyweight', note: '3 × 6–10' }
+          ]
+        },
+        {
+          id: 'upper',
+          label: 'Friday',
+          focus: 'Upper',
+          note: 'Chest, back, shoulders, arms',
+          exercises: [
+            { id: 'machine-chest-press', label: 'Machine chest press', sets: 3, repLow: 5, repHigh: 8, kind: 'load', note: '3 × 5–8' },
+            { id: 'one-arm-dumbbell-row', label: 'One-arm dumbbell row', sets: 3, repLow: 5, repHigh: 8, kind: 'load', note: '3 × 5–8 / side' },
+            { id: 'dumbbell-overhead-press', label: 'Dumbbell overhead press', sets: 3, repLow: 10, repHigh: 12, kind: 'load', note: '3 × 10–12' },
+            { id: 'lat-pulldown', label: 'Lat pulldown', sets: 3, repLow: 10, repHigh: 12, kind: 'load', note: '3 × 10–12' },
             { id: 'dumbbell-lateral-raise', label: 'Dumbbell lateral raise', sets: 3, repLow: 12, repHigh: 20, kind: 'load', note: '3 × 12–20' },
-            { id: 'suitcase-carry', label: 'Suitcase carry', sets: 3, repLow: 30, repHigh: 45, kind: 'timed', note: '3 × 30–45 sec / side' }
+            { id: 'incline-dumbbell-curl', label: 'Incline dumbbell curl', sets: 2, repLow: 12, repHigh: 20, kind: 'load', note: '2 × 12–20' },
+            { id: 'overhead-triceps-extension', label: 'Overhead triceps extension', sets: 2, repLow: 12, repHigh: 20, kind: 'load', note: '2 × 12–20' }
           ]
         }
       ]
@@ -1149,6 +1233,27 @@
       setProfile(state.profile === 'jt' ? 'lupe' : 'jt');
     });
 
+    let onboardingRequested = false;
+    function openOnboarding() {
+      onboardingRequested = true;
+      if (!window.trainingOnboardingReady) return;
+      onboardingRequested = false;
+      window.openTrainingOnboarding(state.profile, planFor(state.profile));
+    }
+    window.addEventListener('training-onboarding-ready', () => {
+      if (onboardingRequested) openOnboarding();
+    });
+    window.addEventListener('training-onboarding-complete', event => {
+      const { profile, plan } = event.detail || {};
+      if (!PROFILES.includes(profile) || !plan) return;
+      writeJSON(K.profile(profile), plan);
+      writeJSON(K.bodyweight(profile, dateKey()), { value: plan.weight, unit: plan.unit, source: 'onboarding' });
+      saveData(`jt-lupe-${profile}-weight`, plan.weight);
+      saveData(`jt-lupe-${profile}-unit`, plan.unit);
+      renderAll();
+    });
+    el('editProfileButton').addEventListener('click', openOnboarding);
+
     /* ================= train ================= */
     const flash = message => {
       const count = el('sessionCount');
@@ -1187,7 +1292,7 @@
       }
 
       if (!day.exercises.length) {
-        el('exerciseList').innerHTML = '<p class="empty">Recovery day. The next lifting sessions are Monday, Wednesday, and Friday.</p>';
+        el('exerciseList').innerHTML = '<p class="empty">Recovery day. Walk, eat, and recover.</p>';
         renderSession.commit = null;
         renderSessionMeta();
         return;
@@ -1522,6 +1627,22 @@
       return unit === 'lb' ? value / 2.20462 : value;
     }
 
+    function planFor(profile = state.profile) {
+      return readJSON(K.profile(profile));
+    }
+
+    function nutritionTargets(profile = state.profile) {
+      const saved = planFor(profile)?.targets;
+      if (saved && [saved.calories, saved.protein, saved.carbs, saved.fat].every(Number.isFinite)) return saved;
+      const kg = bodyweightKg();
+      if (!kg) return null;
+      const pounds = kg * 2.20462;
+      const calories = Math.round((pounds * 12) / 10) * 10;
+      const protein = Math.round(pounds);
+      const fat = Math.round((calories * 0.25) / 9);
+      return { calories, protein, fat, carbs: Math.max(0, Math.round((calories - protein * 4 - fat * 9) / 4)) };
+    }
+
     function readMeals(profile, date) {
       const prefix = K.mealPrefix(profile, date);
       const meals = [];
@@ -1530,7 +1651,11 @@
         if (!key || !key.startsWith(prefix)) continue;
         try {
           const meal = JSON.parse(localStorage.getItem(key));
-          if (meal && meal.name) meals.push({ id: key.slice(prefix.length), key, name: meal.name, protein: Number(meal.protein) || 0 });
+          if (meal && meal.name) meals.push({
+            id: key.slice(prefix.length), key, name: meal.name,
+            kcal: Number(meal.kcal) || 0, protein: Number(meal.protein) || 0,
+            carbs: Number(meal.carbs) || 0, fat: Number(meal.fat) || 0
+          });
         } catch { /* ignore a corrupt row rather than lose the rest */ }
       }
       return meals.toSorted((a, b) => a.id.localeCompare(b.id));
@@ -1547,25 +1672,27 @@
       flag.hidden = date === today;
       if (date !== today) flag.textContent = `Backfilling ${labelForDate(date, { lower: true })}.`;
 
-      const kg = bodyweightKg();
-      const low = kg ? Math.round(kg * 1.6) : null;
-      const high = kg ? Math.round(kg * 2.2) : null;
+      const targets = nutritionTargets();
       const meals = readMeals(state.profile, date);
-      const total = meals.reduce((sum, meal) => sum + meal.protein, 0);
+      const totals = meals.reduce((sum, meal) => ({
+        kcal: sum.kcal + meal.kcal, protein: sum.protein + meal.protein,
+        carbs: sum.carbs + meal.carbs, fat: sum.fat + meal.fat
+      }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
 
-      el('proteinSoFar').textContent = `${total} g`;
-      el('proteinTarget').textContent = low ? `${low}–${high} g` : '—';
-      el('proteinMeter').style.width = low ? `${Math.min(100, (total / low) * 100)}%` : '0%';
-      el('proteinHint').textContent = !low
-        ? 'Add your bodyweight below and this becomes a real target.'
-        : total >= low
-          ? `Target met. Anything up to ${high} g still counts while you are leaning out.`
-          : `${low - total} g to go. Estimates are fine — consistency beats precision.`;
+      el('caloriesSoFar').textContent = totals.kcal.toLocaleString();
+      el('proteinSoFar').textContent = `${totals.protein} g`;
+      el('carbsSoFar').textContent = `${totals.carbs} g`;
+      el('fatSoFar').textContent = `${totals.fat} g`;
+      el('caloriesTarget').textContent = targets ? `of ${targets.calories.toLocaleString()} kcal` : 'calories';
+      el('proteinTarget').textContent = targets ? `of ${targets.protein} g protein` : 'protein';
+      el('carbsTarget').textContent = targets ? `of ${targets.carbs} g carbs` : 'carbs';
+      el('fatTarget').textContent = targets ? `of ${targets.fat} g fat` : 'fat';
+      el('proteinMeter').style.width = targets ? `${Math.min(100, (totals.protein / targets.protein) * 100)}%` : '0%';
 
       el('mealList').innerHTML = meals.length
         ? meals.map(meal => `<li>
             <span class="meal-name">${esc(meal.name)}</span>
-            <span class="meal-protein">${meal.protein ? `${meal.protein} g` : '—'}</span>
+            <span class="meal-protein">${meal.kcal ? `${meal.kcal} kcal` : '—'} · P${meal.protein} C${meal.carbs} F${meal.fat}</span>
             <button class="row-action" type="button" data-meal="${esc(meal.key)}" aria-label="Remove ${esc(meal.name)}">Remove</button>
           </li>`).join('')
         : '<li><span class="muted">Nothing logged yet.</span></li>';
@@ -1588,6 +1715,15 @@
       const logged = readJSON(K.bodyweight(state.profile, date));
       el('bwValue').value = logged ? logged.value : (date === today ? localStorage.getItem(`jt-lupe-${state.profile}-weight`) || '' : '');
       el('bwUnit').value = (logged && logged.unit) || localStorage.getItem(`jt-lupe-${state.profile}-unit`) || 'lb';
+
+      const steps = readJSON(K.steps(state.profile, date));
+      el('stepValue').value = steps ? steps.value : '';
+      const stepTarget = planFor()?.dailySteps || 10000;
+      el('stepTarget').textContent = `${stepTarget.toLocaleString()} target`;
+      const start = parseDate(date); start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+      let weekly = 0;
+      for (let offset = 0; offset < 7; offset += 1) weekly += readJSON(K.steps(state.profile, shiftDate(dateKey(start), offset)))?.value || 0;
+      el('weeklySteps').textContent = weekly.toLocaleString();
     }
 
     /* ---------- food lookup (USDA FoodData Central, via the Worker) ----------
@@ -1598,6 +1734,7 @@
       (food.portions && food.portions[0] && food.portions[0].grams) || food.servingGrams || 100;
 
     function proteinFor(food, grams) { return Math.round((food.protein100 * grams) / 100); }
+    function macroFor(food, key, grams) { return Math.round(((Number(food[key]) || 0) * grams) / 100); }
 
     function renderFoodHits(foods, note, info = '') {
       const box = el('foodResults');
@@ -1606,7 +1743,7 @@
       box.innerHTML = `${info ? `<p class="food-note">${esc(info)}</p>` : ''}${foods.slice(0, 6).map((food, index) => {
         const options = (food.portions && food.portions.length ? food.portions : [{ label: `${gramsFor(food)} g`, grams: gramsFor(food) }])
           .slice(0, 4)
-          .map(portion => `<button class="action compact" type="button" data-food="${index}" data-grams="${portion.grams}">${esc(portion.label)} · ${proteinFor(food, portion.grams)} g</button>`)
+          .map(portion => `<button class="action compact" type="button" data-food="${index}" data-grams="${portion.grams}">${esc(portion.label)} · ${macroFor(food, 'kcal100', portion.grams)} kcal · P${proteinFor(food, portion.grams)}</button>`)
           .join('');
         return `<div class="food-hit">
           <div class="food-hit-name">${esc(food.name)}</div>
@@ -1619,8 +1756,11 @@
         const food = foods[Number(button.dataset.food)];
         const grams = Number(button.dataset.grams);
         el('mealName').value = `${food.name}`.slice(0, 80);
+        el('mealKcal').value = macroFor(food, 'kcal100', grams);
         el('mealProtein').value = proteinFor(food, grams);
-        el('foodResults').innerHTML = `<p class="food-note">Filled in ${esc(food.name)} at ${grams} g. Check it, then Add.</p>`;
+        el('mealCarbs').value = macroFor(food, 'carbs100', grams);
+        el('mealFat').value = macroFor(food, 'fat100', grams);
+        el('foodResults').innerHTML = `<p class="food-note">Filled ${esc(food.name)} at ${grams} g. Review, then add.</p>`;
         el('mealName').scrollIntoView({ block: 'nearest' });
       }));
     }
@@ -1650,16 +1790,29 @@
       const name = el('mealName').value.trim();
       if (!name) { el('mealName').focus(); return; }
       const protein = Math.max(0, Number(el('mealProtein').value) || 0);
+      const kcal = Math.max(0, Number(el('mealKcal').value) || 0);
+      const carbs = Math.max(0, Number(el('mealCarbs').value) || 0);
+      const fat = Math.max(0, Number(el('mealFat').value) || 0);
       // Sortable prefix so meals stay in the order they were added, with a unique
       // suffix rather than three random digits that can collide inside one millisecond.
       const id = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
-      writeJSON(K.meal(state.profile, state.fuelDate, id), { name, protein });
+      writeJSON(K.meal(state.profile, state.fuelDate, id), { name, kcal, protein, carbs, fat });
       el('mealName').value = '';
-      el('mealProtein').value = '';
+      ['mealKcal', 'mealProtein', 'mealCarbs', 'mealFat'].forEach(inputId => { el(inputId).value = ''; });
       renderFuel();
     });
     el('mealName').addEventListener('keydown', event => { if (event.key === 'Enter') el('addMeal').click(); });
     el('mealProtein').addEventListener('keydown', event => { if (event.key === 'Enter') el('addMeal').click(); });
+    ['mealKcal', 'mealCarbs', 'mealFat'].forEach(id => el(id).addEventListener('keydown', event => {
+      if (event.key === 'Enter') el('addMeal').click();
+    }));
+
+    el('stepValue').addEventListener('change', () => {
+      const value = Number(el('stepValue').value);
+      if (!Number.isInteger(value) || value < 0 || value > 100000) return;
+      writeJSON(K.steps(state.profile, state.fuelDate), { value });
+      renderFuel();
+    });
 
     el('fuelDate').addEventListener('change', event => {
       const chosen = event.target.value;
@@ -1880,9 +2033,7 @@
       const started = performance.now();
       label.textContent = 'Thinking · 0.0s';
       summary.append(pixels, label);
-      const note = document.createElement('p');
-      note.textContent = 'Planning a safe response. Tool activity will appear in the conversation.';
-      row.append(summary, note);
+      row.append(summary);
       el('agentThread').append(row);
       const timer = setInterval(() => { label.textContent = `Thinking · ${((performance.now() - started) / 1000).toFixed(1)}s`; }, 100);
       row.scrollIntoView({ block: 'nearest' });
@@ -1915,23 +2066,28 @@
           ? ` · then ${proposal.drops.map(drop => `${drop.reps} @ ${drop.load}`).join(', ')}` : '';
         return `${proposal.date} · ${proposal.exerciseName} · set ${proposal.setNumber}: ${proposal.reps} reps @ ${proposal.load}${drops}`;
       }
-      if (proposal.kind === 'meal') return `${proposal.date} · ${proposal.name} · ${proposal.protein} g protein${proposal.kcal ? ` · ${proposal.kcal} kcal` : ''}${proposal.estimate ? ' · estimate' : ''}`;
+      if (proposal.kind === 'meal') return `${proposal.date} · ${proposal.name} · ${proposal.kcal || 0} kcal · P${proposal.protein} C${proposal.carbs || 0} F${proposal.fat || 0}${proposal.estimate ? ' · estimate' : ''}`;
       if (proposal.kind === 'supplement') return `${proposal.date} · ${proposal.name} · ${proposal.dose} ${proposal.unit}`;
       if (proposal.kind === 'bodyweight') return `${proposal.date} · ${proposal.value} ${proposal.unit}`;
       if (proposal.kind === 'habit') {
         const names = { protein: 'Hit protein target', preworkout: 'Pre-workout meal', sleep: 'Protect sleep' };
         return `${proposal.date} · ${names[proposal.habit] || proposal.habit} · ${proposal.done ? 'complete' : 'not complete'}`;
       }
+      if (proposal.kind === 'steps') return `${proposal.date} · ${Number(proposal.value).toLocaleString()} steps`;
+      if (proposal.kind === 'profile') return `${proposal.weight} ${proposal.unit} · ${Number(proposal.dailySteps).toLocaleString()} daily steps · ${proposal.mealsPerDay} meals`;
       if (proposal.kind === 'removal') return `${proposal.date} · remove ${proposal.label || proposal.recordKind}`;
       return 'Review this draft before saving.';
     }
 
     function proposalSignature(proposal) {
       if (proposal.kind === 'set') return JSON.stringify(['set', proposal.date, proposal.exerciseId, proposal.setNumber, proposal.load, proposal.reps, proposal.drops || []]);
-      if (proposal.kind === 'meal') return JSON.stringify(['meal', proposal.date, proposal.name, proposal.protein, proposal.kcal || 0, proposal.estimate === true]);
+      if (proposal.kind === 'meal') return JSON.stringify(['meal', proposal.date, proposal.name, proposal.kcal || 0, proposal.protein, proposal.carbs || 0, proposal.fat || 0, proposal.estimate === true]);
       if (proposal.kind === 'supplement') return JSON.stringify(['supplement', proposal.date, proposal.name, proposal.dose, proposal.unit]);
       if (proposal.kind === 'bodyweight') return JSON.stringify(['bodyweight', proposal.date, proposal.value, proposal.unit]);
       if (proposal.kind === 'habit') return JSON.stringify(['habit', proposal.date, proposal.habit, proposal.done === true]);
+      if (proposal.kind === 'steps') return JSON.stringify(['steps', proposal.date, proposal.value]);
+      if (proposal.kind === 'profile') return JSON.stringify(['profile', proposal.weight, proposal.unit, proposal.heightCm,
+        proposal.experience, proposal.dailySteps, proposal.mealsPerDay, proposal.freeMealsPerWeek]);
       if (proposal.kind === 'removal') return JSON.stringify(['removal', proposal.date, proposal.recordKind,
         proposal.recordId || '', proposal.exerciseId || '', proposal.setNumber || 0]);
       return JSON.stringify(proposal);
@@ -1967,8 +2123,10 @@
       if (proposal.kind === 'meal') {
         return [
           ['Meal', empty, proposal.name],
+          ['Calories', empty, `${proposal.kcal || 0} kcal`],
           ['Protein', empty, `${proposal.protein} g`],
-          ['Calories', empty, proposal.kcal ? `${proposal.kcal} kcal` : 'Not provided']
+          ['Carbs', empty, `${proposal.carbs || 0} g`],
+          ['Fat', empty, `${proposal.fat || 0} g`]
         ];
       }
       if (proposal.kind === 'supplement') {
@@ -1981,13 +2139,27 @@
         const current = readJSON(K.habit(state.profile, proposal.date, proposal.habit));
         return [['Daily check', current?.done ? 'Complete' : 'Not complete', proposal.done ? 'Complete' : 'Not complete']];
       }
+      if (proposal.kind === 'steps') {
+        const current = readJSON(K.steps(state.profile, proposal.date));
+        return [['Steps', current ? Number(current.value).toLocaleString() : empty, Number(proposal.value).toLocaleString()]];
+      }
+      if (proposal.kind === 'profile') {
+        const current = planFor() || {};
+        return [
+          ['Weight', current.weight ? `${current.weight} ${current.unit}` : empty, `${proposal.weight} ${proposal.unit}`],
+          ['Daily steps', current.dailySteps?.toLocaleString() || empty, Number(proposal.dailySteps).toLocaleString()],
+          ['Meals', current.mealsPerDay || empty, proposal.mealsPerDay],
+          ['Flexible meals', current.freeMealsPerWeek ?? empty, proposal.freeMealsPerWeek]
+        ];
+      }
       if (proposal.kind === 'removal') return [['Record', proposal.label || proposal.recordKind, 'Remove after approval']];
       return [['Record', empty, proposalSummary(proposal)]];
     }
 
     function proposalData(proposal) {
       const allowed = ['kind', 'date', 'exerciseId', 'exerciseName', 'setNumber', 'load', 'reps', 'drops',
-        'name', 'protein', 'kcal', 'estimate', 'dose', 'unit', 'value', 'habit', 'done',
+        'name', 'protein', 'carbs', 'fat', 'kcal', 'estimate', 'dose', 'unit', 'value', 'habit', 'done',
+        'weight', 'heightCm', 'experience', 'dailySteps', 'mealsPerDay', 'freeMealsPerWeek',
         'recordKind', 'recordId', 'label'];
       return Object.fromEntries(allowed.filter(key => proposal[key] !== undefined).map(key => [key, proposal[key]]));
     }
@@ -2071,8 +2243,9 @@
         agentProposals.delete(id);
         el('agentLiveStatus').textContent = 'That draft was invalid. Nothing changed.';
       };
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(proposal.date || '') || proposal.date > dateKey()) { reject(); return; }
-      const date = proposal.date;
+      if (proposal.kind !== 'profile'
+        && (!/^\d{4}-\d{2}-\d{2}$/.test(proposal.date || '') || proposal.date > dateKey())) { reject(); return; }
+      const date = proposal.kind === 'profile' ? dateKey() : proposal.date;
       if (proposal.kind === 'set') {
         const exerciseId = String(proposal.exerciseId || '');
         const setNumber = Number(proposal.setNumber);
@@ -2094,10 +2267,14 @@
         const name = String(proposal.name || '').trim().slice(0, 120);
         const protein = Number(proposal.protein);
         const kcal = proposal.kcal === undefined ? 0 : Number(proposal.kcal);
+        const carbs = proposal.carbs === undefined ? 0 : Number(proposal.carbs);
+        const fat = proposal.fat === undefined ? 0 : Number(proposal.fat);
         if (!name || !Number.isFinite(protein) || protein < 0 || protein > 500
-          || !Number.isFinite(kcal) || kcal < 0 || kcal > 10000) { reject(); return; }
+          || !Number.isFinite(kcal) || kcal < 0 || kcal > 10000
+          || !Number.isFinite(carbs) || carbs < 0 || carbs > 1500
+          || !Number.isFinite(fat) || fat < 0 || fat > 500) { reject(); return; }
         const key = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
-        writeJSON(K.meal(state.profile, date, key), { name, protein, kcal, estimate: proposal.estimate === true, createdBy: 'agent-approved' });
+        writeJSON(K.meal(state.profile, date, key), { name, protein, carbs, fat, kcal, estimate: proposal.estimate === true, createdBy: 'agent-approved' });
       } else if (proposal.kind === 'supplement') {
         const name = String(proposal.name || '').trim().slice(0, 100);
         const dose = Number(proposal.dose);
@@ -2117,6 +2294,34 @@
       } else if (proposal.kind === 'habit') {
         if (!['protein', 'preworkout', 'sleep'].includes(proposal.habit)) { reject(); return; }
         writeJSON(K.habit(state.profile, date, proposal.habit), { done: proposal.done === true, createdBy: 'agent-approved' });
+      } else if (proposal.kind === 'steps') {
+        const value = Number(proposal.value);
+        if (!Number.isInteger(value) || value < 0 || value > 100000) { reject(); return; }
+        writeJSON(K.steps(state.profile, date), { value, createdBy: 'agent-approved' });
+      } else if (proposal.kind === 'profile') {
+        const plan = {
+          weight: Number(proposal.weight), unit: proposal.unit === 'kg' ? 'kg' : 'lb',
+          heightCm: Number(proposal.heightCm), experience: String(proposal.experience || ''),
+          dailySteps: Number(proposal.dailySteps), mealsPerDay: Number(proposal.mealsPerDay),
+          freeMealsPerWeek: Number(proposal.freeMealsPerWeek)
+        };
+        if (!Number.isFinite(plan.weight) || plan.weight < 40 || plan.weight > 1500
+          || !Number.isFinite(plan.heightCm) || plan.heightCm < 100 || plan.heightCm > 250
+          || !['new', 'returning', 'consistent'].includes(plan.experience)
+          || !Number.isInteger(plan.dailySteps) || plan.dailySteps < 1000 || plan.dailySteps > 50000
+          || !Number.isInteger(plan.mealsPerDay) || plan.mealsPerDay < 1 || plan.mealsPerDay > 8
+          || !Number.isInteger(plan.freeMealsPerWeek) || plan.freeMealsPerWeek < 0 || plan.freeMealsPerWeek > 7) { reject(); return; }
+        const pounds = plan.unit === 'kg' ? plan.weight * 2.20462 : plan.weight;
+        const calories = Math.round((pounds * 12) / 10) * 10;
+        const protein = Math.round(pounds);
+        const targetFat = Math.round((calories * 0.25) / 9);
+        plan.targets = { calories, protein, fat: targetFat,
+          carbs: Math.max(0, Math.round((calories - protein * 4 - targetFat * 9) / 4)),
+          weeklySteps: plan.dailySteps * 7 };
+        writeJSON(K.profile(state.profile), plan);
+        writeJSON(K.bodyweight(state.profile, date), { value: plan.weight, unit: plan.unit, createdBy: 'agent-approved' });
+        saveData(`jt-lupe-${state.profile}-weight`, plan.weight);
+        saveData(`jt-lupe-${state.profile}-unit`, plan.unit);
       } else if (proposal.kind === 'removal') {
         let key = null;
         if (proposal.recordKind === 'set') {
@@ -2180,6 +2385,9 @@
         el('importText').value = String(action.value || '').slice(0, 2000);
         if (el('importText').value) el('importPreview').click();
         else el('importText').focus();
+      } else if (action.action === 'edit_profile') {
+        setTab('progress');
+        openOnboarding();
       } else if (['export_csv', 'download_backup', 'restore_backup', 'toggle_theme', 'install_app'].includes(action.action)) {
         setTab('progress');
         const control = {
@@ -2317,6 +2525,19 @@
       return [...byDate.entries()].toSorted((a, b) => b[0].localeCompare(a[0])).map(([date, marks]) => ({ date, marks }));
     }
 
+    function readStepHistory(profile) {
+      const prefix = K.stepsPrefix(profile);
+      const rows = [];
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index);
+        if (!key || !key.startsWith(prefix)) continue;
+        const date = key.slice(prefix.length);
+        const value = Number(readJSON(key)?.value);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isInteger(value) && value >= 0) rows.push({ date, value });
+      }
+      return rows.toSorted((a, b) => b.date.localeCompare(a.date));
+    }
+
     function readStrength(profile) {
       const byExercise = new Map();
       const index = indexSets(profile);
@@ -2353,11 +2574,13 @@
       }).toSorted((a, b) => a.name.localeCompare(b.name));
     }
 
+    const weightPounds = row => row.unit === 'kg' ? row.value * 2.20462 : row.value;
+
     function renderProgress() {
       const strength = readStrength(state.profile);
       const weights = readWeightHistory(state.profile);
       const habits = readHabitHistory(state.profile);
-      const supplements = readSupplementHistory(state.profile);
+      const steps = readStepHistory(state.profile);
 
       let sets = 0;
       const sessions = new Set(datesLogged(state.profile, null));
@@ -2369,10 +2592,18 @@
 
       el('statSessions').textContent = sessions.size;
       el('statLifts').textContent = sets;
-      el('statStack').textContent = supplements.length;
-      if (weights.length >= 2) {
-        const change = +(weights[0].value - weights[weights.length - 1].value).toFixed(1);
-        el('statBw').textContent = `${change > 0 ? '+' : ''}${change} ${weights[0].unit}`;
+      const today = dateKey();
+      const recentSteps = steps.filter(row => row.date >= shiftDate(today, -6) && row.date <= today);
+      el('statSteps').textContent = recentSteps.length
+        ? Math.round(recentSteps.reduce((sum, row) => sum + row.value, 0) / recentSteps.length).toLocaleString() : '0';
+      const inWeightWindow = (from, through) => weights.filter(row => row.date >= from && row.date <= through);
+      const recentWeights = inWeightWindow(shiftDate(today, -6), today);
+      const priorWeights = inWeightWindow(shiftDate(today, -13), shiftDate(today, -7));
+      if (recentWeights.length && priorWeights.length) {
+        const recentAverage = recentWeights.reduce((sum, row) => sum + weightPounds(row), 0) / recentWeights.length;
+        const priorAverage = priorWeights.reduce((sum, row) => sum + weightPounds(row), 0) / priorWeights.length;
+        const change = +(recentAverage - priorAverage).toFixed(1);
+        el('statBw').textContent = `${change > 0 ? '+' : ''}${change} lb`;
       } else {
         el('statBw').textContent = '—';
       }
@@ -2409,6 +2640,13 @@
         </table></div>`
         : '<p class="empty">No daily fundamentals history yet.</p>';
 
+      el('stepsBody').innerHTML = steps.length ? `
+        <div class="scroller"><table class="data">
+          <thead><tr><th class="grow">Date</th><th>Steps</th><th>Target</th></tr></thead>
+          <tbody>${steps.map(row => `<tr><td class="grow">${row.date}</td><td>${row.value.toLocaleString()}</td><td class="${row.value >= (planFor()?.dailySteps || 10000) ? 'up' : 'flat'}">${row.value >= (planFor()?.dailySteps || 10000) ? 'Hit' : '—'}</td></tr>`).join('')}</tbody>
+        </table></div>`
+        : '<p class="empty">No steps logged yet.</p>';
+
     }
 
     /* ================= data in and out ================= */
@@ -2441,6 +2679,8 @@
         }));
         readWeightHistory(profile).forEach(row =>
           lines.push(['bodyweight', profile, row.date, '', '', row.unit, row.value, ''].map(csvCell).join(',')));
+        readStepHistory(profile).forEach(row =>
+          lines.push(['steps', profile, row.date, '', '', 'steps', row.value, ''].map(csvCell).join(',')));
         readSupplementHistory(profile).forEach(row => row.entries.forEach(item => {
           lines.push(['supplement', profile, row.date, '', '', item.name, item.dose, item.unit].map(csvCell).join(','));
         }));
@@ -2453,9 +2693,16 @@
           seen.add(key);
           try {
             const meal = JSON.parse(localStorage.getItem(key));
-            if (meal && meal.name) lines.push(['meal', profile, match[1], '', '', meal.name, meal.protein || 0, ''].map(csvCell).join(','));
+            if (meal && meal.name) {
+              const macros = `kcal:${meal.kcal || 0} P:${meal.protein || 0} C:${meal.carbs || 0} F:${meal.fat || 0}`;
+              lines.push(['meal', profile, match[1], '', '', meal.name, macros, ''].map(csvCell).join(','));
+            }
           } catch { /* skip */ }
         }
+        const plan = planFor(profile);
+        if (plan) lines.push(['plan', profile, '', '', '', 'starting targets',
+          `kcal:${plan.targets?.calories || 0} P:${plan.targets?.protein || 0} C:${plan.targets?.carbs || 0} F:${plan.targets?.fat || 0}`,
+          `steps:${plan.dailySteps || 0}`].map(csvCell).join(','));
       });
       const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
       const link = document.createElement('a');
@@ -2527,15 +2774,6 @@
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(() => {}));
     }
-
-    /* ================= static copy ================= */
-    el('rulesBody').innerHTML = `
-      <ul>
-        <li>Start with a weight you can lift in the target range with about two clean reps left.</li>
-        <li>Keep it until every set reaches the top of the range, then add the smallest jump.</li>
-        <li>Record lighter or assisted finish reps inside that set’s Drop section.</li>
-      </ul>
-      `;
 
     /* ================= render everything ================= */
     function renderAll() {
@@ -2768,7 +3006,8 @@
       }
 
       setSyncChip('syncing', 'Syncing…');
-      runSync();
+      await runSync();
+      if (mapped && !planFor(mapped)) openOnboarding();
     }
 
     async function initSync() {

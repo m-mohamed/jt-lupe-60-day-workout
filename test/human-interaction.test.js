@@ -100,19 +100,19 @@ const url='http://127.0.0.1:8911/';
 
   // 10. establish the working set once, then fill only the blank planned sets
   await fresh();
-  await p.evaluate(() => { state.date='2026-08-26'; renderSession(); });
+  await p.evaluate(() => { state.date='2026-09-01'; renderSession(); });
   id = await exId(0);
   await field(0, '.in-load').tap(); await p.keyboard.type('135');
   await field(0, '.in-reps').tap(); await p.keyboard.type('10');
   await card(0).locator('.fill-sets').tap();
   await p.waitForTimeout(500);
-  const filled = await stored(id, '2026-08-26');
+  const filled = await stored(id, '2026-09-01');
   t('fill blank sets from set one',
     filled.length===4 && filled.every(set => set.l==='135' && set.r===10), JSON.stringify(filled));
 
   // 11. filling blanks must not overwrite a set that was already changed
   await fresh();
-  await p.evaluate(() => { state.date='2026-08-26'; renderSession(); });
+  await p.evaluate(() => { state.date='2026-09-01'; renderSession(); });
   id = await exId(0);
   const changedSet = card(0).locator('.set-row').nth(2);
   await changedSet.locator('.in-load').tap(); await p.keyboard.type('95');
@@ -121,7 +121,7 @@ const url='http://127.0.0.1:8911/';
   await field(0, '.in-reps').tap(); await p.keyboard.type('10');
   await card(0).locator('.fill-sets').tap();
   await p.waitForTimeout(500);
-  const preserved = await stored(id, '2026-08-26');
+  const preserved = await stored(id, '2026-09-01');
   t('fill blank sets keeps an adjusted set',
     JSON.stringify(preserved.map(set => [set.l, set.r]))===JSON.stringify([['135',10],['135',10],['95',8],['135',10]]),
     JSON.stringify(preserved));
