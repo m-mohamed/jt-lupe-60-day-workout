@@ -35,19 +35,19 @@
     </header>
 
     <nav class="sidebar-nav" role="tablist" aria-label="Sections" data-bui="Sidebar Nav">
-      <button class="tab" type="button" role="tab" data-tab="train" aria-selected="true">
+      <button class="tab" id="tab-train" type="button" role="tab" data-tab="train" aria-selected="true" aria-controls="panel-train" tabindex="0">
         Workout
       </button>
-      <button class="tab" type="button" role="tab" data-tab="fuel" aria-selected="false">
+      <button class="tab" id="tab-fuel" type="button" role="tab" data-tab="fuel" aria-selected="false" aria-controls="panel-fuel" tabindex="-1">
         Food
       </button>
-      <button class="tab" type="button" role="tab" data-tab="supplements" aria-selected="false" aria-label="Supplements">
+      <button class="tab" id="tab-supplements" type="button" role="tab" data-tab="supplements" aria-selected="false" aria-controls="panel-supplements" aria-label="Supplements" tabindex="-1">
         Supps
       </button>
-      <button class="tab" type="button" role="tab" data-tab="agent" aria-selected="false">
+      <button class="tab" id="tab-agent" type="button" role="tab" data-tab="agent" aria-selected="false" aria-controls="panel-agent" tabindex="-1">
         Coach
       </button>
-      <button class="tab" type="button" role="tab" data-tab="progress" aria-selected="false">
+      <button class="tab" id="tab-progress" type="button" role="tab" data-tab="progress" aria-selected="false" aria-controls="panel-progress" tabindex="-1">
         Progress
       </button>
     </nav>
@@ -63,7 +63,7 @@
       </form>
 
     <!-- ============ TRAIN ============ -->
-    <section class="panel" id="panel-train" role="tabpanel" aria-label="Train">
+    <section class="panel" id="panel-train" role="tabpanel" aria-label="Train" aria-labelledby="tab-train" tabindex="0">
       <div class="page-heading">
         <h2>Workout</h2>
       </div>
@@ -110,7 +110,7 @@
     </section>
 
     <!-- ============ FUEL ============ -->
-    <section class="panel" id="panel-fuel" role="tabpanel" aria-label="Food" hidden>
+    <section class="panel" id="panel-fuel" role="tabpanel" aria-label="Food" aria-labelledby="tab-fuel" tabindex="0" hidden>
       <div class="page-heading">
         <h2>Food</h2>
       </div>
@@ -152,7 +152,7 @@
       <section class="bui-fine-tune-card" data-bui="Fine-tune Card">
         <div class="component-header"><h3>Steps</h3><span id="stepTarget">10,000 target</span></div>
         <div class="entry steps-entry">
-          <label>Today <input type="number" id="stepValue" min="0" max="100000" step="100" inputmode="numeric" placeholder="0"></label>
+          <label>Today <input type="number" id="stepValue" min="0" max="100000" step="1" inputmode="numeric" placeholder="0"></label>
           <div class="step-week"><strong id="weeklySteps">0</strong><span>this week</span></div>
         </div>
       </section>
@@ -170,7 +170,7 @@
       <section class="bui-fine-tune-card" data-bui="Fine-tune Card">
         <div class="component-header"><h3>Bodyweight</h3></div>
         <div class="entry bodyweight-entry">
-          <label>Weight <input type="number" id="bwValue" min="1" step="0.1" inputmode="decimal" placeholder="Bodyweight"></label>
+          <label>Weight <input type="number" id="bwValue" min="1" max="1500" step="0.1" inputmode="decimal" placeholder="Bodyweight"></label>
           <label>Unit
             <select id="bwUnit"><option value="lb">lb</option><option value="kg">kg</option></select>
           </label>
@@ -179,7 +179,7 @@
     </section>
 
     <!-- ============ SUPPLEMENTS ============ -->
-    <section class="panel" id="panel-supplements" role="tabpanel" aria-label="Supplements" hidden>
+    <section class="panel" id="panel-supplements" role="tabpanel" aria-label="Supplements" aria-labelledby="tab-supplements" tabindex="0" hidden>
       <div class="page-heading">
         <h2>Supplements</h2>
       </div>
@@ -223,7 +223,7 @@
     </section>
 
     <!-- ============ AGENT ============ -->
-    <section class="panel" id="panel-agent" role="tabpanel" aria-label="AI coach" hidden>
+    <section class="panel" id="panel-agent" role="tabpanel" aria-label="AI coach" aria-labelledby="tab-agent" tabindex="0" hidden>
       <div class="page-heading agent-heading">
         <h2>Coach</h2>
         <div class="agent-title-actions" data-bui="Selection Actions">
@@ -252,7 +252,7 @@
     </section>
 
     <!-- ============ PROGRESS ============ -->
-    <section class="panel" id="panel-progress" role="tabpanel" aria-label="Progress" hidden>
+    <section class="panel" id="panel-progress" role="tabpanel" aria-label="Progress" aria-labelledby="tab-progress" tabindex="0" hidden>
       <div class="page-heading">
         <h2>Progress</h2>
       </div>
@@ -483,9 +483,11 @@
     }
     function clearSets(profile, date, exerciseId) {
       const prefix = K.setPrefix(profile, date, exerciseId);
+      let removed = false;
       Object.keys(localStorage).filter(k => k.startsWith(prefix)).forEach(k => {
-        localStorage.removeItem(k); markDirty(k);
+        localStorage.removeItem(k); markDirty(k); removed = true;
       });
+      if (removed) scheduleSync();
     }
 
     /* ---------- dates ---------- */
@@ -495,7 +497,17 @@
     };
     const parseDate = key => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d); };
     const shiftDate = (key, days) => { const d = parseDate(key); d.setDate(d.getDate() + days); return dateKey(d); };
-    const challengeDay = key => Math.floor((parseDate(key) - CHALLENGE_START) / 86400000) + 1;
+    // Compare calendar ordinals, not local-midnight timestamps. Local midnights are
+    // 23 or 25 hours apart across DST boundaries, which used to shift the challenge
+    // day in southern-hemisphere time zones.
+    const calendarDayNumber = key => {
+      const [y, m, d] = key.split('-').map(Number);
+      return Date.UTC(y, m - 1, d) / 86400000;
+    };
+    const isCalendarDate = key => /^\d{4}-\d{2}-\d{2}$/.test(String(key))
+      && dateKey(parseDate(String(key))) === String(key);
+    const challengeStartDay = calendarDayNumber('2026-08-31');
+    const challengeDay = key => calendarDayNumber(key) - challengeStartDay + 1;
     const weekOf = key => Math.max(1, Math.min(9, Math.floor((challengeDay(key) - 1) / 7) + 1));
 
     /** Four focused lifting days with recovery between Pull and Legs. */
@@ -1191,10 +1203,13 @@
 
     function setTab(name) {
       flushPending();
-      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       if (name === 'agent' && state.tab !== 'agent') state.coachContext = uiContextFor(state.tab);
       state.tab = name;
-      document.querySelectorAll('.tab').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.tab === name)));
+      document.querySelectorAll('.tab').forEach(tab => {
+        const selected = tab.dataset.tab === name;
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
       ['train', 'fuel', 'supplements', 'agent', 'progress'].forEach(id => { el(`panel-${id}`).hidden = id !== name; });
       paintTimerVisibility();
       if (name === 'fuel') renderFuel();
@@ -1204,7 +1219,23 @@
       el('globalAgentForm').hidden = name === 'agent';
       window.scrollTo(0, 0);
     }
-    document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => setTab(tab.dataset.tab)));
+    const tabButtons = [...document.querySelectorAll('.tab')];
+    tabButtons.forEach(tab => {
+      tab.addEventListener('click', () => setTab(tab.dataset.tab));
+      tab.addEventListener('keydown', event => {
+        const index = tabButtons.indexOf(tab);
+        let next = null;
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % tabButtons.length;
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index - 1 + tabButtons.length) % tabButtons.length;
+        if (event.key === 'Home') next = 0;
+        if (event.key === 'End') next = tabButtons.length - 1;
+        if (next === null) return;
+        event.preventDefault();
+        const target = tabButtons[next];
+        setTab(target.dataset.tab);
+        target.focus();
+      });
+    });
     el('globalAgentForm').addEventListener('submit', async event => {
       event.preventDefault();
       const prompt = el('globalAgentPrompt').value.trim();
@@ -1223,8 +1254,10 @@
     /* ================= profile ================= */
     function setProfile(profile, { rerender = true } = {}) {
       if (!PROFILES.includes(profile)) return;
+      const previous = state.profile;
       state.profile = profile;
       localStorage.setItem(PROFILE_KEY, profile);
+      if (previous && previous !== profile) invalidateAgentContext();
       el('whoChip').textContent = PROFILE_LABEL[profile];
       if (rerender) renderAll();
     }
@@ -1247,7 +1280,11 @@
       const { profile, plan } = event.detail || {};
       if (!PROFILES.includes(profile) || !plan) return;
       writeJSON(K.profile(profile), plan);
-      writeJSON(K.bodyweight(profile, dateKey()), { value: plan.weight, unit: plan.unit, source: 'onboarding' });
+      // Editing a plan should not silently overwrite a weigh-in already recorded
+      // today. Keep the existing measurement; only seed the first one.
+      if (readJSON(K.bodyweight(profile, dateKey())) === null) {
+        writeJSON(K.bodyweight(profile, dateKey()), { value: plan.weight, unit: plan.unit, source: 'onboarding' });
+      }
       saveData(`jt-lupe-${profile}-weight`, plan.weight);
       saveData(`jt-lupe-${profile}-unit`, plan.unit);
       renderAll();
@@ -1354,6 +1391,15 @@
       const commit = exerciseId => {
         const card = document.querySelector(`.in-load[data-ex="${exerciseId}"]`).closest('.exercise');
         const ex = dayForDate(state.date).exercises.find(e => e.id === exerciseId);
+        const amountInputs = [...card.querySelectorAll('.in-reps, .in-drop-reps')];
+        const invalidAmount = amountInputs.find(input => input.value.trim() && !input.checkValidity());
+        if (invalidAmount) {
+          invalidAmount.setAttribute('aria-invalid', 'true');
+          flash('Use a whole number from 0 to 999.');
+          invalidAmount.focus();
+          return false;
+        }
+        amountInputs.forEach(input => input.removeAttribute('aria-invalid'));
         const records = [];
         for (const row of card.querySelectorAll('.set-row')) {
           const load = row.querySelector('.in-load').value.trim();
@@ -1391,11 +1437,12 @@
         card.dataset.done = String(records.length > 0);
         card.querySelector('.in-done').checked = records.length > 0;
         renderSessionMeta();
+        return true;
       };
 
       renderSession.commit = commit;
       document.querySelectorAll('.in-load, .in-reps, .in-drop-load, .in-drop-reps').forEach(input => {
-        input.addEventListener('change', event => { commit(event.target.dataset.ex); flash('Saved.'); });
+        input.addEventListener('change', event => { if (commit(event.target.dataset.ex)) flash('Saved.'); });
         // A phone going into a pocket does not blur the field, so `change` never fires.
         // Remember which exercise is mid-edit so it can be flushed on the way out.
         input.addEventListener('input', event => { renderSession.pending = event.target.dataset.ex; });
@@ -1427,13 +1474,15 @@
           flash('No blank sets to fill.');
           return;
         }
-        commit(id);
+        if (!commit(id)) return;
         if (renderSession.pending === id) renderSession.pending = null;
         flash(`${filled} blank set${filled === 1 ? '' : 's'} filled.`);
       }));
       document.querySelectorAll('.in-done').forEach(input => input.addEventListener('change', event => {
         const id = event.target.dataset.ex;
-        if (event.target.checked) commit(id);
+        if (event.target.checked) {
+          if (!commit(id)) event.target.checked = false;
+        }
         else { clearSets(state.profile, state.date, id); event.target.closest('.exercise').dataset.done = 'false'; renderSessionMeta(); }
         scheduleSync();
       }));
@@ -1567,7 +1616,8 @@
       if (id && renderSession.commit && document.querySelector(`.in-load[data-ex="${id}"]`)) {
         renderSession.commit(id);
       }
-      if (document.activeElement === el('bwValue')) commitBodyweight();
+      if (pendingBodyweight || document.activeElement === el('bwValue')) commitBodyweight();
+      if (pendingSteps || document.activeElement === el('stepValue')) commitSteps();
     }
     document.addEventListener('visibilitychange', () => { if (document.hidden) flushPending(); });
     window.addEventListener('pagehide', flushPending);
@@ -1654,7 +1704,8 @@
           if (meal && meal.name) meals.push({
             id: key.slice(prefix.length), key, name: meal.name,
             kcal: Number(meal.kcal) || 0, protein: Number(meal.protein) || 0,
-            carbs: Number(meal.carbs) || 0, fat: Number(meal.fat) || 0
+            carbs: Number(meal.carbs) || 0, fat: Number(meal.fat) || 0,
+            fdcId: meal.fdcId || null, grams: Number.isFinite(Number(meal.grams)) ? Number(meal.grams) : null
           });
         } catch { /* ignore a corrupt row rather than lose the rest */ }
       }
@@ -1726,6 +1777,9 @@
       el('weeklySteps').textContent = weekly.toLocaleString();
     }
 
+    let pendingSteps = false;
+    let pendingBodyweight = false;
+
     /* ---------- food lookup (USDA FoodData Central, via the Worker) ----------
        Every dataType we request reports nutrients per 100 g, so the grams chosen here
        are what turn a database row into an actual meal. Survey foods carry real
@@ -1735,6 +1789,7 @@
 
     function proteinFor(food, grams) { return Math.round((food.protein100 * grams) / 100); }
     function macroFor(food, key, grams) { return Math.round(((Number(food[key]) || 0) * grams) / 100); }
+    let selectedFoodMeta = null;
 
     function renderFoodHits(foods, note, info = '') {
       const box = el('foodResults');
@@ -1755,6 +1810,7 @@
       box.querySelectorAll('[data-food]').forEach(button => button.addEventListener('click', () => {
         const food = foods[Number(button.dataset.food)];
         const grams = Number(button.dataset.grams);
+        selectedFoodMeta = { fdcId: food.id, grams };
         el('mealName').value = `${food.name}`.slice(0, 80);
         el('mealKcal').value = macroFor(food, 'kcal100', grams);
         el('mealProtein').value = proteinFor(food, grams);
@@ -1789,17 +1845,29 @@
     el('addMeal').addEventListener('click', () => {
       const name = el('mealName').value.trim();
       if (!name) { el('mealName').focus(); return; }
-      const protein = Math.max(0, Number(el('mealProtein').value) || 0);
-      const kcal = Math.max(0, Number(el('mealKcal').value) || 0);
-      const carbs = Math.max(0, Number(el('mealCarbs').value) || 0);
-      const fat = Math.max(0, Number(el('mealFat').value) || 0);
+      const fields = ['mealKcal', 'mealProtein', 'mealCarbs', 'mealFat'].map(id => el(id));
+      const invalid = fields.find(input => input.value.trim() && !input.checkValidity());
+      if (invalid) { invalid.setAttribute('aria-invalid', 'true'); invalid.focus(); return; }
+      fields.forEach(input => input.removeAttribute('aria-invalid'));
+      const values = fields.map(input => input.value.trim() === '' ? 0 : Number(input.value));
+      if (values.some(value => !Number.isFinite(value) || value < 0)) return;
+      const [kcal, protein, carbs, fat] = values;
       // Sortable prefix so meals stay in the order they were added, with a unique
       // suffix rather than three random digits that can collide inside one millisecond.
       const id = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
-      writeJSON(K.meal(state.profile, state.fuelDate, id), { name, kcal, protein, carbs, fat });
+      const meal = { name, kcal, protein, carbs, fat };
+      if (selectedFoodMeta) Object.assign(meal, selectedFoodMeta);
+      writeJSON(K.meal(state.profile, state.fuelDate, id), meal);
+      selectedFoodMeta = null;
       el('mealName').value = '';
       ['mealKcal', 'mealProtein', 'mealCarbs', 'mealFat'].forEach(inputId => { el(inputId).value = ''; });
       renderFuel();
+    });
+    // A catalog portion is metadata for the values it filled. If someone edits a
+    // field afterwards, treat the entry as a manual meal rather than keeping a
+    // stale catalog id/serving size attached to it.
+    ['mealName', 'mealKcal', 'mealProtein', 'mealCarbs', 'mealFat'].forEach(id => {
+      el(id).addEventListener('input', () => { selectedFoodMeta = null; });
     });
     el('mealName').addEventListener('keydown', event => { if (event.key === 'Enter') el('addMeal').click(); });
     el('mealProtein').addEventListener('keydown', event => { if (event.key === 'Enter') el('addMeal').click(); });
@@ -1807,12 +1875,24 @@
       if (event.key === 'Enter') el('addMeal').click();
     }));
 
-    el('stepValue').addEventListener('change', () => {
-      const value = Number(el('stepValue').value);
-      if (!Number.isInteger(value) || value < 0 || value > 100000) return;
+    function commitSteps() {
+      const input = el('stepValue');
+      const raw = input.value.trim();
+      if (!raw) { pendingSteps = false; return false; }
+      const value = Number(raw);
+      if (!input.checkValidity() || !Number.isInteger(value) || value < 0 || value > 100000) {
+        input.setAttribute('aria-invalid', 'true');
+        input.focus();
+        return false;
+      }
+      input.removeAttribute('aria-invalid');
+      pendingSteps = false;
       writeJSON(K.steps(state.profile, state.fuelDate), { value });
       renderFuel();
-    });
+      return true;
+    }
+    el('stepValue').addEventListener('input', () => { pendingSteps = true; });
+    el('stepValue').addEventListener('change', commitSteps);
 
     el('fuelDate').addEventListener('change', event => {
       const chosen = event.target.value;
@@ -1825,8 +1905,15 @@
     }));
 
     function commitBodyweight() {
-      const value = Number(el('bwValue').value);
-      if (!value || value <= 0) return;
+      const input = el('bwValue');
+      const raw = input.value.trim();
+      const value = Number(raw);
+      if (!raw || !input.checkValidity() || !Number.isFinite(value) || value < 1 || value > 1500) {
+        if (raw) input.setAttribute('aria-invalid', 'true');
+        return false;
+      }
+      input.removeAttribute('aria-invalid');
+      pendingBodyweight = false;
       const unit = el('bwUnit').value;
       // The dated record belongs to the day on screen. Stamping it with today
       // instead put every backfilled weigh-in on the wrong day of the trend.
@@ -1840,7 +1927,9 @@
         saveData(`jt-lupe-${state.profile}-unit`, unit);
       }
       renderFuel();
+      return true;
     }
+    el('bwValue').addEventListener('input', () => { pendingBodyweight = true; });
     el('bwValue').addEventListener('change', commitBodyweight);
     el('bwUnit').addEventListener('change', commitBodyweight);
 
@@ -1930,10 +2019,16 @@
 
     function logSupplement() {
       const name = el('supplementName').value.trim();
-      const rawDose = el('supplementDose').value.trim();
+      const doseInput = el('supplementDose');
+      const rawDose = doseInput.value.trim();
       const dose = Number(rawDose);
       if (!name) { el('supplementName').focus(); return; }
-      if (!rawDose || !Number.isFinite(dose) || dose <= 0) { el('supplementDose').focus(); return; }
+      if (!rawDose || !doseInput.checkValidity() || !Number.isFinite(dose) || dose <= 0 || dose > 10000) {
+        doseInput.setAttribute('aria-invalid', 'true');
+        doseInput.focus();
+        return;
+      }
+      doseInput.removeAttribute('aria-invalid');
       const id = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
       writeJSON(K.supplement(state.profile, state.supplementDate, id), {
         name,
@@ -1969,8 +2064,28 @@
        click on an approval card. OpenRouter credentials never enter localStorage. */
     const agentProposals = new Map();
     const agentProposalSignatures = new Set();
+    const agentProposalOrigins = new Map();
     let agentConnected = false;
     let agentBusy = false;
+    let agentResetting = false;
+    let agentGeneration = 0;
+    let agentAbortController = null;
+
+    // Every streamed response and approval card is tied to the profile that
+    // requested it. Switching people, resetting the conversation, or starting a
+    // newer request invalidates the old generation so late chunks cannot paint or
+    // apply data to the wrong account.
+    function invalidateAgentContext() {
+      agentGeneration += 1;
+      if (agentAbortController) agentAbortController.abort();
+      agentAbortController = null;
+      agentBusy = false;
+      agentProposals.clear();
+      agentProposalOrigins.clear();
+      agentProposalSignatures.clear();
+      document.querySelectorAll('.agent-proposal').forEach(card => card.remove());
+      if (el('agentSend')) el('agentSend').disabled = !agentConnected;
+    }
 
     function setAgentStatus(stateName, label) {
       agentConnected = stateName === 'connected';
@@ -2171,6 +2286,7 @@
       agentProposalSignatures.add(signature);
       const id = crypto.randomUUID();
       agentProposals.set(id, proposal);
+      agentProposalOrigins.set(id, { profile: state.profile, email: syncState.email });
       const card = document.createElement('div');
       card.className = 'bui-approval-card agent-proposal';
       card.dataset.bui = 'Approval Card';
@@ -2221,6 +2337,7 @@
       skip.textContent = 'Skip';
       skip.addEventListener('click', () => {
         agentProposals.delete(id);
+        agentProposalOrigins.delete(id);
         card.remove();
         el('agentLiveStatus').textContent = 'Draft skipped. Nothing changed.';
       });
@@ -2241,10 +2358,17 @@
         button.disabled = true;
         badge.textContent = 'Invalid draft';
         agentProposals.delete(id);
+        agentProposalOrigins.delete(id);
         el('agentLiveStatus').textContent = 'That draft was invalid. Nothing changed.';
       };
+      const origin = agentProposalOrigins.get(id);
+      if (origin && (origin.profile !== state.profile || (origin.email && syncState.email && origin.email !== syncState.email))) {
+        reject();
+        return;
+      }
+      const ownerProfile = origin?.profile || state.profile;
       if (proposal.kind !== 'profile'
-        && (!/^\d{4}-\d{2}-\d{2}$/.test(proposal.date || '') || proposal.date > dateKey())) { reject(); return; }
+        && (!isCalendarDate(proposal.date || '') || proposal.date > dateKey())) { reject(); return; }
       const date = proposal.kind === 'profile' ? dateKey() : proposal.date;
       if (proposal.kind === 'set') {
         const exerciseId = String(proposal.exerciseId || '');
@@ -2253,15 +2377,15 @@
         const reps = Number(proposal.reps);
         const rawDrops = Array.isArray(proposal.drops) ? proposal.drops.slice(0, 6) : [];
         const drops = rawDrops.map(drop => ({ load: normalizeAgentLoad(drop?.load), reps: Number(drop?.reps) }));
-        if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(exerciseId) || !Number.isInteger(setNumber)
+        if (!EXERCISE_META.has(exerciseId) || !Number.isInteger(setNumber)
           || setNumber < 1 || setNumber > 20 || load === null || !Number.isInteger(reps)
           || reps < 0 || reps > 200 || drops.some(drop => drop.load === null || !Number.isInteger(drop.reps)
             || drop.reps < 1 || drop.reps > 100)) { reject(); return; }
-        writeSet(state.profile, date, exerciseId, setNumber, {
+        writeSet(ownerProfile, date, exerciseId, setNumber, {
           load, reps, drops,
           createdBy: 'agent-approved'
         });
-        const session = K.session(state.profile, date);
+        const session = K.session(ownerProfile, date);
         if (localStorage.getItem(session) === null) writeJSON(session, { templateId: dayForDate(date).id });
       } else if (proposal.kind === 'meal') {
         const name = String(proposal.name || '').trim().slice(0, 120);
@@ -2274,30 +2398,30 @@
           || !Number.isFinite(carbs) || carbs < 0 || carbs > 1500
           || !Number.isFinite(fat) || fat < 0 || fat > 500) { reject(); return; }
         const key = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
-        writeJSON(K.meal(state.profile, date, key), { name, protein, carbs, fat, kcal, estimate: proposal.estimate === true, createdBy: 'agent-approved' });
+        writeJSON(K.meal(ownerProfile, date, key), { name, protein, carbs, fat, kcal, estimate: proposal.estimate === true, createdBy: 'agent-approved' });
       } else if (proposal.kind === 'supplement') {
         const name = String(proposal.name || '').trim().slice(0, 100);
         const dose = Number(proposal.dose);
         const unit = String(proposal.unit || '').trim().slice(0, 20);
         if (!name || !unit || !Number.isFinite(dose) || dose <= 0 || dose > 10000) { reject(); return; }
         const key = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
-        writeJSON(K.supplement(state.profile, date, key), { name, dose, unit, at: new Date().toISOString(), createdBy: 'agent-approved' });
+        writeJSON(K.supplement(ownerProfile, date, key), { name, dose, unit, at: new Date().toISOString(), createdBy: 'agent-approved' });
       } else if (proposal.kind === 'bodyweight') {
         const unit = proposal.unit === 'kg' ? 'kg' : 'lb';
         const value = Number(proposal.value);
         if (!Number.isFinite(value) || value < 40 || value > 1500) { reject(); return; }
-        writeJSON(K.bodyweight(state.profile, date), { value, unit, createdBy: 'agent-approved' });
+        writeJSON(K.bodyweight(ownerProfile, date), { value, unit, createdBy: 'agent-approved' });
         if (date === dateKey()) {
-          saveData(`jt-lupe-${state.profile}-weight`, value);
-          saveData(`jt-lupe-${state.profile}-unit`, unit);
+          saveData(`jt-lupe-${ownerProfile}-weight`, value);
+          saveData(`jt-lupe-${ownerProfile}-unit`, unit);
         }
       } else if (proposal.kind === 'habit') {
         if (!['protein', 'preworkout', 'sleep'].includes(proposal.habit)) { reject(); return; }
-        writeJSON(K.habit(state.profile, date, proposal.habit), { done: proposal.done === true, createdBy: 'agent-approved' });
+        writeJSON(K.habit(ownerProfile, date, proposal.habit), { done: proposal.done === true, createdBy: 'agent-approved' });
       } else if (proposal.kind === 'steps') {
         const value = Number(proposal.value);
         if (!Number.isInteger(value) || value < 0 || value > 100000) { reject(); return; }
-        writeJSON(K.steps(state.profile, date), { value, createdBy: 'agent-approved' });
+        writeJSON(K.steps(ownerProfile, date), { value, createdBy: 'agent-approved' });
       } else if (proposal.kind === 'profile') {
         const plan = {
           weight: Number(proposal.weight), unit: proposal.unit === 'kg' ? 'kg' : 'lb',
@@ -2318,35 +2442,37 @@
         plan.targets = { calories, protein, fat: targetFat,
           carbs: Math.max(0, Math.round((calories - protein * 4 - targetFat * 9) / 4)),
           weeklySteps: plan.dailySteps * 7 };
-        writeJSON(K.profile(state.profile), plan);
-        writeJSON(K.bodyweight(state.profile, date), { value: plan.weight, unit: plan.unit, createdBy: 'agent-approved' });
-        saveData(`jt-lupe-${state.profile}-weight`, plan.weight);
-        saveData(`jt-lupe-${state.profile}-unit`, plan.unit);
+        writeJSON(K.profile(ownerProfile), plan);
+        writeJSON(K.bodyweight(ownerProfile, date), { value: plan.weight, unit: plan.unit, createdBy: 'agent-approved' });
+        saveData(`jt-lupe-${ownerProfile}-weight`, plan.weight);
+        saveData(`jt-lupe-${ownerProfile}-unit`, plan.unit);
       } else if (proposal.kind === 'removal') {
         let key = null;
         if (proposal.recordKind === 'set') {
           const exerciseId = String(proposal.exerciseId || '');
           const setNumber = Number(proposal.setNumber);
           if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(exerciseId) || !Number.isInteger(setNumber) || setNumber < 1 || setNumber > 20) { reject(); return; }
-          key = K.set(state.profile, date, exerciseId, setNumber);
+          if (!EXERCISE_META.has(exerciseId)) { reject(); return; }
+          key = K.set(ownerProfile, date, exerciseId, setNumber);
         } else if (proposal.recordKind === 'meal' || proposal.recordKind === 'supplement') {
           const recordId = String(proposal.recordId || '');
           if (!/^[a-zA-Z0-9._:-]{1,160}$/.test(recordId)) { reject(); return; }
           key = proposal.recordKind === 'meal'
-            ? K.meal(state.profile, date, recordId)
-            : K.supplement(state.profile, date, recordId);
+            ? K.meal(ownerProfile, date, recordId)
+            : K.supplement(ownerProfile, date, recordId);
         } else { reject(); return; }
         if (localStorage.getItem(key) === null) { reject(); return; }
         localStorage.removeItem(key);
         markDirty(key);
         scheduleSync();
       } else { reject(); return; }
-      recordActivity(state.profile, 'approved', proposal.kind, proposalSummary({ ...proposal, date }));
+      recordActivity(ownerProfile, 'approved', proposal.kind, proposalSummary({ ...proposal, date }));
       card.dataset.applied = 'true';
       button.textContent = 'Applied';
       button.disabled = true;
       badge.textContent = 'Saved locally';
       agentProposals.delete(id);
+      agentProposalOrigins.delete(id);
       renderAll();
     }
 
@@ -2356,8 +2482,7 @@
         const tab = tabBySurface[action.surface];
         if (!tab) return false;
         const requestedDate = String(action.date || '');
-        const validDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
-          && dateKey(parseDate(requestedDate)) === requestedDate;
+        const validDate = isCalendarDate(requestedDate);
         const latestDate = tab === 'train' ? shiftDate(dateKey(), 90) : dateKey();
         const fallbackDate = tab === 'train' ? state.date : dateKey();
         const date = validDate && requestedDate <= latestDate ? requestedDate : fallbackDate;
@@ -2433,29 +2558,46 @@
     }
 
     async function sendAgentMessage(prompt, uiContext = state.coachContext || uiContextFor('agent')) {
-      if (agentBusy || !agentConnected) return;
+      if (agentBusy || agentResetting || !agentConnected) return;
       const text = String(prompt || '').trim();
       if (!text) { el('agentPrompt').focus(); return; }
+      const requestProfile = state.profile;
+      const generation = ++agentGeneration;
+      const controller = new AbortController();
+      agentAbortController = controller;
       agentBusy = true;
       el('agentSend').disabled = true;
       el('agentLiveStatus').textContent = 'Coach is thinking…';
       appendAgentMessage('user', text);
       const loading = appendAgentLoading();
       el('agentPrompt').value = '';
+      const responseState = { copy: null, loading, tools: [], uiActions: [] };
       try {
+        // Coach context should include the just-approved local writes before the
+        // server takes its snapshot. A profile switch/reset can invalidate this
+        // generation while the flush is in flight.
+        if (syncState.enabled && readDirty().length) await runSync();
+        if (generation !== agentGeneration) return;
         const response = await apiFetch(`./api/agent/chat?ns=${SYNC_NS}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-          body: JSON.stringify({ prompt: text, profile: state.profile, uiContext })
+          body: JSON.stringify({ prompt: text, profile: requestProfile, uiContext }),
+          signal: controller.signal
         });
         if (response.status === 503) { await refreshAgentStatus(); throw new Error('The coach is unavailable right now.'); }
         if (!response.ok || !response.body) throw new Error('The coach is unavailable right now.');
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
-        const responseState = { copy: null, loading, tools: [], uiActions: [] };
         while (true) {
           // eslint-disable-next-line no-await-in-loop
           const { done, value } = await reader.read();
+          if (generation !== agentGeneration) {
+            // The stream must be cancelled before returning so the stale response
+            // cannot keep the connection (or its loader) alive after a reset.
+            // eslint-disable-next-line no-await-in-loop
+            await reader.cancel().catch(() => {});
+            return;
+          }
           buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
           const frames = buffer.split('\n\n');
           buffer = frames.pop() || '';
@@ -2465,18 +2607,22 @@
               if (line.startsWith('event:')) event = line.slice(6).trim();
               if (line.startsWith('data:')) { try { data = JSON.parse(line.slice(5).trim()); } catch { data = null; } }
             });
-            if (data) consumeAgentEvent(event, data, responseState);
+            if (data && generation === agentGeneration) consumeAgentEvent(event, data, responseState);
           }
           if (done) break;
         }
       } catch (error) {
-        finishAgentLoading(loading);
+        if (generation !== agentGeneration || error?.name === 'AbortError') return;
         appendAgentMessage('assistant', String(error.message || error));
         el('agentLiveStatus').textContent = 'Nothing was changed.';
       } finally {
-        agentBusy = false;
-        el('agentSend').disabled = !agentConnected;
-        el('agentPrompt').focus();
+        finishAgentLoading(responseState.loading);
+        if (generation === agentGeneration) {
+          agentBusy = false;
+          agentAbortController = null;
+          el('agentSend').disabled = !agentConnected;
+          el('agentPrompt').focus();
+        }
       }
     }
 
@@ -2488,11 +2634,15 @@
       }
     });
     el('agentReset').addEventListener('click', async () => {
+      if (agentResetting) return;
+      agentResetting = true;
+      invalidateAgentContext();
       await apiFetch(`./api/agent/reset?ns=${SYNC_NS}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
       el('agentThread').innerHTML = '<p class="agent-empty" id="agentEmpty">What do you want to log, review, or change?</p>';
       el('agentReset').hidden = true;
-      agentProposals.clear();
       agentProposalSignatures.clear();
+      agentResetting = false;
+      el('agentSend').disabled = !agentConnected;
       el('agentLiveStatus').textContent = 'Conversation reset.';
     });
 
@@ -2654,7 +2804,11 @@
 
     el('exportCsv').addEventListener('click', () => {
       const lines = [['dataset', 'profile', 'date', 'week', 'day', 'item', 'value', 'reps'].join(',')];
-      PROFILES.forEach(profile => {
+      // A signed-in account is one person. Preview mode intentionally keeps the
+      // JT/Lupe switch, but an authenticated export must never include the other
+      // profile's records.
+      const exportProfiles = syncState.enabled && syncState.profile ? [syncState.profile] : PROFILES;
+      exportProfiles.forEach(profile => {
         const indexed = indexSets(profile);
         for (const [date, exercises] of indexed) {
           for (const [exerciseId, sets] of exercises) {
@@ -2716,7 +2870,8 @@
       const data = {};
       for (let index = 0; index < localStorage.length; index += 1) {
         const key = localStorage.key(index);
-        if (key && key.startsWith('jt-lupe') && !LEGACY_KEYS.includes(key)) data[key] = localStorage.getItem(key);
+        if (key && key.startsWith('jt-lupe') && !LEGACY_KEYS.includes(key)
+          && backupKeyAllowed(key)) data[key] = localStorage.getItem(key);
       }
       const payload = JSON.stringify({ app: 'JT + Lupe Training OS', schema: SCHEMA_VERSION, exported: new Date().toISOString(), data }, null, 2);
       const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
@@ -2736,10 +2891,15 @@
         const entries = Object.entries(payload.data || {});
         if (!entries.length) throw new Error('empty backup');
         entries.forEach(([key, value]) => {
-          if (key.startsWith('jt-lupe') && !LEGACY_KEYS.includes(key)) localStorage.setItem(key, value);
+          if (key.startsWith('jt-lupe') && !LEGACY_KEYS.includes(key) && backupKeyAllowed(key)) localStorage.setItem(key, value);
         });
         if (Number(payload.schema || 1) < SCHEMA_VERSION) localStorage.setItem(SCHEMA_KEY, payload.schema || 1);
+        // Device identity, cursor, and dirty state are local transport metadata. A
+        // restored backup must get a fresh identity and perform a clean merge rather
+        // than inheriting another device's split-brain cursor.
         localStorage.removeItem(CURSOR_KEY);
+        localStorage.removeItem(DEVICE_KEY);
+        localStorage.removeItem(DIRTY_KEY);
         alert('Restored. The page will reload.');
         location.reload();
       } catch {
@@ -2805,9 +2965,17 @@
       SCHEMA_KEY, PROFILE_KEY, CURSOR_KEY, DEVICE_KEY, DIRTY_KEY,
       'jt-lupe-active-day', 'jt-lupe-week', 'jt-lupe-theme'
     ]);
-    const isSyncable = key => key.startsWith('jt-lupe') && !LOCAL_ONLY_KEYS.has(key);
-
-    const syncState = { enabled: false, mode: 'unknown', email: null, busy: false, timer: null };
+    const profileDataKey = (key, profile) => key.startsWith(`jt-lupe:${profile}:`)
+      || key.startsWith(`jt-lupe-${profile}-`);
+    const syncState = { enabled: false, mode: 'unknown', email: null, profile: null, busy: false, timer: null };
+    const isSyncable = key => key.startsWith('jt-lupe') && !LOCAL_ONLY_KEYS.has(key)
+      && (!syncState.enabled || !syncState.profile || profileDataKey(key, syncState.profile));
+    const backupKeyAllowed = key => {
+      if ([CURSOR_KEY, DEVICE_KEY, DIRTY_KEY].includes(key)) return false;
+      if (!syncState.enabled || !syncState.profile) return true;
+      return profileDataKey(key, syncState.profile) || key === SCHEMA_KEY
+        || key === 'jt-lupe-active-day' || key === 'jt-lupe-week' || key === 'jt-lupe-theme';
+    };
 
     /**
      * Call the API knowing what Access actually does when a session ends.
@@ -2893,10 +3061,13 @@
       try {
         let cursor = Number(localStorage.getItem(CURSOR_KEY) || 0);
         // A cursor of 0 means this device has never synced, or was restored from a
-        // backup. Push everything rather than trusting the dirty list.
-        const keys = cursor === 0
-          ? Object.keys(localStorage).filter(isSyncable)
-          : readDirty().filter(isSyncable);
+        // backup. Push everything rather than trusting the dirty list. Include dirty
+        // keys whose local value is now absent: those are deletion tombstones and
+        // omitting them would resurrect a record from the server after restore.
+        const dirtyKeys = readDirty().filter(isSyncable);
+        const storedKeys = cursor === 0 ? Object.keys(localStorage).filter(isSyncable) : [];
+        const tombstones = cursor === 0 ? dirtyKeys.filter(key => localStorage.getItem(key) === null) : [];
+        const keys = [...new Set([...storedKeys, ...dirtyKeys, ...tombstones])];
         const pushed = keys.map(key => {
           const value = localStorage.getItem(key);
           return value === null ? { key, deleted: true } : { key, value };
@@ -2998,11 +3169,15 @@
 
       const mapped = PROFILE_BY_EMAIL[outcome.me.email];
       if (mapped && PROFILES.includes(mapped)) {
+        syncState.profile = mapped;
         // Identity decides who you are; the chip stops being a toggle.
         setProfile(mapped, { rerender: false });
         el('whoChip').dataset.locked = 'true';
         el('whoChip').setAttribute('aria-disabled', 'true');
         el('whoChip').title = `Signed in as ${outcome.me.email}`;
+        // A local preview may have queued both profiles before Access answered. Do
+        // not carry the other person's dirty keys into this account's first upload.
+        writeDirty(readDirty().filter(isSyncable));
       }
 
       setSyncChip('syncing', 'Syncing…');
@@ -3074,7 +3249,13 @@
 
     // A second tab, or the installed app in another window, should not go stale.
     window.addEventListener('storage', event => {
-      if (event.key && event.key.startsWith('jt-lupe')) renderAll();
+      if (event.key && event.key.startsWith('jt-lupe')) {
+        // A second device can update the account while this window is mid-keystroke.
+        // Flush the local edit first so the incoming render never replaces a value
+        // that the person has typed but has not blurred yet.
+        if (renderSession.pending) flushPending();
+        renderAll();
+      }
     });
 
     initSync();

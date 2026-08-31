@@ -22,14 +22,28 @@ const draftKey = profile => `training-onboarding-draft:${profile}`;
 
 function paint(state) {
   const current = String(state.currentStep?.id || 'starting-point');
+  const data = state.context.flowData || {};
   document.querySelectorAll('[data-onboard-step]').forEach(node => { node.hidden = node.dataset.onboardStep !== current; });
   field('onboardProgress').textContent = `${state.currentStepNumber} / ${state.totalSteps}`;
   field('onboardProgressBar').style.width = `${state.progressPercentage}%`;
   field('onboardBack').hidden = state.isFirstStep;
   field('onboardNext').textContent = state.isLastStep ? 'Save plan' : 'Continue';
 
+  // OnboardJS restores a persisted flow before the first stateChange. Hydrate the
+  // visible controls from that flow state so a refresh/resume never presents stale
+  // defaults while the saved draft contains the person's edits.
+  if (current === 'starting-point') {
+    field('onboardWeight').value = data.weight ?? '';
+    field('onboardUnit').value = data.unit === 'kg' ? 'kg' : 'lb';
+    field('onboardHeight').value = data.heightCm ?? 178;
+    field('onboardExperience').value = data.experience || 'returning';
+  }
+  if (current === 'weekly-rhythm') {
+    field('onboardDailySteps').value = data.dailySteps ?? 10000;
+    field('onboardMeals').value = data.mealsPerDay ?? 4;
+    field('onboardFreeMeals').value = data.freeMealsPerWeek ?? 2;
+  }
   if (current === 'starting-targets') {
-    const data = state.context.flowData || {};
     const targets = targetsFor(data);
     field('onboardCalories').textContent = `${targets.calories.toLocaleString()} kcal`;
     field('onboardProtein').textContent = `${targets.protein.toLocaleString()} g`;

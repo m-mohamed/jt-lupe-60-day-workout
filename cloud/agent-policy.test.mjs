@@ -48,6 +48,7 @@ assert.deepEqual(classifyAgentFailure(new Error('OpenRouter HTTP 429: rate limit
   message: 'The free-model limit is busy or exhausted. Try again in a few minutes. Your logs were not changed.'
 });
 assert.equal(classifyAgentFailure(new Error('request timed out')).error, 'model_timeout');
+assert.equal(classifyAgentFailure(new Error('404: No endpoints found matching your data policy (Free model training)')).error, 'privacy_blocked');
 assert.equal(classifyAgentFailure(new Error('No eligible providers')).error, 'model_unavailable');
 
 console.log('PASS  OpenRouter model and privacy policy');

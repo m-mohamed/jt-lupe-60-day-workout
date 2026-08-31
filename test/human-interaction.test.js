@@ -126,6 +126,56 @@ const url='http://127.0.0.1:8911/';
     JSON.stringify(preserved.map(set => [set.l, set.r]))===JSON.stringify([['135',10],['135',10],['95',8],['135',10]]),
     JSON.stringify(preserved));
 
+  // 12. a second device update must not replace an unblurred edit
+  await fresh(); id = await exId(1);
+  const p2 = await ctx.newPage();
+  await p2.goto(url); await p2.waitForTimeout(600);
+  await field(1, '.in-load').tap(); await p.keyboard.type('137');
+  await p2.evaluate(() => localStorage.setItem(`jt-lupe:jt:meal:${dateKey()}:remote`, JSON.stringify({
+    name: 'Remote meal', calories: 400, protein: 30, carbs: 40, fat: 10
+  })));
+  await p.waitForTimeout(700);
+  const raced = await p.evaluate(([exerciseId, value]) => ({
+    value: document.querySelectorAll('.exercise')[1].querySelector('.in-load').value,
+    stored: setsFor('jt', dateKey(), exerciseId).map(set => set.load),
+    remote: localStorage.getItem(value) !== null
+  }), [id, `jt-lupe:jt:meal:${await p.evaluate(() => dateKey())}:remote`]);
+  t('remote update preserves an unblurred edit', raced.value === '137' && raced.stored[0] === '137', JSON.stringify(raced));
+  await p2.close();
+
+  // 13. HTML constraints must also hold at the storage boundary
+  await fresh(); id = await exId(1);
+  await p.evaluate(() => {
+    const exerciseCard = document.querySelectorAll('.exercise')[1];
+    const load = exerciseCard.querySelector('.in-load');
+    const reps = exerciseCard.querySelector('.in-reps');
+    load.value = '100'; load.dispatchEvent(new Event('input', { bubbles: true }));
+    reps.value = '-3'; reps.dispatchEvent(new Event('input', { bubbles: true }));
+    reps.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(450);
+  let invalid = await p.evaluate(exerciseId => ({
+    valid: document.querySelectorAll('.exercise')[1].querySelector('.in-reps').validity.valid,
+    stored: setsFor('jt', dateKey(), exerciseId)
+  }), id);
+  t('negative reps are rejected before storage', !invalid.valid && invalid.stored.length === 0, JSON.stringify(invalid));
+
+  await fresh(); id = await exId(1);
+  await p.evaluate(() => {
+    const exerciseCard = document.querySelectorAll('.exercise')[1];
+    const load = exerciseCard.querySelector('.in-load');
+    const reps = exerciseCard.querySelector('.in-reps');
+    load.value = '100'; load.dispatchEvent(new Event('input', { bubbles: true }));
+    reps.value = '1000'; reps.dispatchEvent(new Event('input', { bubbles: true }));
+    reps.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await p.waitForTimeout(450);
+  invalid = await p.evaluate(exerciseId => ({
+    valid: document.querySelectorAll('.exercise')[1].querySelector('.in-reps').validity.valid,
+    stored: setsFor('jt', dateKey(), exerciseId)
+  }), id);
+  t('over-limit reps are rejected before storage', !invalid.valid && invalid.stored.length === 0, JSON.stringify(invalid));
+
   t('no page errors', errors.length===0, errors.slice(0,3).join(' | '));
   console.log(JSON.stringify({results:R}, null, 1));
   await b.close();

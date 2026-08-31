@@ -196,7 +196,7 @@ textarea { resize: vertical; }
 .action:active, .row-action:active, .tab:active, .nav-action:active { transform: scale(.96); }
 .action.primary { border-color: var(--surface-strong); background: var(--surface-strong); color: var(--surface); }
 .action.compact { min-height: 40px; padding: 0 10px; }
-.row-action { min-height: 36px; padding: 0 8px; border-color: transparent; background: transparent; color: var(--text-soft); }
+.row-action { min-height: 40px; padding: 0 8px; border-color: transparent; background: transparent; color: var(--text-soft); }
 .row-action:hover { color: var(--danger); }
 
 .page-heading { max-width: 720px; margin-bottom: 20px; }

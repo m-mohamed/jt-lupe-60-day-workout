@@ -113,6 +113,25 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   t('offline write queues', off.dirty>0, JSON.stringify(off));
   t('queue flushes on reconnect', on.has && on.dirty===0, JSON.stringify(on));
 
+  // deleting the last set must upload a tombstone, otherwise another device can
+  // resurrect the record from the server on its next pull
+  await p.evaluate(() => {
+    state.date = '2026-09-04'; setTab('train'); renderSession();
+    writeSet(state.profile, state.date, 'leg-press', 1, { load: '88', unit: 'lb', reps: 8, seconds: null, rir: 2 });
+    scheduleSync();
+  });
+  await p.waitForTimeout(3500);
+  const beforeDelete = await p.evaluate(async () => (await fetch('./api/export?ns=gym')).json());
+  await p.evaluate(() => { clearSets(state.profile, '2026-09-04', 'leg-press'); renderSession(); });
+  await p.waitForTimeout(3500);
+  const afterDelete = await p.evaluate(async () => (await fetch('./api/export?ns=gym')).json());
+  const deleteDirty = await p.evaluate(() => readDirty().length);
+  t('set deletion syncs a tombstone',
+    !!beforeDelete.data['jt-lupe:jt:set:2026-09-04:leg-press:1']
+      && !afterDelete.data['jt-lupe:jt:set:2026-09-04:leg-press:1']
+      && deleteDirty === 0,
+    JSON.stringify({ before: !!beforeDelete.data['jt-lupe:jt:set:2026-09-04:leg-press:1'], after: !!afterDelete.data['jt-lupe:jt:set:2026-09-04:leg-press:1'], dirty: deleteDirty }));
+
   // second device converges
   const ctx2 = await b.newContext({viewport:{width:390,height:844}});
   const p2 = await ctx2.newPage();

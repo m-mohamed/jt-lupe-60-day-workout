@@ -49,6 +49,12 @@ export function classifyAgentFailure(error) {
       message: 'The coach took too long to answer. Try again. Your logs were not changed.'
     };
   }
+  if (/data policy|free model training|privacy settings?|no endpoints found matching/.test(message)) {
+    return {
+      error: 'privacy_blocked',
+      message: 'OpenRouter has no eligible free-model endpoint under the current privacy setting. Allow free-model training in OpenRouter, or configure a paid/ZDR-compatible model. Your logs were not changed.'
+    };
+  }
   if (/no eligible|model.+unavailable|model.+not found|no provider|\b404\b/.test(message)) {
     return {
       error: 'model_unavailable',
