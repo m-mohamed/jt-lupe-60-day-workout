@@ -130,16 +130,17 @@ const url='http://127.0.0.1:8911/';
   await fresh(); id = await exId(1);
   const p2 = await ctx.newPage();
   await p2.goto(url); await p2.waitForTimeout(600);
+  const activeDate = await p.evaluate(() => state.date);
   await field(1, '.in-load').tap(); await p.keyboard.type('137');
-  await p2.evaluate(() => localStorage.setItem(`jt-lupe:jt:meal:${dateKey()}:remote`, JSON.stringify({
+  await p2.evaluate(date => localStorage.setItem(`jt-lupe:jt:meal:${date}:remote`, JSON.stringify({
     name: 'Remote meal', calories: 400, protein: 30, carbs: 40, fat: 10
-  })));
+  })), activeDate);
   await p.waitForTimeout(700);
-  const raced = await p.evaluate(([exerciseId, value]) => ({
+  const raced = await p.evaluate(([exerciseId, date, value]) => ({
     value: document.querySelectorAll('.exercise')[1].querySelector('.in-load').value,
-    stored: setsFor('jt', dateKey(), exerciseId).map(set => set.load),
+    stored: setsFor('jt', date, exerciseId).map(set => set.load),
     remote: localStorage.getItem(value) !== null
-  }), [id, `jt-lupe:jt:meal:${await p.evaluate(() => dateKey())}:remote`]);
+  }), [id, activeDate, `jt-lupe:jt:meal:${activeDate}:remote`]);
   t('remote update preserves an unblurred edit', raced.value === '137' && raced.stored[0] === '137', JSON.stringify(raced));
   await p2.close();
 
