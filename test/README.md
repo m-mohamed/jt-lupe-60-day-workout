@@ -36,6 +36,7 @@ Then `node test/<file>` with `playwright-core` resolvable (`NODE_PATH=tools/node
 | `session-flow.test.js` | 8911 | a training night: log, correct, cut sets, backfill a day |
 | `supplements.test.js` | 8911 | exact product presets, label-driven dose/unit history, single-entry undo |
 | `stress.test.js` | 8777 | a full 60-day challenge: batching, two devices, flapping, Worker limits |
+| `mobile-three-month.test.js` | 8777 | a 90-day phone-sized run across every record type, coach approval, and explicit reset |
 | `signed-out.test.js` | 8777 | an expired Access session: recognised, survivable, recoverable |
 | `offline.test.js` | 8777 | service worker, offline reload, recovery — on the origin people use |
 | `upgrade.test.js` | 8777 | a device on an old version healing itself on one open |

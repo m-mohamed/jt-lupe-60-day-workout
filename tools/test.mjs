@@ -35,7 +35,8 @@ const SUITES = [
   { file: 'signed-out.test.js', port: WORKER_PORT },
   { file: 'offline.test.js', port: WORKER_PORT },
   { file: 'upgrade.test.js', port: WORKER_PORT },
-  { file: 'stress.test.js', port: WORKER_PORT }
+  { file: 'stress.test.js', port: WORKER_PORT },
+  { file: 'mobile-three-month.test.js', port: WORKER_PORT }
 ];
 
 const children = [];
