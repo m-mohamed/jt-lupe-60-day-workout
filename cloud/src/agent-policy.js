@@ -1,4 +1,9 @@
 export const PRIMARY_MODEL = 'openrouter/free';
+// The free-model route needs to include providers whose data policy permits
+// collection. This is an explicit product choice: it maximizes the eligible
+// pool for a low-volume, personal coach rather than silently failing under a
+// zero-collection filter.
+export const DATA_COLLECTION_POLICY = 'allow';
 
 const modelName = value => {
   const candidate = String(value || '').trim();
@@ -12,19 +17,20 @@ export function resolveAgentPolicy(env = {}) {
   return {
     primaryModel,
     fallbackModel: fallback && fallback !== primaryModel ? fallback : null,
-    requireZdr: String(env.OPENROUTER_REQUIRE_ZDR || '').toLowerCase() === 'true'
+    requireZdr: String(env.OPENROUTER_REQUIRE_ZDR || '').toLowerCase() === 'true',
+    dataCollection: DATA_COLLECTION_POLICY
   };
 }
 
 /**
  * Keep Pi as the model adapter while applying OpenRouter's provider-routing policy.
- * `data_collection: deny` excludes endpoints that may train on or retain prompts.
- * Strict zero-data-retention is optional because it can leave the free router with no
- * eligible provider; deployments with a compatible paid model can turn it on.
+ * `data_collection: allow` keeps providers that may collect or train on prompts
+ * in the free-model pool. Strict zero-data-retention remains opt-in because it can
+ * leave the free router with no eligible provider.
  */
 export function applyOpenRouterPrivacy(payload, requireZdr = false) {
   const provider = { ...payload.provider };
-  provider.data_collection = 'deny';
+  provider.data_collection = DATA_COLLECTION_POLICY;
   provider.require_parameters = true;
   provider.allow_fallbacks = true;
   if (requireZdr) provider.zdr = true;
@@ -52,7 +58,7 @@ export function classifyAgentFailure(error) {
   if (/data policy|free model training|privacy settings?|no endpoints found matching/.test(message)) {
     return {
       error: 'privacy_blocked',
-      message: 'OpenRouter has no eligible free-model endpoint under the current privacy setting. Allow free-model training in OpenRouter, or configure a paid/ZDR-compatible model. Your logs were not changed.'
+      message: 'OpenRouter has no eligible endpoint under the current account or provider policy. Check free-model availability and routing settings. Your logs were not changed.'
     };
   }
   if (/no eligible|model.+unavailable|model.+not found|no provider|\b404\b/.test(message)) {

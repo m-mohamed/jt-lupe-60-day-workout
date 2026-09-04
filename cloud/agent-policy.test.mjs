@@ -10,7 +10,8 @@ const standard = resolveAgentPolicy({});
 assert.deepEqual(standard, {
   primaryModel: PRIMARY_MODEL,
   fallbackModel: null,
-  requireZdr: false
+  requireZdr: false,
+  dataCollection: 'allow'
 });
 
 const configured = resolveAgentPolicy({
@@ -21,7 +22,8 @@ const configured = resolveAgentPolicy({
 assert.deepEqual(configured, {
   primaryModel: 'anthropic/claude-sonnet-4.5',
   fallbackModel: 'openai/gpt-5-mini',
-  requireZdr: true
+  requireZdr: true,
+  dataCollection: 'allow'
 });
 
 const sameModel = resolveAgentPolicy({
@@ -34,7 +36,7 @@ const original = { messages: [], provider: { sort: 'latency' } };
 const privatePayload = applyOpenRouterPrivacy(original, false);
 assert.deepEqual(privatePayload.provider, {
   sort: 'latency',
-  data_collection: 'deny',
+  data_collection: 'allow',
   require_parameters: true,
   allow_fallbacks: true
 });

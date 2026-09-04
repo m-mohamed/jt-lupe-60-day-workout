@@ -154,9 +154,13 @@ backup, theme, restore, and installation controls; browser-protected file and in
 prompts still require the person.
 
 Every Pi request has a 45-second timeout, one bounded retry, a 1,600-token response
-ceiling, and OpenRouter provider routing that denies data-collecting endpoints and
-[requires requested parameters](https://openrouter.ai/docs/guides/routing/provider-selection)
-such as tools. Model choices are deployment settings:
+ceiling, and OpenRouter provider routing that allows data-collecting endpoints so the
+free-model pool remains eligible while still [requiring requested parameters](https://openrouter.ai/docs/guides/routing/provider-selection)
+such as tools. This is intentional for this private, low-volume training app: an
+eligible upstream provider may retain prompts or use them for training. The status
+route reports this policy, and the [OpenRouter data-collection setting](https://openrouter.ai/docs/guides/privacy/data-collection)
+is separate from OpenRouter's own optional prompt logging/use setting. Model choices
+are deployment settings:
 
 ```jsonc
 "OPENROUTER_MODEL": "openrouter/free"
@@ -168,10 +172,21 @@ provider fallback inside the selected model route.
 
 Set `OPENROUTER_REQUIRE_ZDR` to `true` only when the selected route has an eligible
 zero-data-retention provider. Strict ZDR can leave the free router with no endpoint,
-so the default uses `data_collection: deny` while preserving free-model availability.
-The app reports that limitation instead of weakening the configured privacy policy.
-Free models are best-effort, rate-limited, and can have higher latency. Use a stable
-paid model id when reliable production capacity matters.
+so this deployment keeps `data_collection: allow` to preserve free-model availability.
+If the account or an upstream provider still blocks the route, the app reports that
+limitation instead of claiming a successful answer. Free models are best-effort,
+rate-limited, and can have higher latency. Use a stable paid model id when reliable
+production capacity matters.
+
+### Free-router research
+
+The canonical production route remains OpenRouter's [`openrouter/free`](https://openrouter.ai/docs/guides/routing/routers/free-router): it filters the currently available free models for the request's capabilities, then selects one and returns the model actually used. We reviewed these GitHub projects while evaluating whether to add a second gateway:
+
+- [`Pr0fess0rOP/free-llm-router`](https://github.com/Pr0fess0rOP/free-llm-router) — a self-hosted OpenAI-compatible gateway with provider keys, failover, and a dashboard.
+- [`bytonylee/free-router`](https://github.com/bytonylee/free-router) — a local CLI that pings free models and configures tools such as OpenCode/OpenClaw.
+- [`apuslabs/steadyroute`](https://github.com/apuslabs/steadyroute) — an experimental local-first router with catalog-aware diagnostics and encrypted local keys.
+
+Those projects are separate local/self-hosted gateways, not Cloudflare Worker dependencies. Embedding one would add another public gateway, key store, and rate-limit surface on top of OpenRouter's own capability-aware router. We therefore use the official OpenRouter router in production and keep this research as the upgrade path if a future multi-provider, server-owned gateway is required.
 
 ## Cost
 

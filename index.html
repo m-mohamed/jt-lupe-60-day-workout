@@ -205,13 +205,14 @@
         <div class="component-header"><h3>Log a supplement</h3></div>
         <div class="supplement-add">
           <input type="text" id="supplementName" maxlength="80" list="supplementNames" placeholder="Supplement name" aria-label="Supplement name">
-          <datalist id="supplementNames"><option value="Creatine monohydrate"><option value="Protein powder"></datalist>
+          <datalist id="supplementNames"><option value="Optimum Nutrition Extreme Milk Chocolate"><option value="Optimum Nutrition Creatine Pills"></datalist>
           <input type="number" id="supplementDose" min="0" max="10000" step="0.1" inputmode="decimal" placeholder="Dose" aria-label="Supplement dose">
           <select id="supplementUnit" aria-label="Supplement unit"><option value="g">g</option><option value="mg">mg</option><option value="mcg">mcg</option><option value="capsule">capsule</option><option value="serving">serving</option></select>
           <button class="action primary" id="addSupplement" type="button">Log taken</button>
         </div>
         <div class="preset-row">
-          <button class="action" type="button" data-supplement-preset="creatine">Creatine · 5 g</button>
+          <button class="action" type="button" data-supplement-preset="protein">Use Optimum Nutrition Extreme Milk Chocolate</button>
+          <button class="action" type="button" data-supplement-preset="creatine">Use Optimum Nutrition Creatine Pills</button>
         </div>
         <p class="food-note">Record the label or clinician-directed dose only.</p>
       </section>
@@ -2050,12 +2051,19 @@
       renderSupplements();
     });
     document.querySelectorAll('[data-supplement-preset]').forEach(button => button.addEventListener('click', () => {
-      if (button.dataset.supplementPreset === 'creatine') {
-        el('supplementName').value = 'Creatine monohydrate';
-        el('supplementDose').value = '5';
-        el('supplementUnit').value = 'g';
-        logSupplement();
-      }
+      const preset = button.dataset.supplementPreset;
+      if (preset === 'protein') {
+        el('supplementName').value = 'Optimum Nutrition Extreme Milk Chocolate';
+        el('supplementUnit').value = 'serving';
+      } else if (preset === 'creatine') {
+        el('supplementName').value = 'Optimum Nutrition Creatine Pills';
+        el('supplementUnit').value = 'capsule';
+      } else return;
+      // Product presets never invent a dose. Pills and powder serving sizes can
+      // vary by label, so the person enters the amount before logging the intake.
+      el('supplementDose').value = '';
+      el('supplementDose').removeAttribute('aria-invalid');
+      el('supplementDose').focus();
     }));
 
     /* ================= Pi training agent =================
@@ -2087,10 +2095,13 @@
       if (el('agentSend')) el('agentSend').disabled = !agentConnected;
     }
 
-    function setAgentStatus(stateName, label) {
+    function setAgentStatus(stateName, label, details = '') {
       agentConnected = stateName === 'connected';
       el('agentConnection').dataset.state = stateName;
       el('agentConnection').textContent = label;
+      const description = details ? `${label}. ${details}` : label;
+      el('agentConnection').title = description;
+      el('agentConnection').setAttribute('aria-label', description);
       el('agentWorkspace').hidden = false;
       el('agentSend').disabled = !agentConnected;
     }
@@ -2101,10 +2112,16 @@
         const response = await apiFetch(`./api/agent/status?ns=${SYNC_NS}`, { headers: { Accept: 'application/json' } });
         if (!response.ok || isSignedOut(response)) throw new Error('unavailable');
         const status = await response.json();
+        const providerPolicy = status.privacy?.dataCollection === 'allow'
+          ? 'Free-model provider data collection allowed.'
+          : status.privacy?.dataCollection === 'deny'
+            ? 'Only non-collecting providers allowed.'
+            : 'Provider policy unavailable.';
+        const details = `${status.model || 'OpenRouter'} · ${providerPolicy}`;
         if (status.connected) {
-          setAgentStatus('connected', 'Connected');
+          setAgentStatus('connected', 'Connected', details);
         } else {
-          setAgentStatus('ready', 'Unavailable');
+          setAgentStatus('ready', 'Unavailable', details);
         }
       } catch {
         setAgentStatus('error', 'Unavailable');

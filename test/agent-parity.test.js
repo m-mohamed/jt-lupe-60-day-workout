@@ -55,7 +55,7 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
         uiActionTypes: ['navigate', 'interface'],
         readTools: ['training_snapshot', 'food_catalog']
       },
-      privacy: { dataCollection: 'deny', zeroDataRetention: false }
+      privacy: { dataCollection: 'allow', zeroDataRetention: false }
     })
   }));
   await page.route('**/api/agent/reset?*', route => route.fulfill({

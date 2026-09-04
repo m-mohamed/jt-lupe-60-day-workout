@@ -109,8 +109,10 @@ state never enters the synced profile record.
 ## Supplement contract
 
 Supplements are a dedicated tracker, not a checkbox hidden in food. Each completed
-Task Row records name, numeric dose, unit, time, and date. Creatine 5 g is a quick-add
-because it is already part of the plan. Any custom supplement can be recorded.
+Task Row records name, numeric dose, unit, time, and date. Product presets fill the
+exact names for Optimum Nutrition Extreme Milk Chocolate and Optimum Nutrition
+Creatine Pills, but leave the amount to the product label instead of inventing a dose.
+Any custom supplement can be recorded.
 
 This surface records behavior. It does not diagnose, prescribe, or invent a stack.
 Copy directs the person to the label or clinician for dosing.

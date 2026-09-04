@@ -33,8 +33,10 @@ Four trackers and one agent workspace share the same local-first record system. 
   a built-in set of clearly labelled estimates because the USDA catalog does not have
   a stable Hot Bar menu. Signed-in copy only, because the request is proxied so the key
   never ships in the page.
-- **Supplements** — a dated intake log with a name, actual dose, and unit. Creatine
-  5 g is available as a quick-add, but custom supplements are not limited to a fixed
+- **Supplements** — a dated intake log with a name, actual dose, and unit. Presets for
+  Optimum Nutrition Extreme Milk Chocolate and Optimum Nutrition Creatine Pills fill
+  the exact product name and label-appropriate unit; the person enters the amount from
+  the product label before logging. Custom supplements are not limited to a fixed
   list. The history records intake; it does not prescribe a medical stack.
 - **Progress** — strength per exercise (first → latest), seven-day bodyweight trend,
   step average, daily fundamentals, and CSV / JSON export.
@@ -121,6 +123,10 @@ The shared OpenRouter credential is a Cloudflare secret and never enters the bro
 or repository. The coach is ready after Cloudflare Access sign-in; JT and Lupe never
 connect or manage a model credential. No Apple Health, wearable, medical record, or
 health MCP is connected.
+
+The free-model route explicitly allows upstream providers that may collect or train on
+prompts so `openrouter/free` has an eligible pool. The coach status exposes that policy;
+OpenRouter's separate optional prompt logging/use setting remains an account-level choice.
 
 Deploying a new version never touches this data: the service worker caches app files
 only, and the Cache API cannot reach `localStorage`. Key-shape changes go through the

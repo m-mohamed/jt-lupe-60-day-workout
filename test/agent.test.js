@@ -49,7 +49,7 @@ const url = 'http://127.0.0.1:8777/';
     status.body.capabilities?.readTools?.includes('food_catalog') === true,
     JSON.stringify(status.body.capabilities));
   test('OpenRouter privacy routing is explicit',
-    status.body.privacy?.dataCollection === 'deny' && status.body.privacy?.zeroDataRetention === false,
+    status.body.privacy?.dataCollection === 'allow' && status.body.privacy?.zeroDataRetention === false,
     JSON.stringify(status.body.privacy));
 
   const chat = await page.evaluate(async () => {

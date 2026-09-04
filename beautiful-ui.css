@@ -317,6 +317,7 @@ table.data abbr { text-decoration: none; }
 .food-hit-meta, .food-note { margin: 4px 0 0; color: var(--text-faint); font-size: 11px; }
 .food-note[data-warn="true"] { color: var(--warning); }
 .food-portions, .preset-row, .selection-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
+.preset-row .action { max-width: 100%; min-width: 0; overflow-wrap: anywhere; text-align: left; white-space: normal; }
 
 /* Beautiful UI — Fine-tune Card */
 .bui-fine-tune-card {

@@ -147,7 +147,7 @@ export class TrainingAgent extends CloudflareAgent {
           model: policy.primaryModel,
           provider: 'OpenRouter',
           framework: 'Pi',
-          privacy: { dataCollection: 'deny', zeroDataRetention: policy.requireZdr }
+          privacy: { dataCollection: policy.dataCollection, zeroDataRetention: policy.requireZdr }
         });
         let result;
         let primaryEmitted = false;
@@ -220,7 +220,7 @@ export class TrainingAgent extends CloudflareAgent {
           uiActionTypes: UI_ACTION_TYPES,
           readTools: ['training_snapshot', 'food_catalog']
         },
-        privacy: { dataCollection: 'deny', zeroDataRetention: policy.requireZdr }
+        privacy: { dataCollection: policy.dataCollection, zeroDataRetention: policy.requireZdr }
       });
     }
     if (url.pathname === '/reset' && request.method === 'POST') {
