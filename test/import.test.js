@@ -23,10 +23,10 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
 
   const stored = await p.evaluate(()=>{
     document.getElementById('importApply').click();
-    const keys = Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-31:')).toSorted();
+    const keys = Object.keys(localStorage).filter(k=>k.includes(':set:2026-09-07:')).toSorted();
     return { keys, incline: keys.filter(k=>k.includes('dumbbell-incline-press')).length,
              legPress: keys.filter(k=>k.includes('leg-press')).length,
-             core: localStorage.getItem('jt-lupe:jt:set:2026-08-31:hanging-knee-raise:1') };
+             core: localStorage.getItem('jt-lupe:jt:set:2026-09-07:hanging-knee-raise:1') };
   });
   t('Incline press stored as FOUR sets', stored.incline === 4, String(stored.incline));
   t('Leg press stored as THREE sets', stored.legPress === 3, String(stored.legPress));

@@ -13,7 +13,7 @@ const key = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')
 const now = new Date();
 const TODAY = key(now);
 const YESTERDAY = key(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
-const OFFICIAL_START = '2026-08-31';
+const OFFICIAL_START = '2026-09-07';
 const EXPECTED_OPEN_DATE = TODAY < OFFICIAL_START ? OFFICIAL_START : TODAY;
 
 (async () => {
@@ -49,14 +49,14 @@ const EXPECTED_OPEN_DATE = TODAY < OFFICIAL_START ? OFFICIAL_START : TODAY;
   const officialDates = await p.evaluate(() => {
     state.date = shiftDate(dateKey(), 1); renderSession();
     return {
-      start: challengeDay('2026-08-31'),
-      end: challengeDay('2026-10-29'),
-      before: challengeDay('2026-08-30'),
-      openingWeek: ['2026-08-31', '2026-09-01', '2026-09-03', '2026-09-04'].map(date => dayForDate(date).label),
+      start: challengeDay('2026-09-07'),
+      end: challengeDay('2026-11-05'),
+      before: challengeDay('2026-09-06'),
+      openingWeek: ['2026-09-07', '2026-09-08', '2026-09-10', '2026-09-11'].map(date => dayForDate(date).label),
       futureFlag: document.getElementById('backfillFlag').textContent
     };
   });
-  t('August 31 is Day 1 and October 29 is Day 60',
+  t('September 7 is Day 1 and November 5 is Day 60',
     officialDates.start === 1 && officialDates.end === 60 && officialDates.before === 0
       && officialDates.openingWeek.join(',') === 'Monday,Tuesday,Thursday,Friday',
     JSON.stringify(officialDates));
@@ -67,14 +67,14 @@ const EXPECTED_OPEN_DATE = TODAY < OFFICIAL_START ? OFFICIAL_START : TODAY;
   // A first-use recommendation must tell the person exactly what "2 reps in
   // reserve" means. The old "First time: pick a weight you could manage about…"
   // sentence was vague and repeated internal coach logic verbatim.
-  await p.evaluate(() => { state.date = '2026-08-31'; renderSession(); });
+  await p.evaluate(() => { state.date = '2026-09-07'; renderSession(); });
   const firstUseCopy = await p.locator('.coach').first().innerText();
   t('first-use weight guidance is direct and actionable',
     firstUseCopy === 'No history yet. Choose a weight that leaves 2 clean reps.'
       && !/First time|manage about/i.test(firstUseCopy), firstUseCopy);
 
   // --- log each set at the weight actually used, including one in-set drop ---
-  const TRAINING_DATE = '2026-08-31'; // official Day 1, Monday
+  const TRAINING_DATE = '2026-09-07'; // official Day 1, Monday
   await p.evaluate(date => { state.date = date; renderSession(); }, TRAINING_DATE);
   const card = p.locator('.exercise').first();
   const id = await card.locator('.in-load').first().getAttribute('data-ex');

@@ -1,8 +1,8 @@
 # JT + Lupe Training OS
 
 An installable workout, weight, food, and supplement tracker for JT and Lupe. The
-60-day training block begins Monday, August 31, 2026 and runs through Thursday,
-October 29, 2026. The weight-first PPLU week runs Monday, Tuesday, Thursday, and Friday; workout, food,
+60-day training block begins Monday, September 7, 2026 and runs through Thursday,
+November 5, 2026. The weight-first PPLU week runs Monday, Tuesday, Thursday, and Friday; workout, food,
 and supplement logging all begin with that opening week.
 
 Private app: <https://jt-lupe-workout.jt-lupe-workout-cloud.workers.dev/>

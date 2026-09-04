@@ -94,7 +94,7 @@ invented. `migrated: true` marks rows whose set count is unknown rather than one
 
 Nothing is deleted until the new records are written and verified.
 `LEGACY_CHALLENGE_START` remains August 17, 2026 even though the live programme now
-starts August 31; changing the live start must never move historical records.
+starts September 7; changing the live start must never move historical records.
 
 ## Implemented
 

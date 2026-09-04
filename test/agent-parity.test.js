@@ -92,7 +92,7 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
       frames += event('delta', { text: 'I found those exact records.' });
     } else if (lower.includes('planned day 1')) {
       frames += event('tool', { name: 'open_training_surface' });
-      frames += event('ui_action', { kind: 'navigate', surface: 'workout', date: '2026-08-31' });
+      frames += event('ui_action', { kind: 'navigate', surface: 'workout', date: '2026-09-07' });
       frames += event('delta', { text: 'Opening planned Day 1.' });
     } else if (lower.includes('open food')) {
       frames += event('tool', { name: 'open_training_surface' });
@@ -214,7 +214,7 @@ const event = (name, data) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n
     flag: document.querySelector('#backfillFlag').textContent
   }));
   t('coach can open the same future Day 1 planning surface as the direct UI',
-    plannedNavigation.date === '2026-08-31' && plannedNavigation.selected === 'true'
+    plannedNavigation.date === '2026-09-07' && plannedNavigation.selected === 'true'
       && /Monday/.test(plannedNavigation.title) && /Day 1 of 60/i.test(plannedNavigation.challenge)
       && (plannedNavigation.flag === '' || /Planned for Monday|Catching up/i.test(plannedNavigation.flag)),
     JSON.stringify(plannedNavigation));

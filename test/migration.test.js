@@ -47,14 +47,14 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
 
   // now log a fresh session with a real set count
   const fresh = await p.evaluate(() => {
-    state.date = '2026-08-31'; state.profile='lupe'; renderSession();
+    state.date = '2026-09-07'; state.profile='lupe'; renderSession();
     const card = document.querySelectorAll('.exercise')[0];   // Monday: incline press
     card.querySelectorAll('.set-row').forEach(row => {
       row.querySelector('.in-load').value = '140';
       row.querySelector('.in-reps').value = '10';
     });
     card.querySelector('.in-reps').dispatchEvent(new Event('change'));
-    return Object.keys(localStorage).filter(k=>k.includes(':set:2026-08-31:')).toSorted();
+    return Object.keys(localStorage).filter(k=>k.includes(':set:2026-09-07:')).toSorted();
   });
   t('FOUR sets stored for the four-set lead lift', fresh.length === 4, JSON.stringify(fresh));
 
@@ -65,7 +65,7 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
   t('coach reads all sets', /140×10, 140×10, 140×10, 140×10/.test(coach), coach);
 
   const nav = await p.evaluate(() => {
-    state.date = '2026-09-01'; renderSession();
+    state.date = '2026-09-08'; renderSession();
     document.getElementById('prevDay').click();
     return { title: document.getElementById('sessionTitle').innerText,
              flag: document.getElementById('backfillFlag').innerText,
@@ -74,9 +74,9 @@ const R=[]; const t=(n,ok,d='')=>R.push(`${ok?'PASS':'FAIL'}  ${n}${d?`  -> ${d}
              today: dateKey() };
   });
   t('navigates to the official Day 1', /Monday/.test(nav.title) && /DAY 1 OF 60/i.test(nav.day), JSON.stringify(nav));
-  const dayOneIsFuture = '2026-08-31' > nav.today;
+  const dayOneIsFuture = '2026-09-07' > nav.today;
   t('Day 1 is labelled planned before launch and backfilled after launch',
-    (nav.today === '2026-08-31' && nav.flagHidden) || (/Monday/i.test(nav.flag) && (dayOneIsFuture
+    (nav.today === '2026-09-07' && nav.flagHidden) || (/Monday/i.test(nav.flag) && (dayOneIsFuture
       ? /Planned for/i.test(nav.flag) && !/Catching up|Not today/i.test(nav.flag)
       : /Catching up|Not today/i.test(nav.flag))), nav.flag);
 
