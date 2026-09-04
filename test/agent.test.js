@@ -19,6 +19,7 @@ const url = 'http://127.0.0.1:8777/';
     panels: document.querySelectorAll('[role="tabpanel"]').length,
     selected: document.querySelector('[data-tab="agent"]').getAttribute('aria-selected'),
     status: document.querySelector('#agentConnection').textContent,
+    statusLabel: document.querySelector('#agentConnection').getAttribute('aria-label'),
     connectControlPresent: Boolean(document.querySelector('#agentConnectCard, #agentConnect')),
     workspaceHidden: document.querySelector('#agentWorkspace').hidden,
     sendDisabled: document.querySelector('#agentSend').disabled,
@@ -28,6 +29,9 @@ const url = 'http://127.0.0.1:8777/';
   test('Coach never asks either user to connect a model account',
     surface.status === 'Unavailable' && !surface.connectControlPresent && !surface.workspaceHidden
       && surface.sendDisabled && surface.suggestionButtons === 0,
+    JSON.stringify(surface));
+  test('status surface discloses the active router policy',
+    surface.statusLabel?.includes('openrouter/free') && surface.statusLabel.includes('Free-model provider data collection allowed.'),
     JSON.stringify(surface));
 
   const status = await page.evaluate(async () => {
